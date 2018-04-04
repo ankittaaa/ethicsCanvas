@@ -4,115 +4,121 @@ from django.contrib.auth.models import User
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
-from django.utils import timezone
-import datetime
-
-
-# TODO: Add Idea categories
-# these are columns in the ethics canvas
-
 # TODO: Add Idea ordering (preserve the order of ideas shown)
-
-# TODO: CanvasTag instead of IdeaTag
-# canvases have tags and text within ideas is highlighted with these tags
+# NOTE: can order ideas by last_modified
 
 
 class Canvas(models.Model):
-    """
-    The model for canvas metadata
-    """
-    title = models.CharField(
-        max_length = 255, 
-        db_index = True,
-        help_text="The title of the canvas"
-    )
-    date_created = models.DateTimeField(auto_now_add = True, db_index = True)
-    date_modified = models.DateTimeField(auto_now = True, db_index = True)
-    public = models.BooleanField(default = False, db_index = True)
-    
-    admins = models.ManyToManyField(User, related_name = 'admins')
-    users = models.ManyToManyField(User, related_name = 'users')
-
+    """Canvas
+    A collection of ideas collected into categories"""
+    title = models.CharField(max_length=255, db_index=True)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+    is_public = models.BooleanField(default=False, db_index=True)
+    # admins are implicitly assumed to be users
+    # should there be a check to see whether some admins are in users
+    # and vice versa?
+    admins = models.ManyToManyField(User, related_name='admins')
+    users = models.ManyToManyField(User, related_name='users')
+    # @andrew moved these tags from Idea to here
+    tags = models.ManyToManyField('CanvasTag', related_name='tags', blank=True)
 
     def __str__(self):
-        """
-        String of the Canvas
-        """
         return self.title
 
     def get_absolute_url(self):
-        return reverse('canvas-detail', args = [str(self.pk)])
+        # NOTE: @andrew no need to str(int) here
+        return reverse('canvas-detail', args=[self.pk])
 
     class Meta:
-        ordering = ('date_modified',)
+        # reverse ordered, least recently modified shows up first
+        ordering = ('-date_modified',)
 
-@staticmethod
+
 @receiver(pre_save, sender=Canvas)
 def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
     if instance.admins.count == 0:
         raise Exception('Canvas should have at least one admin.')
-        
+
+
+# TODO: callback function to handle intersection in Canvas admins and users
+
 
 class IdeaCategory(models.Model):
-    """
-    Model associating ideas with a category
-    """
-    description = models.CharField(max_length = 50, help_text = "Category Description")
+    """IdeaCategory
+    A collection of ideas."""
+    title = models.CharField(max_length=50, db_index=True)
+    description = models.CharField(max_length=255)
+    # @andrew no need to add descriptions to all fields if they are implied
 
     def __str__(self):
-        return self.description
+        return self.title
 
-
-class CanvasTag(models.Model):
-    """
-    Model representing tags that relate ideas - many to many relationship, there may exist many different tags to an idea and vice versa 
-    Composite key made of the ideaID foreign key and the tagID 
-    """
-    text = models.CharField(max_length = 255)
-    
-    def __str__(self):
-        return self.text
+    class Meta:
+        ordering = ('title',)
 
 
 class Idea(models.Model):
-    """
-    Model representing an Idea on the canvas
-    """
-    # limit on charfields is 255
-    text = models.CharField(max_length = 255, help_text = "The description of the idea")
-    date_created = models.DateTimeField(auto_now_add = True, db_index = True)
-    date_modified = models.DateTimeField(auto_now = True, db_index = True)
-    
-    category = models.ForeignKey('IdeaCategory', on_delete = models.CASCADE, null = True)
-    canvas = models.ForeignKey('Canvas', on_delete = models.CASCADE, null = True)
-    canvas_tags = models.ManyToManyField('CanvasTag', related_name = 'canvas_tags', blank = True)
+    """Idea
+    A block/post belonging to a category on the Canvas"""
+    title = models.CharField(max_length=50, db_index=True)
+    text = models.CharField(max_length=255, db_index=True)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
+    # If category == null, then the Idea is uncategorised
+    category = models.ForeignKey(
+        'IdeaCategory', on_delete=models.CASCADE, null=True)
+    # @andrew an Idea cannot exist without the canvas, so null=False
+    canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
+    # @andrew an idea does not have any tags
+    # we are only highlighting the tags on the canvas
+    # moved tags to Canvas
 
     def __str__(self):
-        return self.text    
+        return self.title
 
-    # for now, order by created in ascending order (oldest at top)
     class Meta:
-        ordering = ('date_created',)
+        ordering = ('-date_created',)
 
 
-class Comment(models.Model):
+class CanvasTag(models.Model):
+    """Canvas Tag
+    Model representing tags that relate ideas - many to many relationship,
+    there may exist many different tags to an idea and vice versa
+    Composite key made of the ideaID foreign key and the tagID
     """
-    Model representing comments, 1-1 relationship as a single comment does not apply do different ideas 
-    """
-    text = models.CharField(max_length = 255, help_text = "Type a comment")
-    resolved = models.BooleanField(default = False, db_index = True)
-
-    user = models.ForeignKey(User, on_delete = models.CASCADE)
-    idea = models.ForeignKey('Idea', on_delete = models.CASCADE, null = True)
+    # labels should be short and to the point
+    label = models.CharField(max_length=25)
 
     def __str__(self):
-        if isResolved == true: 
-            return 'Comment: ' + self.text + '\n STATUS: Resolved'
+        return self.label
+
+    class Meta:
+        ordering = ('label')
+
+
+class IdeaComment(models.Model):
+    """IdeaComment
+    Comments on an idea
+    """
+    text = models.CharField(max_length=255, help_text="Type a comment")
+    resolved = models.BooleanField(default=False, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # @andrew a comment will always be on an Idea, so idea cannot be null
+    idea = models.ForeignKey(
+        'Idea', on_delete=models.CASCADE, related_name='comments')
+    timestamp = models.DateTimeField(auto_now_Add=True, db_index=True)
+
+    def __str__(self):
+        # @andrew this will return something like
+        # "(Resolved) This is a comment - Harsh"
+        if self.resolved:
+            status = 'Resolved'
         else:
-            return 'Comment: ' + self.text + '\n STATUS: Unresolved'
+            status = 'Unresolved'
+        return f'({status}) {self.text} - {self.user}'
 
-    class Meta: 
-        ordering = ('resolved',)
-
-
+    class Meta:
+        # @andrew comments are ordered by most recent first
+        ordering = ('-timestamp',)
