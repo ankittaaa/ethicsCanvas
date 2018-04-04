@@ -1,0 +1,1 @@
+TODOs completed. removed collaborations list in canvas_list.html, as the table for collaborations was deleted. 

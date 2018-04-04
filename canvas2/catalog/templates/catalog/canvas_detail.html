@@ -1,0 +1,17 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>Canvas Title: {{ canvas.title }} </title>
+{% endblock %}
+
+{% block content %}
+  {% if idea_list %}
+  <ul>
+    {% for idea in idea_list %}
+      <li> {{ idea.text }} </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p>No ideas</p>
+  {% endif %}
+{% endblock %}

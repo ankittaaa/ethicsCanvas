@@ -1,0 +1,21 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+  <p>Index</p>
+  <div class="buttons">
+    <ul>
+      <li>
+        <a href="">Try Online</a>
+      </li>
+      <li>
+        <a href="{% url 'login' %}">Log In</a>
+      </li>
+      <li>
+        <a href="{% url 'register' %}">Register</a>
+      </li>
+      <li>
+        <a href="/static/canvas2/images/online-ethics-canvas.pdf" download>Download Blank PDF</a>
+      </li>
+    </ul>
+  </div>
+{% endblock %}
