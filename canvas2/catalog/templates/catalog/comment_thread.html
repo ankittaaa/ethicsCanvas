@@ -1,0 +1,32 @@
+{% extends "base_generic.html" %}
+{% block content %}
+
+<form id = "add-comment" action = "" method = "post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type = "submit" value = "Submit" />
+</form>
+
+
+{% if comments %}
+    <ul id = "comment-thread">
+    {% for comment in comments %}
+        <li> 
+            <div id = "comment"> {{comment.text}} 
+                <br/>
+                <p> by {{comment.user}} at {{comment.timestamp}}</p>
+                <a id = "delete-comment" href = "{{ comment.get_delete_url }}">X</a>
+            </div>
+        </li>
+        {% if forloop.last %}
+            </ul>
+            <a id = "resolve-comments" href = "{{ comment.get_resolve_url }}">Resolve Comments</a>
+
+        {% endif %}
+    {% endfor %}
+    
+{% else %}
+    <p>No comments!</p>
+{% endif %}
+<a id = "back" href = "{{idea.canvas.get_absolute_url}}">Return to Canvas</a>        
+{% endblock %}

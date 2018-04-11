@@ -2,38 +2,37 @@
 
 
 {% block title %}
-  <h1>Welcome {{ user.username }}.</h1>
+    <h1>Welcome {{ user.username }}.</h1>
 {% endblock %}
 
 
 {% block content %}
-  {% if private_canvas_list %}
-    <h2>Your canvasses are listed below.</h2>
-    <ul>
-    {% for canvas in private_canvas_list %}
-      <li>
-        <a href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
-      </li>
-    {% endfor %}
-    </ul>
-  {% else %}
-    <p>You have no canvasses. Click <a href="">here</a> to create one.</p>
-  {% endif %}
+    {% if private_canvas_list %}
+        <h2>Your canvasses are listed below.</h2>
+        <ul>
+        {% for canvas in private_canvas_list %}
+            <li>
+                <a id = "select-canvas" href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>You have no canvasses. Click <a id = 'new-canvas' href="{% url 'new-canvas' %}">here</a> to create one.</p>
+    {% endif %}
 
-  {% if public_canvas_list %}
-  <h2>Public Canvasses listed below.</h2>
-    <ul> 
-    {% for canvas in public_canvas_list %}
-      <li>
-        <a href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
-      </li>
-    {% endfor %}
-    </ul>
-  {% endif %}
+    {% if public_canvas_list %}
+        <h2>Public Canvasses listed below.</h2>
+        <ul> 
+        {% for canvas in public_canvas_list %}
+            <li>
+                <a id = "select-canvas" href = "{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endif %}
 
-  <!-- On logout, redirect to the landing page -->
-  <a href="{% url 'new-canvas' %}">New Canvas</a>
-  <a href="{% url 'logout' %}?next=/catalog/">Log Out</a>
-
+    <a id = "new-canvas" href = "{% url 'new-canvas' %}">New Canvas</a></br></br>
+    <!-- On logout, redirect to the landing page -->
+    <a id = "logout" href="{% url 'logout' %}?next=/catalog/">Log Out</a>
 {% endblock %}
 

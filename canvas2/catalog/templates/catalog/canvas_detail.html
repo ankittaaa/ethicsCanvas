@@ -5,13 +5,20 @@
 {% endblock %}
 
 {% block content %}
-  {% if idea_list %}
-  <ul>
-    {% for idea in idea_list %}
-      <li> {{ idea.text }} </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-    <p>No ideas</p>
-  {% endif %}
+    <a id = "collaborators" href = "{{ canvas.get_collaborators_url }}">Collaborators</a>
+    {% if idea_list %}
+        <ul>
+        {% for idea in idea_list %}
+            <li>
+                <a id = "edit-idea" href="{{ idea.get_absolute_url }}">{{ idea.text }}</a>
+                <a id = "comments" href="{{ idea.get_comments_url }}">C</a>
+                <a id = "delete-idea" href="{{ idea.get_delete_url }}">X</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No ideas</p>
+    {% endif %}
+    <a id = "new-idea" href="{% url 'new-idea'  %}">Create New Idea</a>
+    <a id = "back" href="{% url 'canvas-list' %}">Return to Dashboard</a>
 {% endblock %}

@@ -1,11 +1,10 @@
 from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import User
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, m2m_changed
 from django.dispatch import receiver
 
-# TODO: Add Idea ordering (preserve the order of ideas shown)
-# NOTE: can order ideas by last_modified
+
 
 
 class Canvas(models.Model):
@@ -30,6 +29,9 @@ class Canvas(models.Model):
         # NOTE: @andrew no need to str(int) here
         return reverse('canvas-detail', args=[self.pk])
 
+    def get_collaborators_url(self):
+        return reverse('collaborators', args=[self.pk])
+
     class Meta:
         # reverse ordered, least recently modified shows up first
         ordering = ('-date_modified',)
@@ -37,11 +39,20 @@ class Canvas(models.Model):
 
 @receiver(pre_save, sender=Canvas)
 def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
-    if instance.admins.count == 0:
-        raise Exception('Canvas should have at least one admin.')
+    if instance.pk is not None:
+        ''' The above line is to ensure that it doesn't break when creating a brand new canvas. It throws an error when the canvas is new; the canvas has no pk before it is saved, so 
+            an error is thrown when the m2m field is referenced below 
+        '''
+        if instance.admins.count == 0:
+            raise Exception('Canvas should have at least one admin.')
 
 
 # TODO: callback function to handle intersection in Canvas admins and users
+# By 'handle' I presume 'do not store in users if they already exist in admins', as all admins are users but not all users are admins.
+
+# @receiver(m2m_changed, sender=Canvas)
+# def enforce_empty_intersection_between_admins_and_users(sender, instance, **kwargs):
+#     print('happy')
 
 
 class IdeaCategory(models.Model):
@@ -78,8 +89,21 @@ class Idea(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse('idea-detail', args=[self.pk])
+
+    def get_delete_url(self):
+        return reverse('delete-idea', args=[self.pk])
+
+    def get_comments_url(self):
+        return reverse('comment-thread', args=[self.pk])
+
+
+
+
+
     class Meta:
-        ordering = ('-date_created',)
+        ordering = ('-date_modified',)
 
 
 class CanvasTag(models.Model):
@@ -95,7 +119,7 @@ class CanvasTag(models.Model):
         return self.label
 
     class Meta:
-        ordering = ('label')
+        ordering = ('label',)
 
 
 class IdeaComment(models.Model):
@@ -108,7 +132,7 @@ class IdeaComment(models.Model):
     # @andrew a comment will always be on an Idea, so idea cannot be null
     idea = models.ForeignKey(
         'Idea', on_delete=models.CASCADE, related_name='comments')
-    timestamp = models.DateTimeField(auto_now_Add=True, db_index=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):
         # @andrew this will return something like
@@ -118,6 +142,13 @@ class IdeaComment(models.Model):
         else:
             status = 'Unresolved'
         return f'({status}) {self.text} - {self.user}'
+
+    def get_delete_url(self):
+        return reverse('delete-comment', args=[self.pk])
+
+    def get_resolve_url(self):
+        print('shit')
+        return reverse('comment-resolve', args=[self.idea.pk])
 
     class Meta:
         # @andrew comments are ordered by most recent first
