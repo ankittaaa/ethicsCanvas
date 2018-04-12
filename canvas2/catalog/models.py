@@ -1,8 +1,11 @@
+from django import template
 from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.db.models.signals import pre_save, m2m_changed
 from django.dispatch import receiver
+
+# register = template.Library()
 
 
 
@@ -31,6 +34,13 @@ class Canvas(models.Model):
 
     def get_collaborators_url(self):
         return reverse('collaborators', args=[self.pk])
+
+    def get_delete_url(self):
+        return reverse('delete-canvas', args=[self.pk])
+
+    # @register.simple_tag
+    # def get_remove_collaborator_url(self):
+    #     return reverse('delete-user', args=[self.pk])
 
     class Meta:
         # reverse ordered, least recently modified shows up first

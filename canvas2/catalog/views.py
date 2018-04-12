@@ -30,8 +30,17 @@ def new_canvas(request):
 
     return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
 
+# TODO: OWNER PERMISSION REQUIRED
+def delete_canvas(request, pk):
+    '''
+    Function for deleting a canvas
+    '''
+    Canvas.objects.get(pk = pk).delete()
+    return redirect(request.META.get('HTTP_REFERER'))
 
 
+
+# TODO: USER PERMISSION REQUIRED
 def new_idea(request):
     '''
     Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
@@ -88,6 +97,7 @@ def comment_thread(request, pk):
         'form': form}
     )
 
+# TODO: ADMIN PERMISSION REQUIRED
 def comment_resolve(request, pk):
     '''
     Resolution of comments - delete all 
@@ -99,7 +109,7 @@ def comment_resolve(request, pk):
     return redirect(request.META.get('HTTP_REFERER'))
 
 
-
+# TODO: USER PERMISSION REQUIRED (author of idea || admin? )
 def delete_idea(request, pk):
     '''
     Deletion of an idea - return to the calling page
@@ -108,7 +118,7 @@ def delete_idea(request, pk):
     return redirect(request.META.get('HTTP_REFERER'))
 
 
-
+# TODO: ADMIN PERMISSION REQUIRED
 def delete_comment(request, pk):
     '''
     Deletion of an idea - return to the calling page
@@ -152,7 +162,7 @@ def register(request):
     )
 
 
-
+# TODO: USER PERMISSION REQUIRED
 def idea_detail(request, pk):
 
     idea_inst = get_object_or_404(Idea, pk=pk)
@@ -177,7 +187,7 @@ def idea_detail(request, pk):
         {'form': form, 'idea': idea_inst}
     )
 
-
+# TODO: ADMIN PERMISSION REQUIRED
 def collaborators(request, pk):
     '''
     Page for viewing the collaborators of a canvas
@@ -215,11 +225,24 @@ def collaborators(request, pk):
         'form': form }
     )
 
-def delete_user(request):
+#TODO: Do not allow a user to delete themself if they're the only admin - the only way that should be possible is by deleting the canvas itself
+def delete_admin(request, user_pk, canvas_pk):
+    '''
+    Function for deleting an admin
+    '''
+
+    return redirect(request.META.get('HTTP_REFERER'))
+
+# TODO: ADMIN PERMISSION REQUIRED
+def delete_user(request, user_pk, canvas_pk):
     '''
     Function for deleting a user 
     '''
+    canvas = Canvas.objects.get(pk = canvas_pk)
+    user = User.objects.get(pk = user_pk)
+    logged_in_user = request.user
 
+    canvas.users.remove(user)
 
     return redirect(request.META.get('HTTP_REFERER'))
 

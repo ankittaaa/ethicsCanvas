@@ -5,7 +5,14 @@
 {% if admins %}
 <ul id = "admins">
     {% for admin in admins %}
-        <li>{{admin.username}}</li>
+        <li>
+            {{admin.username}}
+            <!-- TODO: RESTRICT ADD/REMOVE ADMIN TO CANVAS OWNER ONLY -->
+            <!-- Show the delete admin button if user is admin (for now) -->
+            {% if user in admins %}
+            <a id = "delete-admin" href = "{% url 'delete-admin' admin.pk canvas.pk %}">X</a>
+            {% endif %}
+        </li>
     {% endfor %}
 </ul>
 {% else %}
@@ -15,15 +22,17 @@
 <h2>Users</h2>
 {% if users %}
 <ul id = "users">
-    {% for user in users %}
+    {% for user_obj in users %}
         <li>
-            {{user.username}}
-            <a id = "delete-user" href = "{% url 'delete-user' %}">X</a>
+            {{user_obj.username}}
+            {% if user in admins %}
+            <a id = "delete-user" href = "{% url 'delete-user' user_obj.pk canvas.pk %}">X</a>
+            {% endif %}
         </li>
     {% endfor %}
 </ul>
 {% else %}
-<p>No users! :O</p>
+<p>No users!</p>
 {% endif %}
 
 

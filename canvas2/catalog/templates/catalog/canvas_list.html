@@ -13,6 +13,7 @@
         {% for canvas in private_canvas_list %}
             <li>
                 <a id = "select-canvas" href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
+                <a id = "delete-canvas" href="{{ canvas.get_delete_url }}">X</a>
             </li>
         {% endfor %}
         </ul>
