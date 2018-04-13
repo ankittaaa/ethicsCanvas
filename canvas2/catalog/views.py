@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 
+
 from .models import Canvas, IdeaCategory, CanvasTag, Idea, IdeaComment
 from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
 
@@ -20,27 +21,36 @@ import django.utils.timezone
 
 @login_required
 def new_canvas(request):
-    canvas = Canvas(is_public = False)
+    creator = request.user
+
+    canvas = Canvas(is_public = False, owner = creator)
     canvas.save()
-    canvas.title = 'New Canvas ' + str(canvas.pk)
-    
-    canvas.admins.add(request.user)
-    canvas.users.add(request.user)
+    canvas.title = 'New Canvas ' + str(canvas.pk)   
+
+    canvas.admins.add(creator)
+    canvas.users.add(creator)
     canvas.save()
 
     return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
 
-# TODO: OWNER PERMISSION REQUIRED
 def delete_canvas(request, pk):
     '''
     Function for deleting a canvas
     '''
-    Canvas.objects.get(pk = pk).delete()
+    user = request.user
+    canvas = Canvas.objects.get(pk = pk)
+
+    if user == canvas.owner:
+        canvas.delete()
+    else:
+        return HttpResponse('Unauthorized', status = 401)
+
     return redirect(request.META.get('HTTP_REFERER'))
 
 
 
 # TODO: USER PERMISSION REQUIRED
+# TODO: AJAX POST CANVAS PK
 def new_idea(request):
     '''
     Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
@@ -52,13 +62,23 @@ def new_idea(request):
     # the pk is the second-last element, the last element is whitespace following the last '/' character at the end of the url 
     canvas_pk = split_ref[split_len - 2]
     canvas = Canvas.objects.get(pk = canvas_pk)
+    logged_in_user = request.user
+    # available_canvasses = Canvas.objects.filter(users__pk = logged_in_user.pk)
+    
+
+
+    if logged_in_user in canvas.users.all():
+        idea = Idea(canvas = canvas)
+        idea.save()
+        idea.title = canvas.title + ', Idea ' + str(idea.pk)
+        idea.save()
+    else:
+        return HttpResponse('Unauthorized', status = 401)
+
 
     # initialise the new idea with the canvas instance that called it 
     # TODO: any other initial fields necessary?
-    idea = Idea(canvas = canvas)
-    idea.save()
-    idea.title = canvas.title + ', Idea ' + str(idea.pk)
-    idea.save()
+    
     # print(split_ref[split_len - 2])
     return redirect(idea.get_absolute_url())
 
@@ -244,6 +264,7 @@ def delete_user(request, user_pk, canvas_pk):
 
     canvas.users.remove(user)
 
+
     return redirect(request.META.get('HTTP_REFERER'))
 
 
@@ -258,16 +279,21 @@ class CanvasList(LoginRequiredMixin, generic.ListView):
         context = super().get_context_data(**kwargs)
 
         filter_kwargs = {'is_public': True}
-        me_filter_kwargs = {'users': me, 'admins': me}
+        user_filter_kwargs = {'users': me}
+        admin_filter_kwargs = {'admins': me}
 
         canvasses = Canvas.objects.all()
 
         # public canvasses are those where public is true
         public = canvasses.filter(**filter_kwargs)
         # private canvasses where the user is either the owner or a collaborator on the canvas
-        private = canvasses.exclude(**filter_kwargs).filter(**me_filter_kwargs)
+        private = canvasses.exclude(**filter_kwargs)
+
+        my_private = private.filter(**admin_filter_kwargs)
+        my_private = my_private | private.filter(**user_filter_kwargs)
+
         context['public_canvas_list'] = public
-        context['private_canvas_list'] = private
+        context['private_canvas_list'] = my_private
 
         return context
 

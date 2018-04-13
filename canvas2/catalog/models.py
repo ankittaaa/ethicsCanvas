@@ -22,6 +22,8 @@ class Canvas(models.Model):
     # and vice versa?
     admins = models.ManyToManyField(User, related_name='admins')
     users = models.ManyToManyField(User, related_name='users')
+    # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
+    owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
     # @andrew moved these tags from Idea to here
     tags = models.ManyToManyField('CanvasTag', related_name='tags', blank=True)
 
