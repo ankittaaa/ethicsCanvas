@@ -67,20 +67,6 @@ def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
 #     print('happy')
 
 
-class IdeaCategory(models.Model):
-    """IdeaCategory
-    A collection of ideas."""
-    title = models.CharField(max_length=50, db_index=True)
-    description = models.CharField(max_length=255)
-    # @andrew no need to add descriptions to all fields if they are implied
-
-    def __str__(self):
-        return self.title
-
-    class Meta:
-        ordering = ('title',)
-
-
 class Idea(models.Model):
     """Idea
     A block/post belonging to a category on the Canvas"""
@@ -90,8 +76,7 @@ class Idea(models.Model):
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
     # If category == null, then the Idea is uncategorised
-    category = models.ForeignKey(
-        'IdeaCategory', on_delete=models.CASCADE, null=True)
+    category = models.PositiveSmallIntegerField(default=10);
     # @andrew an Idea cannot exist without the canvas, so null=False
     canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
     # @andrew an idea does not have any tags
@@ -159,7 +144,6 @@ class IdeaComment(models.Model):
         return reverse('delete-comment', args=[self.pk])
 
     def get_resolve_url(self):
-        print('shit')
         return reverse('comment-resolve', args=[self.idea.pk])
 
     class Meta:

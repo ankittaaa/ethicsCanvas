@@ -8,7 +8,7 @@ urlpatterns = [
 
     path('canvas/<int:pk>/', views.CanvasDetailView.as_view(), name='canvas-detail'),
     path('canvas-list/', views.CanvasList.as_view(), name='canvas-list'),
-    path('idea_detail/<int:pk>/', views.idea_detail, name='idea-detail'),
+    path('idea_detail/', views.idea_detail, name='idea-detail'),
     path('collaborators/<int:pk>', views.collaborators, name='collaborators'),
 
     path('new_canvas/', views.new_canvas, name='new-canvas'),
@@ -17,7 +17,7 @@ urlpatterns = [
     path('comment_thread/<int:pk>', views.comment_thread, name='comment-thread'),
     path('comment_resolve/<int:pk>', views.comment_resolve, name='comment-resolve'),
 
-    path('delete_idea/<int:pk>/', views.delete_idea, name='delete-idea'),
+    path('delete_idea/', views.delete_idea, name='delete-idea'),
     path('delete_comment/<int:pk>/', views.delete_comment, name='delete-comment'),
     path('delete_canvas/<int:pk>/', views.delete_canvas, name='delete-canvas'), 
     path('delete_user/<int:user_pk>/<int:canvas_pk>/', views.delete_user, name='delete-user'),

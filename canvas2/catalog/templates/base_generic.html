@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,11 +10,18 @@
       font-size: 10px;
       color: black;
     }
+    #idea-list li {
+      list-style-type: none;
+    }
   </style>
 </head>
 <body>
   {% block content %}<p></p>{% endblock %}
 
-
+   <script src="{% static 'canvas2/javascript/jquery-3.3.1.js' %}"></script>
+   <script src="{% static 'canvas2/javascript/vue.js' %}"></script>
+   <script>var $j = jQuery.noConflict();</script>
+  {% block scripts %}
+  {% endblock %}
 </body>
 </html>
