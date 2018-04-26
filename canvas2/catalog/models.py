@@ -128,6 +128,9 @@ class IdeaComment(models.Model):
     text = models.CharField(max_length=255, help_text="Type a comment")
     resolved = models.BooleanField(default=False, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    # created the author_name field as I didn't want to send an entire user object as JSON
+    # just so that the rendered comment can say " by <user.username>"
+    author_name = models.CharField(max_length=255, default="")
     # @andrew a comment will always be on an Idea, so idea cannot be null
     idea = models.ForeignKey(
         'Idea', on_delete=models.CASCADE, related_name='comments')

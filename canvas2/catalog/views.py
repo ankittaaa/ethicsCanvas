@@ -29,7 +29,6 @@ import django.utils.timezone
 
 
 
-
 @login_required
 def new_canvas(request):
     creator = request.user
@@ -53,10 +52,10 @@ def delete_canvas(request, pk):
     user = request.user
     canvas = Canvas.objects.get(pk = pk)
 
-    if user == canvas.owner:
+    if user in canvas.admins.all():
         canvas.delete()
     else:
-        return HttpResponse('Unauthorized', status = 401)
+        return HttpResponse('Forbidden', status = 403)
 
     return redirect(request.META.get('HTTP_REFERER'))
 
@@ -87,8 +86,9 @@ class CanvasList(LoginRequiredMixin, generic.ListView):
         # private canvasses where the user is either the owner or a collaborator on the canvas
         private = canvasses.exclude(**filter_kwargs)
 
-        my_private = private.filter(**admin_filter_kwargs)
-        my_private = (my_private | private.filter(**user_filter_kwargs)).distinct()
+        my_private = (
+            private.filter(**admin_filter_kwargs) | private.filter(**user_filter_kwargs)
+        ).distinct()
 
         context['public_canvas_list'] = public
         context['private_canvas_list'] = my_private
@@ -127,19 +127,39 @@ class CanvasDetailView(LoginRequiredMixin, generic.DetailView):
 
             users = canvas.users.all()
             admins = canvas.admins.all()
+
             ideas = Idea.objects.all().filter(canvas = canvas)
             comments = IdeaComment.objects.all().filter(idea__in=ideas)
+            
             tags = canvas.tags.all()
-
-            json_tags = []
             
             # only serialise ideas if they exist
-            json_ideas = serialize('json', ideas, cls=IdeaEncoder)
-            json_comments = serialize('json', comments, cls=IdeaCommentEncoder)
-            json_tags = serialize('json', tags, cls=CanvasTagEncoder)
+            json_ideas = serialize(
+                'json', 
+                ideas, 
+                cls=IdeaEncoder
+            )
+            json_comments = serialize(
+                'json', 
+                comments, 
+                cls=IdeaCommentEncoder
+            )
+            json_tags = serialize(
+                'json', 
+                tags, 
+                cls=CanvasTagEncoder
+            )
 
-            json_users = serialize('json', users, cls=UserModelEncoder)
-            json_admins = serialize('json', admins, cls=UserModelEncoder)
+            json_users = serialize(
+                'json', 
+                users, 
+                cls=UserModelEncoder
+            )
+            json_admins = serialize(
+                'json', 
+                admins, 
+                cls=UserModelEncoder
+            )
 
             data = {
                 'ideas': json_ideas,
@@ -174,13 +194,21 @@ def new_idea(request):
         canvas = Canvas.objects.get(pk = canvas_pk)
 
         if logged_in_user in canvas.users.all():
-            idea = Idea(canvas = canvas, category = category, text = '')
+            idea = Idea(
+                canvas = canvas, 
+                category = category, 
+                text = ''
+            )
             idea.save()
             # This is so I can click on it in the django admin - should probably delete later
             idea.title = 'Canvas ' + str(canvas_pk) +  ' Idea ' + str(idea.pk)
             idea.save()
 
-            return_idea = serialize('json', [idea], cls=IdeaEncoder)
+            return_idea = serialize(
+                'json', 
+                [idea], 
+                cls=IdeaEncoder
+            )
             return JsonResponse(return_idea, safe = False)            
 
         else:
@@ -200,7 +228,11 @@ def delete_idea(request):
         logged_in_user = request.user
 
         if logged_in_user in canvas.users.all():
-            return_idea = serialize('json', [idea], cls=IdeaEncoder)
+            return_idea = serialize(
+                'json', 
+                [idea], 
+                cls=IdeaEncoder
+            )
             idea.delete()
             print("gone")
             # print(Idea.objects.get(pk = idea_pk))
@@ -225,7 +257,11 @@ def idea_detail(request):
         idea_inst.text = new_text
         idea_inst.save()
 
-        return_idea = serialize('json', [idea_inst], cls=IdeaEncoder)
+        return_idea = serialize(
+            'json', 
+            [idea_inst], 
+            cls=IdeaEncoder
+        )
 
         return JsonResponse(return_idea, safe = False)
 
@@ -243,56 +279,95 @@ def idea_detail(request):
 def comment_thread(request, pk):
     '''
     View function for displaying the comment thread of an idea, and for posting a new comment
+    Still have it as a GET as it remains to be a navigation away from current page to comment page
     '''
     idea = Idea.objects.get(pk = pk)
+    canvas = idea.canvas
+    logged_in_user = request.user
+
+    if logged_in_user in canvas.users.all():
 
 
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
+        if request.method == 'POST':
+            comments = IdeaComment.objects.all().filter(idea = idea)
+            
+            json_comments = serialize(
+                'json', 
+                comments, 
+                cls = IdeaCommentEncoder
+            )
+            return JsonResponse(json_comments, safe = False)
 
-        if form.is_valid():
-            text = form.cleaned_data['text']
-
-            comment = IdeaComment.objects.create(text = text, idea = idea, user = request.user)
-            return redirect(request.META.get('HTTP_REFERER'))
-
+        else:
+            return render(
+                request, 
+                'catalog/comment_thread.html', 
+            )
     else:
-        form = CommentForm(initial = { 
-            'text': ''
-        })
+        return HttpResponse('Unauthorized', status = 401)
 
-    comment_list = IdeaComment.objects.all().filter(idea = idea)
 
-    return render(
-        request, 
-        'catalog/comment_thread.html', 
-        {'comments': comment_list,
-         'idea': idea,
-        'form': form}
-    )
+def new_comment(request):
+    if request.method == 'POST':
+        text = request.POST['input_text']
+        text = strip_tags(text)
+        
+        idea_pk = request.POST['idea_pk']
+        idea = Idea.objects.get(pk = idea_pk)
+        
+        canvas = idea.canvas
+        logged_in_user = request.user
 
+        if logged_in_user in canvas.users.all():
+            comment = IdeaComment(
+                user = logged_in_user, 
+                author_name = logged_in_user.username,
+                text = text,
+                idea = idea
+            )
+            comment.save()
+            json_comments = serialize(
+                'json', 
+                [comment], 
+                cls = IdeaCommentEncoder
+            )
+            return JsonResponse(json_comments, safe = False)
+        else:
+            return HttpResponse('Unauthorized', status = 401)
 
 
 # TODO: ADMIN PERMISSION REQUIRED
-def comment_resolve(request, pk):
+def comment_resolve(request):
     '''
     Resolution of comments - delete all 
     '''
-    print(':D')
+
+    idea_pk = request.POST['idea_pk']
     idea = Idea.objects.get(pk = pk)
-    print(idea)
+
     IdeaComment.objects.all().filter(idea = idea).delete()
-    return redirect(request.META.get('HTTP_REFERER'))
+    return JsonResponse('', safe = False)
 
 
 
 # TODO: ADMIN PERMISSION REQUIRED
-def delete_comment(request, pk):
+def delete_comment(request):
     '''
     Deletion of an idea - return to the calling page
     '''
-    IdeaComment.objects.get(pk = pk).delete()
-    return redirect(request.META.get('HTTP_REFERER'))
+    if request.method == 'POST':
+        logged_in_user = request.user
+        comment_pk = request.POST['comment_pk']
+        
+        comment = IdeaComment.objects.get(pk = comment_pk)
+        canvas = comment.idea.canvas
+        
+        if logged_in_user in canvas.admins.all():
+            comment.delete()
+            return JsonResponse('', safe = False)
+        else :
+            return HttpResponse('Forbidden', status = 403)
+
 
 
 
@@ -316,28 +391,32 @@ def register(request):
         form = SignUpForm(request.POST)
 
         if form.is_valid():
-              username = form.cleaned_data['name']
-              email = form.cleaned_data['email']
-              password = form.cleaned_data['password']
+            username = form.cleaned_data['name']
+            email = form.cleaned_data['email']
+            password = form.cleaned_data['password']
 
-              newUser = User.objects.create_user(username = username, email = email, password = password)
+            newUser = User.objects.create_user(
+                username = username, 
+                email = email, 
+                password = password
+            )
 
-              return HttpResponseRedirect(reverse('index'))
+            return HttpResponseRedirect(reverse('index'))
       
-    else:
-        form = SignUpForm(initial = {
-            'name': '',
-            'email': '',
-            'password': '',
-            'password2': '',
-        })
+        else:
+            form = SignUpForm(initial = {
+                'name': '',
+                'email': '',
+                'password': '',
+                'password2': '',
+            })
 
 
-    return render(
-        request,
-        'catalog/register.html',
-        {'form': form}
-    )
+        return render(
+            request,
+            'catalog/register.html',
+            {'form': form}
+        )
 
 
 
@@ -373,10 +452,12 @@ def collaborators(request, pk):
     return render(
         request, 
         'catalog/collaborators.html',
-        {'admins': admins,
-        'users': users,
-        'canvas': canvas, 
-        'form': form }
+        {
+            'admins': admins,
+            'users': users,
+            'canvas': canvas, 
+            'form': form 
+        }
     )
 
 

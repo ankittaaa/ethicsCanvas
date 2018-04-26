@@ -1,32 +1,27 @@
 {% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title id = 'thread-title'></title>
+{% endblock %}
+
 {% block content %}
 
 <form id = "add-comment" action = "" method = "post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type = "submit" value = "Submit" />
+    <input value = '' placeholder = 'Type a comment'>
+    <input type = "submit" value = "Submit"/>
 </form>
 
 
-{% if comments %}
-    <ul id = "comment-thread">
-    {% for comment in comments %}
-        <li> 
-            <div id = "comment"> {{comment.text}} 
-                <br/>
-                <p> by {{comment.user}} at {{comment.timestamp}}</p>
-                <a id = "delete-comment" href = "{{ comment.get_delete_url }}">X</a>
-            </div>
-        </li>
-        {% if forloop.last %}
-            </ul>
-            <a id = "resolve-comments" href = "{{ comment.get_resolve_url }}">Resolve Comments</a>
-
-        {% endif %}
-    {% endfor %}
+<ul id = "comment-thread">
     
-{% else %}
-    <p>No comments!</p>
-{% endif %}
-<a id = "back" href = "{{idea.canvas.get_absolute_url}}">Return to Canvas</a>        
+</ul>
+
+<button id = "resolve-comments">Resolve Comments</a>
+
+<button id = "back">Return to Canvas</a>        
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'canvas2/javascript/commentThread.js' %}"></script>
 {% endblock %}

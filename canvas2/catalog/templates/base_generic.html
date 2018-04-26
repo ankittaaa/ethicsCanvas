@@ -13,6 +13,10 @@
     #idea-list li {
       list-style-type: none;
     }
+
+    #comment-thread li {
+      list-style-type: none;
+    }
   </style>
 </head>
 <body>
@@ -20,6 +24,7 @@
 
    <script src="{% static 'canvas2/javascript/jquery-3.3.1.js' %}"></script>
    <script src="{% static 'canvas2/javascript/vue.js' %}"></script>
+   <script src="{% static 'canvas2/javascript/boilerplate.js' %}"></script>
    <script>var $j = jQuery.noConflict();</script>
   {% block scripts %}
   {% endblock %}

@@ -32,22 +32,18 @@ $j(document).ready(function(data){
     canvasPK = splitURL[splitURL.length - 2];
 
 
-
-
-
     // INITIAL AJAX REQUEST TO GET CANVAS INFORMATION AND RENDER IT TO PAGE
-    url = "/catalog/canvas/" + canvasPK + "/";
     data = {
-        'canvas_pk': canvasPK
+        "canvas_pk": canvasPK
     };
     performAjaxPOST(url, data, initSuccessCallback, initFailureCallback);
 });
 
-/*********************
-**********************
-    EVENT HANDLERS
-**********************   
-**********************/
+/*************************************************************************************************************
+**************************************************************************************************************
+                                            EVENT HANDLERS
+**************************************************************************************************************   
+**************************************************************************************************************/
 
     
 $j(document).on("submit", ".idea-form", function(e){
@@ -59,13 +55,13 @@ $j(document).on("submit", ".idea-form", function(e){
 */
     e.preventDefault();
     inputText = escapeChars($j(this).find("input[value]")[0].value);
-    // the $j(this).find() method doesn't seem to work for idea_pk, which is a 'list' attribute
+    // the $j(this).find() method doesn"t seem to work for idea_pk, which is a "list" attribute
     idea_pk = $j(this)[0][0].attributes[1].value;
     url = "/catalog/idea_detail/";
 
     data = {
-        'input_text': inputText,
-        'idea_pk': idea_pk
+        "input_text": inputText,
+        "idea_pk": idea_pk
     };
     performAjaxPOST(url, data, editIdeaSuccessCallback, editIdeaFailureCallback);
 });
@@ -78,12 +74,11 @@ $j(document).on("click", "#delete", function(e){
     AND should remove the element from the DOM
 */
     e.preventDefault();
-    console.log(this);
     idea_pk = $j(this)[0].attributes[1].value;
 
     url = "/catalog/delete_idea/";
     data = {
-        'idea_pk': idea_pk
+        "idea_pk": idea_pk
     };
 
     performAjaxPOST(url, data, deleteIdeaSuccessCallback, deleteIdeaFailureCallback);
@@ -97,24 +92,33 @@ $j(".new-idea").click(function(e){
 /*
     Handler for addition of an idea, performs a POST and receives JSON response 
 */
-    category = $j('.new-idea').index(this);
+    category = $j(".new-idea").index(this);
     e.preventDefault();
 
     url = "/catalog/new_idea/";
     data = {
-        'canvas_pk': canvasPK,
-        'category': category
+        "canvas_pk": canvasPK,
+        "category": category
     };
     performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback);
 });
 
+$j(document).on("click", ".comments", function(e){
+/*
+    Handler for opening the comment thread for the clicked idea
+*/
+    idea_pk = this.attributes[1].value;
+    url = "/catalog/comment_thread/" + idea_pk + "/";
+    window.location.href = url;
+});
 
 
-/*********************
-**********************
-  CALLBACK FUNCTIONS
-**********************   
-**********************/
+/*************************************************************************************************************
+**************************************************************************************************************
+                                            CALLBACK FUNCTIONS
+**************************************************************************************************************   
+**************************************************************************************************************/
+
 
 function deleteIdeaSuccessCallback(data){
     idea = JSON.parse(data);
@@ -131,16 +135,17 @@ function newIdeaSuccessCallback(data){
 */
     idea = JSON.parse(data);
     var listID = '#idea-list-' + idea[0].fields.category;
-    console.log(listID);
+
     $j(listID).append(
         "<li list = " + idea[0].pk +">                                                     \
             <form class = 'idea-form' action = ''>                                          \
                 <input value = '' list = " + idea[0].pk + " placeholder = 'Add an idea'>    \
                 <input type = 'submit' value = 'Submit'>                                    \
                 <button id = 'delete' list = " + idea[0].pk + ">Delete Idea</button>        \
-                <button id = 'comments'>Comments</button>                                   \
+                <button class = 'comments' list = " + idea[0].pk + ">Comments</button>                                   \
             </form>                                                                         \
-        </li>");
+        </li>"
+    );
 }
 
 function newIdeaFailureCallback(data){
@@ -177,13 +182,18 @@ function initFailureCallback(data){
     console.log(data);
 }
 
+function commentSuccessCallback(data){
+    console.log("comment thread opened");
+}
 
-
-/*********************
-**********************
-    MISCELLANEOUS
-**********************   
-**********************/
+function commentFailureCallback(data){
+    console.log(data);
+}
+/*************************************************************************************************************
+**************************************************************************************************************
+                                            MISCELLANEOUS
+**************************************************************************************************************   
+**************************************************************************************************************/
 
 
 function populateIdeaList(ideas){
@@ -195,8 +205,7 @@ function populateIdeaList(ideas){
             // only do string manipulation if there's a string to manipulate
             var ideaString = ideas[i].fields.text;
             ideaString = escapeChars(ideaString);
-            var listID = '#idea-list-' + ideas[i].fields.category;
-            console.log(listID);
+            var listID = "#idea-list-" + ideas[i].fields.category;
 
             $j(listID).append(
                 "<li list = " + ideas[i].pk +">                                                     \
@@ -204,9 +213,10 @@ function populateIdeaList(ideas){
                         <input value = '" + ideas[i].fields.text + "' list = " + ideas[i].pk +">    \
                         <input type = 'submit' value = 'Submit'>                                    \
                         <button id = 'delete' list = " + ideas[i].pk + ">Delete Idea</button>       \
-                        <button id = 'comments'>Comments</button>                                   \
+                        <button class = 'comments' list = " + ideas[i].pk + ">Comments</button>                                   \
                     </form>                                                                         \
-                </li>");
+                </li>"
+            );
         }
 
         else {  // add a placeholder to the end of the input's attributes so I can continue to reference 'list' in edit-idea as normal
@@ -216,52 +226,10 @@ function populateIdeaList(ideas){
                         <input value = '' list = " + ideas[i].pk + " placeholder = 'Add an idea'>   \
                         <input type = 'submit' value = 'Submit'>                                    \
                         <button id = 'delete' list = " + ideas[i].pk + ">Delete Idea</button>       \
-                        <button id = 'comments'>Comments</button>                                   \
+                        <button class = 'comments' list = " + ideas[i].pk + ">Comments</button>                                   \
                     </form>                                                                         \
-                </li>");
-        }
-
-    }
-}
-
-function performAjaxPOST(url, data, callback, failureCallback){
-/*
-    Function to abstract away AJAX calls, somewhat reducing the volume of code to be drudging through
-*/
-    $j.ajax({
-        type:"POST",
-        url: url,
-        data: data,
-        dataType: 'json',
-        headers: { 'X-CSRFToken': $j('input[name="csrfmiddlewaretoken"]').val() }, 
-        success: callback,
-        error: failureCallback
-    });
-}
-
-function escapeChars(inString){
-/*
-    Function to strip away single and double quotes. Without this, unfortunate things like everything
-    after the single quote being added as an attribute of the rendered idea outside of intended 'value' attribute
-*/
-    inString = inString.replace(/'/g, "&apos;")
-                            .replace(/"/g, "&quot;");
-    return inString;
-}
-
-// From https://www.w3schools.com/js/js_cookies.asp
-function getCookie(cname) {
-    var name = cname + "=";
-    var decodedCookie = decodeURIComponent(document.cookie);
-    var ca = decodedCookie.split(';');
-    for(var i = 0; i <ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
+                </li>"
+            );
         }
     }
-    return "";
 }

@@ -14,11 +14,12 @@ urlpatterns = [
     path('new_canvas/', views.new_canvas, name='new-canvas'),
     path('new_idea/', views.new_idea, name='new-idea'),
 
-    path('comment_thread/<int:pk>', views.comment_thread, name='comment-thread'),
-    path('comment_resolve/<int:pk>', views.comment_resolve, name='comment-resolve'),
+    path('comment_thread/<int:pk>/', views.comment_thread, name='comment-thread'),
+    path('comment_resolve/', views.comment_resolve, name='comment-resolve'),
+    path('new_comment/', views.new_comment, name='new-comment'),
 
     path('delete_idea/', views.delete_idea, name='delete-idea'),
-    path('delete_comment/<int:pk>/', views.delete_comment, name='delete-comment'),
+    path('delete_comment/', views.delete_comment, name='delete-comment'),
     path('delete_canvas/<int:pk>/', views.delete_canvas, name='delete-canvas'), 
     path('delete_user/<int:user_pk>/<int:canvas_pk>/', views.delete_user, name='delete-user'),
     path('delete_admin/<int:admin_pk>/<int:canvas_pk>/', views.delete_admin, name='delete-admin'),
