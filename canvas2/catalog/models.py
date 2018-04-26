@@ -17,6 +17,8 @@ class Canvas(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     is_public = models.BooleanField(default=False, db_index=True)
+    # flag the canvas for if it's a temporary canvas or not (created by anon. user or registered user respectively)
+    is_temporary = models.BooleanField(default = False)
     # admins are implicitly assumed to be users
     # should there be a check to see whether some admins are in users
     # and vice versa?
@@ -75,8 +77,8 @@ class Idea(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
-    # If category == null, then the Idea is uncategorised
-    category = models.PositiveSmallIntegerField(default=10);
+    # Default = 9 for uncategorised
+    category = models.PositiveSmallIntegerField(default=9);
     # @andrew an Idea cannot exist without the canvas, so null=False
     canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
     # @andrew an idea does not have any tags

@@ -21,6 +21,15 @@ import django.utils.timezone
 
 
 
+
+##################################################################################################################################
+#                                                           CANVAS VIEWS                                                         #
+##################################################################################################################################
+
+
+
+
+
 @login_required
 def new_canvas(request):
     creator = request.user
@@ -34,6 +43,8 @@ def new_canvas(request):
     canvas.save()
 
     return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
+
+
 
 def delete_canvas(request, pk):
     '''
@@ -50,228 +61,9 @@ def delete_canvas(request, pk):
     return redirect(request.META.get('HTTP_REFERER'))
 
 
-
-# TODO: USER PERMISSION REQUIRED
-# TODO: AJAX POST CANVAS PK
-def new_idea(request):
-    '''
-    Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
-    '''
-    if request.method == 'POST':
-        logged_in_user = request.user
-        # available_canvasses = Canvas.objects.filter(users__pk = logged_in_user.pk)
-        canvas_pk = request.POST['canvas_pk']
-        canvas = Canvas.objects.get(pk = canvas_pk)
-
-        if logged_in_user in canvas.users.all():
-            idea = Idea(canvas = canvas, category = 10, text = '')
-            idea.save()
-            # This is so I can click on it in the django admin - should probably delete later
-            idea.title = 'Canvas ' + str(canvas_pk) +  ' Idea ' + str(idea.pk)
-            idea.save()
-
-            return_idea = serialize('json', [idea], cls=IdeaEncoder)
-            return JsonResponse(return_idea, safe = False)            
-
-        else:
-            return HttpResponse('Unauthorized', status = 401)
-
-
-        # initialise the new idea with the canvas instance that called it 
-        # TODO: any other initial fields necessary?
-        
-        # print(split_ref[split_len - 2])
-
-
-
-def comment_thread(request, pk):
-    '''
-    View function for displaying the comment thread of an idea, and for posting a new comment
-    '''
-    idea = Idea.objects.get(pk = pk)
-
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-
-        if form.is_valid():
-            text = form.cleaned_data['text']
-
-            comment = IdeaComment.objects.create(text = text, idea = idea, user = request.user)
-            return redirect(request.META.get('HTTP_REFERER'))
-
-    else:
-        form = CommentForm(initial = { 
-            'text': ''
-        })
-
-
-    comment_list = IdeaComment.objects.all().filter(idea = idea)
-
-
-    return render(
-        request, 
-        'catalog/comment_thread.html', 
-        {'comments': comment_list,
-         'idea': idea,
-        'form': form}
-    )
-
-# TODO: ADMIN PERMISSION REQUIRED
-def comment_resolve(request, pk):
-    '''
-    Resolution of comments - delete all 
-    '''
-    print(':D')
-    idea = Idea.objects.get(pk = pk)
-    print(idea)
-    IdeaComment.objects.all().filter(idea = idea).delete()
-    return redirect(request.META.get('HTTP_REFERER'))
-
-
-# ADMIN PERMISSION REQUIRED FOR NOW
-def delete_idea(request):
-    '''
-    Deletion of an idea - return to the calling page
-    '''
-    if request.POST:
-        idea_pk = request.POST['idea_pk']
-        idea = Idea.objects.get(pk = idea_pk)
-        canvas = idea.canvas
-        logged_in_user = request.user
-
-        if logged_in_user in canvas.users.all():
-            return_idea = serialize('json', [idea], cls=IdeaEncoder)
-            idea.delete()
-            print("gone")
-            # print(Idea.objects.get(pk = idea_pk))
-            return JsonResponse(return_idea, safe = False);
-        else:
-            print("No")
-            return HttpResponse('Unauthorized', status = 401)
-
-
-# TODO: ADMIN PERMISSION REQUIRED
-def delete_comment(request, pk):
-    '''
-    Deletion of an idea - return to the calling page
-    '''
-    IdeaComment.objects.get(pk = pk).delete()
-    return redirect(request.META.get('HTTP_REFERER'))
-
-
-
-def index(request):
-    return render(request, 'index.html')
-
-
-
-def register(request):
-    if request.method == 'POST':
-        form = SignUpForm(request.POST)
-
-        if form.is_valid():
-              username = form.cleaned_data['name']
-              email = form.cleaned_data['email']
-              password = form.cleaned_data['password']
-
-              newUser = User.objects.create_user(username = username, email = email, password = password)
-
-              return HttpResponseRedirect(reverse('index'))
-      
-    else:
-        form = SignUpForm(initial = {
-            'name': '',
-            'email': '',
-            'password': '',
-            'password2': '',
-        })
-
-
-    return render(
-        request,
-        'catalog/register.html',
-        {'form': form}
-    )
-
-
-# TODO: USER PERMISSION REQUIRED
-@login_required
-def idea_detail(request):
-    
-    if request.method == 'POST':
-        idea_pk = request.POST['idea_pk']
-        new_text = request.POST['input_text']
-        new_text = strip_tags(new_text)
-
-        idea_inst = get_object_or_404(Idea, pk = idea_pk)
-        idea_inst.text = new_text
-        idea_inst.save()
-
-        return_idea = serialize('json', [idea_inst], cls=IdeaEncoder)
-
-        return JsonResponse(return_idea, safe = False)
-
-
-# TODO: ADMIN PERMISSION REQUIRED
-def collaborators(request, pk):
-    '''
-    Page for viewing the collaborators of a canvas
-    '''
-    canvas = Canvas.objects.get(pk = pk)
-    admins = canvas.admins.all()
-    users = canvas.users.all()
-
-    if request.method == 'POST':
-        form = AddUserForm(request.POST)
-
-        if form.is_valid():
-            new_user = User.objects.get(username = (form.cleaned_data['name']))
-            
-            if new_user not in admins and new_user not in users :
-                canvas.users.add(new_user)
-                
-                return redirect(request.META.get('HTTP_REFERER'))
-
-            else:
-                print('User already a collaborator')
-
-    else:
-        form = AddUserForm(initial = {
-            'name': ''
-        })
-
-
-    return render(
-        request, 
-        'catalog/collaborators.html',
-        {'admins': admins,
-        'users': users,
-        'canvas': canvas, 
-        'form': form }
-    )
-
-#TODO: Do not allow a user to delete themself if they're the only admin - the only way that should be possible is by deleting the canvas itself
-def delete_admin(request, user_pk, canvas_pk):
-    '''
-    Function for deleting an admin
-    '''
-
-    return redirect(request.META.get('HTTP_REFERER'))
-
-# TODO: ADMIN PERMISSION REQUIRED
-def delete_user(request, user_pk, canvas_pk):
-    '''
-    Function for deleting a user 
-    '''
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    user = User.objects.get(pk = user_pk)
-    logged_in_user = request.user
-
-    canvas.users.remove(user)
-
-
-    return redirect(request.META.get('HTTP_REFERER'))
+##################################################################################################################################
+#                                                   CANVAS CLASS-BASED VIEWS                                                     #
+##################################################################################################################################
 
 
 class CanvasList(LoginRequiredMixin, generic.ListView):
@@ -322,6 +114,7 @@ class CanvasDetailView(LoginRequiredMixin, generic.DetailView):
 
         return context
 
+
     def post(self, request, **kwargs):
         '''
         function for post requests, sent by a canvas on loading
@@ -360,22 +153,294 @@ class CanvasDetailView(LoginRequiredMixin, generic.DetailView):
 
 
 
+
+##################################################################################################################################
+#                                                         IDEA VIEWS                                                             #
+################################################################################################################################## 
+
+
+
+# TODO: USER PERMISSION REQUIRED
+# TODO: AJAX POST CANVAS PK
+def new_idea(request):
+    '''
+    Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
+    '''
+    if request.method == 'POST':
+        logged_in_user = request.user
+        # available_canvasses = Canvas.objects.filter(users__pk = logged_in_user.pk)
+        canvas_pk = request.POST['canvas_pk']
+        category = request.POST['category']
+        canvas = Canvas.objects.get(pk = canvas_pk)
+
+        if logged_in_user in canvas.users.all():
+            idea = Idea(canvas = canvas, category = category, text = '')
+            idea.save()
+            # This is so I can click on it in the django admin - should probably delete later
+            idea.title = 'Canvas ' + str(canvas_pk) +  ' Idea ' + str(idea.pk)
+            idea.save()
+
+            return_idea = serialize('json', [idea], cls=IdeaEncoder)
+            return JsonResponse(return_idea, safe = False)            
+
+        else:
+            return HttpResponse('Unauthorized', status = 401)
+
+
+
+# ADMIN PERMISSION REQUIRED FOR NOW
+def delete_idea(request):
+    '''
+    Deletion of an idea - return to the calling page
+    '''
+    if request.POST:
+        idea_pk = request.POST['idea_pk']
+        idea = Idea.objects.get(pk = idea_pk)
+        canvas = idea.canvas
+        logged_in_user = request.user
+
+        if logged_in_user in canvas.users.all():
+            return_idea = serialize('json', [idea], cls=IdeaEncoder)
+            idea.delete()
+            print("gone")
+            # print(Idea.objects.get(pk = idea_pk))
+            return JsonResponse(return_idea, safe = False);
+        else:
+            print("No")
+            return HttpResponse('Unauthorized', status = 401)
+
+
+
+
+# TODO: USER PERMISSION REQUIRED
+@login_required
+def idea_detail(request):
+    
+    if request.method == 'POST':
+        idea_pk = request.POST['idea_pk']
+        new_text = request.POST['input_text']
+        new_text = strip_tags(new_text)
+
+        idea_inst = get_object_or_404(Idea, pk = idea_pk)
+        idea_inst.text = new_text
+        idea_inst.save()
+
+        return_idea = serialize('json', [idea_inst], cls=IdeaEncoder)
+
+        return JsonResponse(return_idea, safe = False)
+
+
+
+
+
+##################################################################################################################################
+#                                                       COMMENT VIEWS                                                            #
+################################################################################################################################## 
+
+
+
+
+def comment_thread(request, pk):
+    '''
+    View function for displaying the comment thread of an idea, and for posting a new comment
+    '''
+    idea = Idea.objects.get(pk = pk)
+
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+
+        if form.is_valid():
+            text = form.cleaned_data['text']
+
+            comment = IdeaComment.objects.create(text = text, idea = idea, user = request.user)
+            return redirect(request.META.get('HTTP_REFERER'))
+
+    else:
+        form = CommentForm(initial = { 
+            'text': ''
+        })
+
+    comment_list = IdeaComment.objects.all().filter(idea = idea)
+
+    return render(
+        request, 
+        'catalog/comment_thread.html', 
+        {'comments': comment_list,
+         'idea': idea,
+        'form': form}
+    )
+
+
+
+# TODO: ADMIN PERMISSION REQUIRED
+def comment_resolve(request, pk):
+    '''
+    Resolution of comments - delete all 
+    '''
+    print(':D')
+    idea = Idea.objects.get(pk = pk)
+    print(idea)
+    IdeaComment.objects.all().filter(idea = idea).delete()
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+# TODO: ADMIN PERMISSION REQUIRED
+def delete_comment(request, pk):
+    '''
+    Deletion of an idea - return to the calling page
+    '''
+    IdeaComment.objects.get(pk = pk).delete()
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+
+
+##################################################################################################################################
+#                                               USER AND LANDING PAGE VIEWS                                                      #
+##################################################################################################################################
+
+
+
+
+
+def index(request):
+    return render(request, 'index.html')
+
+
+
+def register(request):
+    if request.method == 'POST':
+        form = SignUpForm(request.POST)
+
+        if form.is_valid():
+              username = form.cleaned_data['name']
+              email = form.cleaned_data['email']
+              password = form.cleaned_data['password']
+
+              newUser = User.objects.create_user(username = username, email = email, password = password)
+
+              return HttpResponseRedirect(reverse('index'))
+      
+    else:
+        form = SignUpForm(initial = {
+            'name': '',
+            'email': '',
+            'password': '',
+            'password2': '',
+        })
+
+
+    return render(
+        request,
+        'catalog/register.html',
+        {'form': form}
+    )
+
+
+
+# TODO: ADMIN PERMISSION REQUIRED
+def collaborators(request, pk):
+    '''
+    Page for viewing the collaborators of a canvas
+    '''
+    canvas = Canvas.objects.get(pk = pk)
+    admins = canvas.admins.all()
+    users = canvas.users.all()
+
+    if request.method == 'POST':
+        form = AddUserForm(request.POST)
+
+        if form.is_valid():
+            new_user = User.objects.get(username = (form.cleaned_data['name']))
+            
+            if new_user not in admins and new_user not in users :
+                canvas.users.add(new_user)
+                
+                return redirect(request.META.get('HTTP_REFERER'))
+
+            else:
+                print('User already a collaborator')
+
+    else:
+        form = AddUserForm(initial = {
+            'name': ''
+        })
+
+
+    return render(
+        request, 
+        'catalog/collaborators.html',
+        {'admins': admins,
+        'users': users,
+        'canvas': canvas, 
+        'form': form }
+    )
+
+
+
+#TODO: Do not allow a user to delete themself if they're the only admin - the only way that should be possible is by deleting the canvas itself
+def delete_admin(request, user_pk, canvas_pk):
+    '''
+    Function for deleting an admin
+    '''
+
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+
+# TODO: ADMIN PERMISSION REQUIRED
+def delete_user(request, user_pk, canvas_pk):
+    '''
+    Function for deleting a user 
+    '''
+    canvas = Canvas.objects.get(pk = canvas_pk)
+    user = User.objects.get(pk = user_pk)
+    logged_in_user = request.user
+
+    canvas.users.remove(user)
+
+
+    return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+
+
+##################################################################################################################################
+#                                                   MISCELLANEOUS FUNCTIONS                                                      #
+################################################################################################################################## 
+
+
+
+
+
 class IdeaEncoder(DjangoJSONEncoder):
     def default(self, obj):
         if isinstance(obj, Idea):
             return str(obj)
         return super().default(obj)
 
+
+
 class IdeaCommentEncoder(DjangoJSONEncoder):
     def default(self, obj):
         if isinstance(obj, IdeaComment):
             return str(obj)
         return super().default(obj)
+
+
+
 class CanvasTagEncoder(DjangoJSONEncoder):
     def default(self, obj):
         if isinstance(obj, CanvasTag):
             return str(obj)
         return super().default(obj)
+
+
 
 class UserModelEncoder(DjangoJSONEncoder):
     def default(self, obj):

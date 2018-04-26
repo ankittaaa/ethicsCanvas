@@ -93,15 +93,17 @@ $j(document).on("click", "#delete", function(e){
 
 
 
-$j("#new-idea").click(function(e){
+$j(".new-idea").click(function(e){
 /*
     Handler for addition of an idea, performs a POST and receives JSON response 
 */
+    category = $j('.new-idea').index(this);
     e.preventDefault();
 
     url = "/catalog/new_idea/";
     data = {
-        'canvas_pk': canvasPK
+        'canvas_pk': canvasPK,
+        'category': category
     };
     performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback);
 });
@@ -128,8 +130,10 @@ function newIdeaSuccessCallback(data){
     Function to append a newly-created idea to the list of ideas
 */
     idea = JSON.parse(data);
-    $j('#idea-list').append(
-        "<li list = " + ideas[i].pk +">                                                     \
+    var listID = '#idea-list-' + idea[0].fields.category;
+    console.log(listID);
+    $j(listID).append(
+        "<li list = " + idea[0].pk +">                                                     \
             <form class = 'idea-form' action = ''>                                          \
                 <input value = '' list = " + idea[0].pk + " placeholder = 'Add an idea'>    \
                 <input type = 'submit' value = 'Submit'>                                    \
@@ -191,8 +195,10 @@ function populateIdeaList(ideas){
             // only do string manipulation if there's a string to manipulate
             var ideaString = ideas[i].fields.text;
             ideaString = escapeChars(ideaString);
+            var listID = '#idea-list-' + ideas[i].fields.category;
+            console.log(listID);
 
-            $j('#idea-list').append(
+            $j(listID).append(
                 "<li list = " + ideas[i].pk +">                                                     \
                     <form class = 'idea-form' action = ''>                                          \
                         <input value = '" + ideas[i].fields.text + "' list = " + ideas[i].pk +">    \
@@ -204,7 +210,7 @@ function populateIdeaList(ideas){
         }
 
         else {  // add a placeholder to the end of the input's attributes so I can continue to reference 'list' in edit-idea as normal
-            $j('#idea-list').append(
+            $j(listID).append(
                 "<li list = " + ideas[i].pk +">                                                     \
                     <form class = 'idea-form' action = ''>                                          \
                         <input value = '' list = " + ideas[i].pk + " placeholder = 'Add an idea'>   \
