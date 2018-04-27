@@ -1,50 +1,29 @@
 {% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+    <title>:(</title>
+{% endblock %}
+
 {% block content %}
 
 <h2>Admins</h2>
-{% if admins %}
 <ul id = "admins">
-    {% for admin in admins %}
-        <li>
-            {{admin.username}}
-            <!-- TODO: RESTRICT ADD/REMOVE ADMIN TO CANVAS OWNER ONLY -->
-            <!-- Show the delete admin button if user is admin (for now) -->
-            {% if user in admins %}
-            <a id = "delete-admin" href = "{% url 'delete-admin' admin.pk canvas.pk %}">X</a>
-            {% endif %}
-        </li>
-    {% endfor %}
+
+
 </ul>
-{% else %}
-<p>No admins!</p>
-{% endif %}
 
 <h2>Users</h2>
-{% if users %}
 <ul id = "users">
-    {% for user_obj in users %}
-        <li>
-            {{user_obj.username}}
-            {% if user in admins %}
-            <a id = "delete-user" href = "{% url 'delete-user' user_obj.pk canvas.pk %}">X</a>
-            {% endif %}
-        </li>
-    {% endfor %}
 </ul>
-{% else %}
-<p>No users!</p>
-{% endif %}
 
 
 
-<form id = "add-user" action="" method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <input type="submit" value="Submit" />
 
-</form>
+<button id = "back">Return to Canvas</a>
 
+{% endblock %}
 
-<a id = "back" href="{{canvas.get_absolute_url}}">Return to Canvas</a>
-
+{% block scripts %}
+<script src="{% static 'canvas2/javascript/collaborators.js' %}"></script>
 {% endblock %}

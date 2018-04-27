@@ -9,7 +9,7 @@ urlpatterns = [
     path('canvas/<int:pk>/', views.CanvasDetailView.as_view(), name='canvas-detail'),
     path('canvas-list/', views.CanvasList.as_view(), name='canvas-list'),
     path('idea_detail/', views.idea_detail, name='idea-detail'),
-    path('collaborators/<int:pk>', views.collaborators, name='collaborators'),
+    path('collaborators/<int:pk>/', views.collaborators, name='collaborators'),
 
     path('new_canvas/', views.new_canvas, name='new-canvas'),
     path('new_idea/', views.new_idea, name='new-idea'),

@@ -103,12 +103,21 @@ $j(".new-idea").click(function(e){
     performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback);
 });
 
+
+
 $j(document).on("click", ".comments", function(e){
 /*
     Handler for opening the comment thread for the clicked idea
 */
     idea_pk = this.attributes[1].value;
     url = "/catalog/comment_thread/" + idea_pk + "/";
+    window.location.href = url;
+});
+
+
+
+$j("#collaborators").on("click", function(e){
+    url = "/catalog/collaborators/" + canvasPK + "/";
     window.location.href = url;
 });
 

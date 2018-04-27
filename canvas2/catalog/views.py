@@ -296,7 +296,12 @@ def comment_thread(request, pk):
                 comments, 
                 cls = IdeaCommentEncoder
             )
-            return JsonResponse(json_comments, safe = False)
+
+            data = {
+                'comments': json_comments,
+                'canvasPK': canvas.pk
+            }
+            return JsonResponse(data, safe = False)
 
         else:
             return render(
@@ -426,39 +431,52 @@ def collaborators(request, pk):
     Page for viewing the collaborators of a canvas
     '''
     canvas = Canvas.objects.get(pk = pk)
-    admins = canvas.admins.all()
-    users = canvas.users.all()
 
-    if request.method == 'POST':
-        form = AddUserForm(request.POST)
+    logged_in_user = request.user
 
-        if form.is_valid():
-            new_user = User.objects.get(username = (form.cleaned_data['name']))
-            
-            if new_user not in admins and new_user not in users :
-                canvas.users.add(new_user)
-                
-                return redirect(request.META.get('HTTP_REFERER'))
+    if logged_in_user in canvas.users.all():
 
-            else:
-                print('User already a collaborator')
+        if request.method == 'POST':
+            # canvas = Canvas.objects.get(pk = request.POST['pk'])
+            admins = canvas.admins.all()
+            users = canvas.users.all()
 
+            json_users = serialize(
+                'json', 
+                users, 
+                cls=UserModelEncoder
+            )
+            json_admins = serialize(
+                'json', 
+                admins, 
+                cls=UserModelEncoder
+            )
+
+            json_me = serialize(
+                'json',
+                [logged_in_user],
+                cls=UserModelEncoder
+
+            )
+
+            data = {
+                'users': json_users,
+                'admins': json_admins,
+                'me': json_me,
+            }
+
+            return JsonResponse(data, safe = False)
+        else:
+            return render(
+                request, 
+                'catalog/collaborators.html', 
+            )
     else:
-        form = AddUserForm(initial = {
-            'name': ''
-        })
+        return HttpResponse('Unauthorized', status = 401)
 
 
-    return render(
-        request, 
-        'catalog/collaborators.html',
-        {
-            'admins': admins,
-            'users': users,
-            'canvas': canvas, 
-            'form': form 
-        }
-    )
+
+    
 
 
 

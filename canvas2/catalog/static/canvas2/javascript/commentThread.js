@@ -1,4 +1,5 @@
 var ideaPK;
+var canvasPK;
 
 $j(document).ready(function(data){
     $j.ajaxSetup({
@@ -40,7 +41,11 @@ $j("#add-comment").submit(function(e){
         "idea_pk": ideaPK
     };
     performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback);
+    $j(this).find("input[value]")[0].value = "";
+    $j(this).find("input[placeholder]")[0].placeholder = "Type a comment";
 });
+
+
 
 $j(document).on("click", ".delete-comment", function(e){
     e.preventDefault();
@@ -60,6 +65,29 @@ $j(document).on("click", ".delete-comment", function(e){
     $j('#'+commentDivID).remove();
 });
 
+
+
+$j("#resolve-comments").on("click", function(e){
+
+    e.preventDefault();
+    var comments = $j("#comment-thread").children();
+    // console.log(comments);
+    url = "/catalog/delete_comment/";
+
+    for (var i = 0; i < comments.length; i++){
+        var commentPK = comments[i].children[0].id.split("-")[1];
+        console.log(commentPK);
+        data = { "comment_pk": commentPK };
+        performAjaxPOST(url, data, deleteCommentSuccessCallback, deleteCommentFailureCallback);
+        comments[i].remove();
+    }    
+    $j("#comment-thread").append("<p id='no-comment'>No Comments!</p>");
+});
+
+
+$j("#back").on("click", function(e){
+    window.location.href = "/catalog/canvas/" + canvasPK + "/";
+});
 /*************************************************************************************************************
 **************************************************************************************************************
                                             CALLBACK FUNCTIONS
@@ -97,12 +125,15 @@ function addCommentFailureCallback(data){
 }
 
 function initSuccessCallback(data){
-    comments = JSON.parse(data);
+    var comments = JSON.parse(data.comments);
+    canvasPK = JSON.parse(data.canvasPK);
+    console.log(canvasPK);
+
     if (comments.length > 0) {
         for (var i = 0; i < comments.length; i++){
             $j("#comment-thread").append(
                 "<li>                                                                                       \
-                    <div id = 'comment-"+ comments[i].pk+"'> " +
+                    <div class = 'comment-div' id = 'comment-"+ comments[i].pk+"'> " +
                         comments[i].fields.text + "                                                         \
                         <br/>                                                                               \
                         <p> by " + comments[i].fields.author_name +
@@ -117,6 +148,7 @@ function initSuccessCallback(data){
     else { 
         $j("#comment-thread").append("<p id='no-comment'>No Comments!</p>");
     }
+
 }
 
 function initFailureCallback(data){
