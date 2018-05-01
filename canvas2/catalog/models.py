@@ -18,10 +18,14 @@ class Canvas(models.Model):
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     is_public = models.BooleanField(default=False, db_index=True)
     # flag the canvas for if it's a temporary canvas or not (created by anon. user or registered user respectively)
+    # TODO: remove this field
+    # NOTE: if the canvas is temporary, then it doesn't get sent to the server,
+    # and is only rendered on the client side
     is_temporary = models.BooleanField(default = False)
     # admins are implicitly assumed to be users
     # should there be a check to see whether some admins are in users
     # and vice versa?
+    # NOTE: Ideally, yes, but not urgent or important
     admins = models.ManyToManyField(User, related_name='admins')
     users = models.ManyToManyField(User, related_name='users')
     # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
@@ -53,6 +57,7 @@ class Canvas(models.Model):
 
 @receiver(pre_save, sender=Canvas)
 def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
+    # TODO: check post_save hooks if you want behaviour to happen AFTER instance is saved
     if instance.pk is not None:
         ''' The above line is to ensure that it doesn't break when creating a brand new canvas. It throws an error when the canvas is new; the canvas has no pk before it is saved, so 
             an error is thrown when the m2m field is referenced below 
@@ -97,7 +102,7 @@ class Idea(models.Model):
     def get_comments_url(self):
         return reverse('comment-thread', args=[self.pk])
 
-
+    # TODO remove whitespace
 
 
 
@@ -112,7 +117,7 @@ class CanvasTag(models.Model):
     Composite key made of the ideaID foreign key and the tagID
     """
     # labels should be short and to the point
-    label = models.CharField(max_length=25)
+    label = models.CharField(max_length=25, db_index = True)
 
     def __str__(self):
         return self.label
@@ -128,12 +133,13 @@ class IdeaComment(models.Model):
     text = models.CharField(max_length=255, help_text="Type a comment")
     resolved = models.BooleanField(default=False, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    # created the author_name field as I didn't want to send an entire user object as JSON
-    # just so that the rendered comment can say " by <user.username>"
-    author_name = models.CharField(max_length=255, default="")
+    # NOTE: when creating JSON, add comment and comment.user.name
     # @andrew a comment will always be on an Idea, so idea cannot be null
     idea = models.ForeignKey(
-        'Idea', on_delete=models.CASCADE, related_name='comments')
+        'Idea', null = False,
+        on_delete=models.CASCADE, 
+        related_name='comments'
+    )
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):

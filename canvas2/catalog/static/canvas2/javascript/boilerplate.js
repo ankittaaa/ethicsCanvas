@@ -30,6 +30,22 @@ function performAjaxPOST(url, data, callback, failureCallback){
     });
 }
 
+function performAjaxGET(url, callback, failureCallback){
+/*
+    Function to abstract away AJAX calls, somewhat reducing the volume of code to be drudging through
+*/
+    $j.ajax({
+        type:"GET",
+        url: url,
+        // data: data,
+        dataType: 'json',
+        headers: { 'X-CSRFToken': $j('input[name="csrfmiddlewaretoken"]').val() }, 
+        success: callback,
+        error: failureCallback
+    });
+}
+
+
 function escapeChars(inString){
 /*
     Function to strip away single and double quotes. Without this, unfortunate things like everything

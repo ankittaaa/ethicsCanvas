@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.urls import reverse, reverse_lazy
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
@@ -28,14 +28,13 @@ import django.utils.timezone
 
 
 
-
 @login_required
 def new_canvas(request):
     creator = request.user
 
     canvas = Canvas(is_public = False, owner = creator)
     canvas.save()
-    canvas.title = 'New Canvas ' + str(canvas.pk)   
+    canvas.title = f'New Canvas {canvas.pk}'   
 
     canvas.admins.add(creator)
     canvas.users.add(creator)
@@ -97,79 +96,88 @@ class CanvasList(LoginRequiredMixin, generic.ListView):
 
 
 
-class CanvasDetailView(LoginRequiredMixin, generic.DetailView):
+class CanvasDetailView(generic.DetailView):
     model = Canvas
 
-    def get_context_data(self, **kwargs):
-        '''
-        This function is to return a set of ideas where their canvasID attribute matches the current canvas id. 
-        '''
-        context = super().get_context_data(**kwargs)
-        contextCID = (context['canvas'].pk)
-        filter_kwargs = {'canvas': contextCID}
-
-        ideas = Idea.objects.all()
-        filtered_ideas = ideas.filter(**filter_kwargs)
-        context['idea_list'] = filtered_ideas
-
-        return context
-
-
-    def post(self, request, **kwargs):
+    def get(self, request, pk):
         '''
         function for post requests, sent by a canvas on loading
         purpose is to return the canvas information as a JSON
         '''
-        if request.is_ajax():
-            canvas_pk = request.POST['canvas_pk']
-            canvas = Canvas.objects.get(pk = canvas_pk)
+        logged_in_user = request.user
+        canvas_pk = pk
+        canvas = Canvas.objects.get(pk = canvas_pk)
+
+        if logged_in_user in canvas.users.all() or logged_in_user in canvas.admins.all():
+            if request.is_ajax():
+                print("woo")
 
 
-            users = canvas.users.all()
-            admins = canvas.admins.all()
+                users = canvas.users.all()
+                admins = canvas.admins.all()
+                tags = canvas.tags.all()
 
-            ideas = Idea.objects.all().filter(canvas = canvas)
-            comments = IdeaComment.objects.all().filter(idea__in=ideas)
-            
-            tags = canvas.tags.all()
-            
-            # only serialise ideas if they exist
-            json_ideas = serialize(
-                'json', 
-                ideas, 
-                cls=IdeaEncoder
-            )
-            json_comments = serialize(
-                'json', 
-                comments, 
-                cls=IdeaCommentEncoder
-            )
-            json_tags = serialize(
-                'json', 
-                tags, 
-                cls=CanvasTagEncoder
-            )
+                ideas = Idea.objects.filter(canvas = canvas)
+                comments = IdeaComment.objects.filter(idea__in=ideas)
+                
+                # NOTE: Removed comments, users and admins. These are all
+                # serialised and sent to browser in different views
+                json_users = '""'
+                json_admins = '""'
+                json_comments = '""'
+                json_ideas = '""'
+                json_tags = '""'
 
-            json_users = serialize(
-                'json', 
-                users, 
-                cls=UserModelEncoder
-            )
-            json_admins = serialize(
-                'json', 
-                admins, 
-                cls=UserModelEncoder
-            )
+                if ideas:
+                # only serialise ideas if they exist
+                    json_ideas = serialize(
+                        'json', 
+                        ideas, 
+                        cls = IdeaEncoder
+                    )
 
-            data = {
-                'ideas': json_ideas,
-                'comments': json_comments,
-                'tags': json_tags,
-                'users': json_users,
-                'admins': json_admins
-            }
+                if tags:
+                    json_tags = serialize(
+                        'json', 
+                        tags, 
+                        cls = CanvasTagEncoder
+                    )
 
-            return JsonResponse(data, safe = False)
+                if comments:
+                    json_comments = serialize(
+                        'json',
+                        comments,
+                        cls = IdeaCommentEncoder
+                    )
+
+                json_admins = serialize(
+                    'json',
+                    admins,
+                    cls = UserModelEncoder
+                )
+
+                json_users = serialize(
+                    'json',
+                    users,
+                    cls = UserModelEncoder
+                )
+
+                data = {
+                    'ideas': json_ideas,
+                    'comments': json_comments,
+                    'tags': json_tags,
+                    'admins': json_admins,
+                    'users': json_users
+                }
+
+                return JsonResponse(data, safe = False)
+            else:
+                return render(
+                    request, 
+                    'catalog/canvas_detail.html', 
+                ) 
+        else:
+            return HttpResponse('Unauthorized', status = 401)
 
 
 
@@ -181,7 +189,6 @@ class CanvasDetailView(LoginRequiredMixin, generic.DetailView):
 
 
 # TODO: USER PERMISSION REQUIRED
-# TODO: AJAX POST CANVAS PK
 def new_idea(request):
     '''
     Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
@@ -191,28 +198,34 @@ def new_idea(request):
         # available_canvasses = Canvas.objects.filter(users__pk = logged_in_user.pk)
         canvas_pk = request.POST['canvas_pk']
         category = request.POST['category']
-        canvas = Canvas.objects.get(pk = canvas_pk)
 
-        if logged_in_user in canvas.users.all():
-            idea = Idea(
-                canvas = canvas, 
-                category = category, 
-                text = ''
-            )
-            idea.save()
-            # This is so I can click on it in the django admin - should probably delete later
-            idea.title = 'Canvas ' + str(canvas_pk) +  ' Idea ' + str(idea.pk)
-            idea.save()
+        try:
+            canvas = Canvas.objects.get(pk = canvas_pk)
+        except Canvas.DoesNotExist:
+            return error
 
-            return_idea = serialize(
-                'json', 
-                [idea], 
-                cls=IdeaEncoder
-            )
-            return JsonResponse(return_idea, safe = False)            
-
-        else:
+        if logged_in_user not in canvas.users.all():
             return HttpResponse('Unauthorized', status = 401)
+            
+        idea = Idea(
+            canvas = canvas, 
+            category = category, 
+            text = ''
+        )
+        idea.save()
+        # This is so I can click on it in the django admin - should probably delete later
+        idea.title = f'Canvas {canvas.pk} Idea {idea.pk}'
+        idea.save()
+
+        return_idea = serialize(
+            'json', 
+            [idea], 
+            cls=IdeaEncoder
+        )
+        # TODO: why is the JSON not safe?
+        # NOTE: without safe = False, throws the following:
+        # 'TypeError: In order to allow non-dict objects to be serialized set the safe parameter to False.'
+        return JsonResponse(return_idea, safe = False)            
 
 
 
@@ -228,42 +241,40 @@ def delete_idea(request):
         logged_in_user = request.user
 
         if logged_in_user in canvas.users.all():
-            return_idea = serialize(
-                'json', 
-                [idea], 
-                cls=IdeaEncoder
-            )
             idea.delete()
-            print("gone")
-            # print(Idea.objects.get(pk = idea_pk))
-            return JsonResponse(return_idea, safe = False);
+            return JsonResponse('""', safe = False);
         else:
-            print("No")
             return HttpResponse('Unauthorized', status = 401)
 
 
 
 
 # TODO: USER PERMISSION REQUIRED
-@login_required
 def idea_detail(request):
-    
     if request.method == 'POST':
+        logged_in_user = request.user
         idea_pk = request.POST['idea_pk']
-        new_text = request.POST['input_text']
-        new_text = strip_tags(new_text)
-
         idea_inst = get_object_or_404(Idea, pk = idea_pk)
-        idea_inst.text = new_text
-        idea_inst.save()
+        canvas = idea_inst.canvas
 
-        return_idea = serialize(
-            'json', 
-            [idea_inst], 
-            cls=IdeaEncoder
-        )
+        if logged_in_user in canvas.users.all():
 
-        return JsonResponse(return_idea, safe = False)
+            new_text = request.POST['input_text']
+            new_text = strip_tags(new_text)
+
+            idea_inst.text = new_text
+            idea_inst.save()
+
+            return_idea = serialize(
+                'json', 
+                [idea_inst], 
+                cls=IdeaEncoder
+            )
+
+            return JsonResponse(return_idea, safe = False)
+
+        else:
+            return HttpResponse('Unauthorized', status = 401)
 
 
 
@@ -286,10 +297,12 @@ def comment_thread(request, pk):
     logged_in_user = request.user
 
     if logged_in_user in canvas.users.all():
-
-
         if request.method == 'POST':
-            comments = IdeaComment.objects.all().filter(idea = idea)
+            comments = IdeaComment.objects.filter(idea = idea)
+            users = []
+
+            for comment in comments:
+                users.append(comment.user.username)
             
             json_comments = serialize(
                 'json', 
@@ -299,7 +312,7 @@ def comment_thread(request, pk):
 
             data = {
                 'comments': json_comments,
-                'canvasPK': canvas.pk
+                'authors': users
             }
             return JsonResponse(data, safe = False)
 
@@ -326,17 +339,22 @@ def new_comment(request):
         if logged_in_user in canvas.users.all():
             comment = IdeaComment(
                 user = logged_in_user, 
-                author_name = logged_in_user.username,
                 text = text,
                 idea = idea
             )
             comment.save()
-            json_comments = serialize(
+            json_comment = serialize(
                 'json', 
                 [comment], 
                 cls = IdeaCommentEncoder
             )
-            return JsonResponse(json_comments, safe = False)
+
+            data = {
+                'comment': json_comment,
+                'author': comment.user.username
+            }
+
+            return JsonResponse(data, safe = False)
         else:
             return HttpResponse('Unauthorized', status = 401)
 
@@ -346,13 +364,18 @@ def comment_resolve(request):
     '''
     Resolution of comments - delete all 
     '''
+    if request.method == 'POST':
+        logged_in_user = request.user
 
-    idea_pk = request.POST['idea_pk']
-    idea = Idea.objects.get(pk = pk)
+        idea_pk = request.POST['idea_pk']
+        idea = Idea.objects.get(pk = pk)
+        canvas = idea.canvas
 
-    IdeaComment.objects.all().filter(idea = idea).delete()
-    return JsonResponse('', safe = False)
-
+        if logged_in_user in canvas.admins.all():
+            IdeaComment.objects.all().filter(idea = idea).delete()
+            return JsonResponse('""', safe = False)
+        else:
+            return HttpResponse('Forbidden', status = 403)
 
 
 # TODO: ADMIN PERMISSION REQUIRED
@@ -369,7 +392,7 @@ def delete_comment(request):
         
         if logged_in_user in canvas.admins.all():
             comment.delete()
-            return JsonResponse('', safe = False)
+            return JsonResponse('""', safe = False)
         else :
             return HttpResponse('Forbidden', status = 403)
 
@@ -425,7 +448,6 @@ def register(request):
 
 
 
-# TODO: ADMIN PERMISSION REQUIRED
 def collaborators(request, pk):
     '''
     Page for viewing the collaborators of a canvas
@@ -434,38 +456,75 @@ def collaborators(request, pk):
 
     logged_in_user = request.user
 
-    if logged_in_user in canvas.users.all():
+    # check user is an admin
+    if logged_in_user in canvas.admins.all():
+        if request.is_ajax():
+            if request.method == 'GET':
+                admins = canvas.admins.all()
+                users = canvas.users.all()
 
-        if request.method == 'POST':
-            # canvas = Canvas.objects.get(pk = request.POST['pk'])
-            admins = canvas.admins.all()
-            users = canvas.users.all()
+                json_users = serialize(
+                    'json', 
+                    users, 
+                    cls=UserModelEncoder
+                )
+                json_admins = serialize(
+                    'json', 
+                    admins, 
+                    cls=UserModelEncoder
+                )
 
-            json_users = serialize(
-                'json', 
-                users, 
-                cls=UserModelEncoder
-            )
-            json_admins = serialize(
-                'json', 
-                admins, 
-                cls=UserModelEncoder
-            )
+                json_me = serialize(
+                    'json',
+                    [logged_in_user],
+                    cls=UserModelEncoder
 
-            json_me = serialize(
-                'json',
-                [logged_in_user],
-                cls=UserModelEncoder
+                )
 
-            )
+                data = {
+                    'users': json_users,
+                    'admins': json_admins,
+                    'me': json_me,
+                    'canvasPK': pk
+                }
 
-            data = {
-                'users': json_users,
-                'admins': json_admins,
-                'me': json_me,
-            }
+                return JsonResponse(data, safe = False)
 
-            return JsonResponse(data, safe = False)
+            # 
+            # HANDLES ADD-USER FUNCTIONALITY
+            # 
+            elif request.method == 'POST':
+                name = request.POST['name']
+                user = User.objects.get(username = name)
+
+                if not user:
+                    print("No")
+                    reply = 'Error: ' + name + ' does not exist. Please try a different username.'
+                    return HttpResponse(reply, status = 500)
+
+                if user in canvas.users.all() or user in canvas.admins.all():
+                    reply = ''
+
+                    if user is logged_in_user:
+                        reply = 'Error: you\'re already a collaborator, you can\'t add yourself!'
+                    else:
+                        reply = 'Error: ' + name + ' is already a collaborator!'
+
+                    return HttpResponse(reply, status = 500)
+
+                canvas.users.add(user)
+
+                json_user = serialize(
+                    'json', 
+                    [user],
+                    cls = UserModelEncoder
+                )
+                data = {
+                    'user': json_user
+                }
+                
+                return JsonResponse(data, safe = False)
+
         else:
             return render(
                 request, 
@@ -475,35 +534,125 @@ def collaborators(request, pk):
         return HttpResponse('Unauthorized', status = 401)
 
 
+def add_admin(request):
 
+    if request.method == 'POST':
+        canvas_pk = request.POST['canvas_pk']
+        canvas = Canvas.objects.get(pk = canvas_pk)
+        logged_in_user = request.user
+
+        # check is admin
+        if logged_in_user not in canvas.admins.all():
+            return HttpResponse('Forbidden', status = 403)
+
+        user_pk = request.POST['user_pk']
+        user = User.objects.get(pk = user_pk)
+        name_str = user.username
+        admins = canvas.admins.all()
+
+        # check presence in admin set
+        if user in admins:
+            # additionally check the user isn't trying to promote themselves
+            if user is logged_in_user:
+                name_str = 'you are'
+            else: 
+                name_str = name_str + ' is '
+            reply = 'Error: ' + name_str + ' already an admin!'
+            
+            return HttpResponse(reply, status = 500)
+
+        canvas.admins.add(user)
+        json_user = serialize(
+            'json',
+            [user],
+            cls=UserModelEncoder
+
+        )
+
+        data = {
+            'user': json_user
+        }
+
+        return JsonResponse(data, safe = False)
+
+
+
+def delete_admin(request):
+    '''
+    Function to delete a user from the admin field - this is for demotion only.
+    For complete deletion, call delete user
+    '''
+    print("KILL")
     
+    if request.method == 'POST':
+        canvas_pk = request.POST['canvas_pk']
+        canvas = Canvas.objects.get(pk = canvas_pk)
+        logged_in_user = request.user
+
+        if logged_in_user not in canvas.admins.all():
+            return HttpResponse('Forbidden', status = 403)
+
+        user_pk = request.POST['user_pk']
+        user = User.objects.get(pk = user_pk)
+        admins = canvas.admins.all()
+        # Can't delete a non-existent admin
+        if user not in admins:
+            reply = 'Error: ' + name + ' is not an admin'
+            return HttpResponse(reply, status = 500)
+
+        # if there is one admin who is the logged-in user, do not allow them to 
+        # delete themselves
+        if len(admins) == 1:
+            reply = 'Error: You are the only admin, you may not demote yourself!'
+            return HttpResponse(reply, status = 500)
+        
+
+        canvas.admins.remove(user)
+        reply = 'Admin privileges revoked for ' + user.username
+        return JsonResponse(reply, safe = False)
 
 
-
-#TODO: Do not allow a user to delete themself if they're the only admin - the only way that should be possible is by deleting the canvas itself
-def delete_admin(request, user_pk, canvas_pk):
+def delete_user(request):
     '''
-    Function for deleting an admin
+    Function for deleting a user entirely from the canvas.
     '''
+    if request.method == 'POST':
+        canvas_pk = request.POST['canvas_pk']
+        canvas = Canvas.objects.get(pk = canvas_pk)
+        logged_in_user = request.user
 
-    return redirect(request.META.get('HTTP_REFERER'))
+        if logged_in_user not in canvas.admins.all():
+            return HttpResponse('Forbidden', status = 403)
 
+        user_pk = request.POST['user_pk']
+        user = User.objects.get(pk = user_pk)
 
+        if user not in canvas.users.all():
+            reply = 'Error: ' + name + ' is not a collaborator'
+            return HttpResponse(reply, status = 500)
 
+        admins = canvas.admins.all()
 
-# TODO: ADMIN PERMISSION REQUIRED
-def delete_user(request, user_pk, canvas_pk):
-    '''
-    Function for deleting a user 
-    '''
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    user = User.objects.get(pk = user_pk)
-    logged_in_user = request.user
+        # if there is one admin who is the logged-in user, do not allow them to 
+        # delete themselves. It's implied that if there's one admin, the logged_in 
+        # user is that admin, as earlier it is checked that the logged_in user
+        # is in the canvas admin set
+        if (len(admins) == 1 and user in admins):
+            print("no")
+            reply = 'Error: You are the only admin, you may not delete yourself!'
+            return HttpResponse(reply, status = 500)
 
-    canvas.users.remove(user)
+        canvas.users.remove(user)
 
+        # if the user is also an admin, remove them from that field also
+        if user in admins:
+            canvas.admins.remove(user)
+            reply = user.username + ' removed from users and admins.'
+            return JsonResponse(reply, safe = False)
 
-    return redirect(request.META.get('HTTP_REFERER'))
+        # if the user isn't an admin as well, only say they're gone from users
+        reply = user.username + ' removed from users.'
+        return JsonResponse(reply, safe = False)
 
 
 

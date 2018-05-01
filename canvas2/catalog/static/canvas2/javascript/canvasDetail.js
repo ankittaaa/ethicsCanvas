@@ -33,10 +33,11 @@ $j(document).ready(function(data){
 
 
     // INITIAL AJAX REQUEST TO GET CANVAS INFORMATION AND RENDER IT TO PAGE
-    data = {
-        "canvas_pk": canvasPK
-    };
-    performAjaxPOST(url, data, initSuccessCallback, initFailureCallback);
+    // data = {
+    //     "canvas_pk": canvasPK
+    // };
+    performAjaxGET(url, initSuccessCallback, initFailureCallback);
+
 });
 
 /*************************************************************************************************************
@@ -130,8 +131,6 @@ $j("#collaborators").on("click", function(e){
 
 
 function deleteIdeaSuccessCallback(data){
-    idea = JSON.parse(data);
-    console.log(idea + " should be gone.");
 }
 
 function deleteIdeaFailureCallback(data){
@@ -178,12 +177,10 @@ function initSuccessCallback(data){
     This function is to pick apart the data received from the initial AJAX POST request, as there are several django models being sent back.
     I'll do something with these eventually, for now just having them extracted is enough. Decisions on which may be global or which are useful 
     at all remain undecided. 
-*/
+*/  
             var ideas = JSON.parse(data.ideas);
-            var comments = JSON.parse(data.comments);
+            console.log(ideas);
             var tags = JSON.parse(data.tags);
-            var users = JSON.parse(data.users);
-            var admins = JSON.parse(data.admins);
             populateIdeaList(ideas);
 }
 

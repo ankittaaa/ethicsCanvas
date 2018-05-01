@@ -101,7 +101,9 @@ function deleteCommentFailureCallback(data){
 }
 
 function addCommentSuccessCallback(data){
-    comment = JSON.parse(data);
+    comment = JSON.parse(data.comment);
+    author = JSON.parse(data.author)
+    console.log(comment);
 
     // remove the 'no comments!' stand-in
     $j("#no-comment").remove();
@@ -111,7 +113,7 @@ function addCommentSuccessCallback(data){
             <div id = 'comment-"+ comment[0].pk+"'> " +
                 comment[0].fields.text + "                                                          \
                 <br/>                                                                               \
-                <p> by " + comment[0].fields.author_name +
+                <p> by " + author +
                     " at " + comment[0].fields.timestamp + 
                 "</p>                                                                               \
                 <button class = 'delete-comment'>Delete Comment</a>                                 \
@@ -126,8 +128,8 @@ function addCommentFailureCallback(data){
 
 function initSuccessCallback(data){
     var comments = JSON.parse(data.comments);
-    canvasPK = JSON.parse(data.canvasPK);
-    console.log(canvasPK);
+    var users = data.authors;
+
 
     if (comments.length > 0) {
         for (var i = 0; i < comments.length; i++){
@@ -136,7 +138,7 @@ function initSuccessCallback(data){
                     <div class = 'comment-div' id = 'comment-"+ comments[i].pk+"'> " +
                         comments[i].fields.text + "                                                         \
                         <br/>                                                                               \
-                        <p> by " + comments[i].fields.author_name +
+                        <p> by " + users[i] +
                             " at " + comments[i].fields.timestamp + 
                         "</p>                                                                               \
                         <button class = 'delete-comment'>Delete Comment</a>                                 \

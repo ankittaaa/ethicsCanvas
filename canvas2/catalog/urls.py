@@ -21,8 +21,9 @@ urlpatterns = [
     path('delete_idea/', views.delete_idea, name='delete-idea'),
     path('delete_comment/', views.delete_comment, name='delete-comment'),
     path('delete_canvas/<int:pk>/', views.delete_canvas, name='delete-canvas'), 
-    path('delete_user/<int:user_pk>/<int:canvas_pk>/', views.delete_user, name='delete-user'),
-    path('delete_admin/<int:admin_pk>/<int:canvas_pk>/', views.delete_admin, name='delete-admin'),
+    path('delete_user/', views.delete_user, name='delete-user'),
+    path('add_admin/', views.add_admin, name='add-admin'),
+    path('delete_admin/', views.delete_admin, name='delete-admin'),
     
     path('register/', views.register, name='register'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html')),
