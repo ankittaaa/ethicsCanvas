@@ -10,6 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.serializers import serialize
 from django.utils.html import strip_tags
+from django.db.models import Q
+from django.contrib.sessions.backends.base import SessionBase
 
 from .models import Canvas, CanvasTag, Idea, IdeaComment
 from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
@@ -26,7 +28,7 @@ import django.utils.timezone
 #                                                           CANVAS VIEWS                                                         #
 ##################################################################################################################################
 
-
+ 
 
 @login_required
 def new_canvas(request):
@@ -89,8 +91,35 @@ class CanvasList(LoginRequiredMixin, generic.ListView):
             private.filter(**admin_filter_kwargs) | private.filter(**user_filter_kwargs)
         ).distinct()
 
+        all_canvasses = (
+            canvasses.filter(**filter_kwargs) | private.filter(**admin_filter_kwargs) | private.filter(**user_filter_kwargs)
+        ).distinct()
+
         context['public_canvas_list'] = public
         context['private_canvas_list'] = my_private
+        context['all_canvas_list'] = all_canvasses
+
+        json_public = serialize(
+            'json', 
+            public,
+            cls=CanvasEncoder
+        )
+
+        json_private = serialize(
+            'json', 
+            my_private,
+            cls=CanvasEncoder
+        )
+
+        json_all_canvasses = serialize(
+            'json', 
+            all_canvasses,
+            cls=CanvasEncoder
+        )
+
+        self.request.session['public'] = json_public
+        self.request.session['private'] = json_private
+        self.request.session['all_canvasses'] = json_all_canvasses
 
         return context
 
@@ -100,77 +129,157 @@ class CanvasDetailView(generic.DetailView):
     model = Canvas
 
     def get(self, request, pk):
+
+        
         '''
         function for post requests, sent by a canvas on loading
         purpose is to return the canvas information as a JSON
         '''
         logged_in_user = request.user
+
         canvas_pk = pk
         canvas = Canvas.objects.get(pk = canvas_pk)
 
-        if logged_in_user in canvas.users.all() or logged_in_user in canvas.admins.all():
+        if logged_in_user in canvas.users.all() or logged_in_user in canvas.admins.all() or canvas.is_public == True:
             if request.is_ajax():
-                print("woo")
+                op = request.GET['operation']
 
+                if op == 'add_tag':
+                    '''
+                    ADDITION OF NEW TAG 
+                    '''
+                    label = request.GET['tag']
+                    
+                    # check presence of tag - avoid duplicating tags
+                    tag = CanvasTag.objects.get(label=label)
 
-                users = canvas.users.all()
-                admins = canvas.admins.all()
-                tags = canvas.tags.all()
+                    if (tag == None):
+                        # only create tag if it doesn't exist anywhere visible to the user
+                        tag = CanvasTag(label = request.GET['tag'])
 
-                ideas = Idea.objects.filter(canvas = canvas)
-                comments = IdeaComment.objects.filter(idea__in=ideas)
+                    # check tags in current canvas
+                    labels = canvas.tags.filter(label = label)
+
+                    if not labels:
+                        tag.save()
+                        canvas.tags.add(tag)
+
+                        json_tags = serialize(
+                            'json', 
+                            canvas.tags.all(), 
+                            cls = CanvasTagEncoder
+                        )
+                        update_canvas_session_variables(self, logged_in_user)
+
+                        public_canvasses = request.session['public']
+                        private_canvasses = request.session['private']
+                        all_canvasses = request.session['all_canvasses']
+
+                        data = {
+                            'tags': json_tags,
+                            'public': public_canvasses,
+                            'private': private_canvasses,
+                            'allCanvasses': all_canvasses
+                        }
+
+                        return JsonResponse(data, safe = False)
+                    else :
+                        return HttpResponse("Tag already exists!", status = 500)
+
                 
-                # NOTE: Removed comments, users and admins. These are all
-                # serialised and sent to browser in different views
-                json_users = '""'
-                json_admins = '""'
-                json_comments = '""'
-                json_ideas = '""'
-                json_tags = '""'
 
-                if ideas:
-                # only serialise ideas if they exist
-                    json_ideas = serialize(
-                        'json', 
-                        ideas, 
-                        cls = IdeaEncoder
-                    )
+                # NOTE: for now, deleting a tag only deletes from the current canvas
+                # it may still be useful in other canvasses if it exists there
+                elif op == 'delete_tag':
+                    '''
+                    REMOVAL OF TAG
+                    '''
+                    tag = CanvasTag.objects.get(pk=request.GET['tag_pk'])
+                    canvas.tags.remove(tag)
 
-                if tags:
-                    json_tags = serialize(
-                        'json', 
-                        tags, 
-                        cls = CanvasTagEncoder
-                    )
+                    # delete any tags that aren't attached to a canvas: they are never useful
+                    CanvasTag.objects.filter(canvas_set=None).delete()
 
-                if comments:
-                    json_comments = serialize(
+
+                    return JsonResponse(request.GET['tag_pk'], safe=False)
+
+
+
+
+
+                else:
+                    '''
+                    THE ELSE STANDS IN PLACE FOR INITIALISE OPERATION
+                    '''
+                    update_canvas_session_variables(self, logged_in_user)
+
+                    users = canvas.users.all()
+                    admins = canvas.admins.all()
+                    tags = canvas.tags.all()
+
+                    ideas = Idea.objects.filter(canvas = canvas)
+                    comments = IdeaComment.objects.filter(idea__in=ideas)
+                    
+                    # NOTE: Removed comments, users and admins. These are all
+                    # serialised and sent to browser in different views
+                    json_users = '""'
+                    json_admins = '""'
+                    json_comments = '""'
+                    json_ideas = '""'
+                    json_tags = '""'
+                    
+                    # these already exist in JSON form
+                    public_canvasses = request.session['public']
+                    private_canvasses = request.session['private']
+                    all_canvasses = request.session['all_canvasses']
+
+                    if ideas:
+                    # only serialise ideas if they exist
+                        json_ideas = serialize(
+                            'json', 
+                            ideas, 
+                            cls = IdeaEncoder
+                        )
+
+                    if tags:
+                        json_tags = serialize(
+                            'json', 
+                            tags, 
+                            cls = CanvasTagEncoder
+                        )
+
+                    if comments:
+                        json_comments = serialize(
+                            'json',
+                            comments,
+                            cls = IdeaCommentEncoder
+                        )
+
+                    json_admins = serialize(
                         'json',
-                        comments,
-                        cls = IdeaCommentEncoder
+                        admins,
+                        cls = UserModelEncoder
                     )
 
-                json_admins = serialize(
-                    'json',
-                    admins,
-                    cls = UserModelEncoder
-                )
+                    json_users = serialize(
+                        'json',
+                        users,
+                        cls = UserModelEncoder
+                    )
 
-                json_users = serialize(
-                    'json',
-                    users,
-                    cls = UserModelEncoder
-                )
 
-                data = {
-                    'ideas': json_ideas,
-                    'comments': json_comments,
-                    'tags': json_tags,
-                    'admins': json_admins,
-                    'users': json_users
-                }
+                    data = {
+                        'ideas': json_ideas,
+                        'comments': json_comments,
+                        'tags': json_tags,
+                        'admins': json_admins,
+                        'users': json_users,
+                        'public': public_canvasses,
+                        'private': private_canvasses,
+                        'allCanvasses': all_canvasses
+                    }
 
-                return JsonResponse(data, safe = False)
+                    return JsonResponse(data, safe = False)
             else:
                 return render(
                     request, 
@@ -178,6 +287,18 @@ class CanvasDetailView(generic.DetailView):
                 ) 
         else:
             return HttpResponse('Unauthorized', status = 401)
+
+
+
+
+
+
+
+
+    
+
+     
+
 
 
 
@@ -204,7 +325,8 @@ def new_idea(request):
         except Canvas.DoesNotExist:
             return error
 
-        if logged_in_user not in canvas.users.all():
+        # can't add ideas if the canvas is unavailable
+        if logged_in_user not in canvas.users.all() and canvas.is_public == False:
             return HttpResponse('Unauthorized', status = 401)
             
         idea = Idea(
@@ -240,7 +362,7 @@ def delete_idea(request):
         canvas = idea.canvas
         logged_in_user = request.user
 
-        if logged_in_user in canvas.users.all():
+        if logged_in_user in canvas.users.all() or canvas.is_public == True:
             idea.delete()
             return JsonResponse('""', safe = False);
         else:
@@ -257,7 +379,7 @@ def idea_detail(request):
         idea_inst = get_object_or_404(Idea, pk = idea_pk)
         canvas = idea_inst.canvas
 
-        if logged_in_user in canvas.users.all():
+        if logged_in_user in canvas.users.all() or canvas.is_public == True:
 
             new_text = request.POST['input_text']
             new_text = strip_tags(new_text)
@@ -296,7 +418,7 @@ def comment_thread(request, pk):
     canvas = idea.canvas
     logged_in_user = request.user
 
-    if logged_in_user in canvas.users.all():
+    if logged_in_user in canvas.users.all() or canvas.is_public == True:
         if request.method == 'POST':
             comments = IdeaComment.objects.filter(idea = idea)
             users = []
@@ -336,7 +458,7 @@ def new_comment(request):
         canvas = idea.canvas
         logged_in_user = request.user
 
-        if logged_in_user in canvas.users.all():
+        if logged_in_user in canvas.users.all() or canvas.is_public == True:
             comment = IdeaComment(
                 user = logged_in_user, 
                 text = text,
@@ -502,8 +624,8 @@ def collaborators(request, pk):
                     reply = 'Error: ' + name + ' does not exist. Please try a different username.'
                     return HttpResponse(reply, status = 500)
 
-                if user in canvas.users.all() or user in canvas.admins.all():
-                    reply = ''
+                    if logged_in_user in canvas.users.all() or user in canvas.admins.all():
+                        reply = ''
 
                     if user is logged_in_user:
                         reply = 'Error: you\'re already a collaborator, you can\'t add yourself!'
@@ -657,12 +779,67 @@ def delete_user(request):
 
 
 
+##################################################################################################################################
+#                                                           TAG VIEWS                                                            #
+##################################################################################################################################
+
+ 
+
+
+
+
+
+
 
 ##################################################################################################################################
 #                                                   MISCELLANEOUS FUNCTIONS                                                      #
 ################################################################################################################################## 
 
+def update_canvas_session_variables(self, logged_in_user):
+     # NOTE BEGIN: BAND-AID FOR UPDATING SESSION DATA ON LOAD
 
+    filter_kwargs = {'is_public': True}
+    user_filter_kwargs = {'users': logged_in_user}
+    admin_filter_kwargs = {'admins': logged_in_user}
+
+    canvasses = Canvas.objects.all()
+
+    # public canvasses are those where public is true
+    public = canvasses.filter(**filter_kwargs)
+    # private canvasses where the user is either the owner or a collaborator on the canvas
+    private = canvasses.exclude(**filter_kwargs)
+
+    my_private = (
+        private.filter(**admin_filter_kwargs) | private.filter(**user_filter_kwargs)
+    ).distinct()
+
+    all_canvasses = (
+        canvasses.filter(**filter_kwargs) | private.filter(**admin_filter_kwargs) | private.filter(**user_filter_kwargs)
+    ).distinct()
+
+    json_public = serialize(
+        'json', 
+        public,
+        cls=CanvasEncoder
+    )
+
+    json_private = serialize(
+        'json', 
+        my_private,
+        cls=CanvasEncoder
+    )
+
+    json_all_canvasses = serialize(
+        'json', 
+        all_canvasses,
+        cls=CanvasEncoder
+    )
+
+    self.request.session['public'] = json_public
+    self.request.session['private'] = json_private
+    self.request.session['all_canvasses'] = json_all_canvasses
+
+    # NOTE END: BAND-AID FOR UPDATING SESSION DATA ON LOAD
 
 
 
@@ -672,15 +849,11 @@ class IdeaEncoder(DjangoJSONEncoder):
             return str(obj)
         return super().default(obj)
 
-
-
 class IdeaCommentEncoder(DjangoJSONEncoder):
     def default(self, obj):
         if isinstance(obj, IdeaComment):
             return str(obj)
         return super().default(obj)
-
-
 
 class CanvasTagEncoder(DjangoJSONEncoder):
     def default(self, obj):
@@ -688,7 +861,11 @@ class CanvasTagEncoder(DjangoJSONEncoder):
             return str(obj)
         return super().default(obj)
 
-
+class CanvasEncoder(DjangoJSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Canvas):
+            return str(obj)
+        return super().default(obj)
 
 class UserModelEncoder(DjangoJSONEncoder):
     def default(self, obj):

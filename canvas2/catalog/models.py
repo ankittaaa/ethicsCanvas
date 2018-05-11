@@ -31,7 +31,7 @@ class Canvas(models.Model):
     # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
     owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
     # @andrew moved these tags from Idea to here
-    tags = models.ManyToManyField('CanvasTag', related_name='tags', blank=True)
+    tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
 
     def __str__(self):
         return self.title
@@ -112,18 +112,22 @@ class Idea(models.Model):
 
 class CanvasTag(models.Model):
     """Canvas Tag
-    Model representing tags that relate ideas - many to many relationship,
+    Model representing tags that relate ideas,
+    many to many relationship (declared in canvas model),
     there may exist many different tags to an idea and vice versa
-    Composite key made of the ideaID foreign key and the tagID
     """
     # labels should be short and to the point
-    label = models.CharField(max_length=25, db_index = True)
-
+    label = models.CharField(max_length=25)
+    # including date_created and date_modified to help with ordering them
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+    
     def __str__(self):
         return self.label
 
+    # ordering tags by date modified makes rendering new ones separated by commas less painful
     class Meta:
-        ordering = ('label',)
+        ordering = ('-date_modified',)
 
 
 class IdeaComment(models.Model):

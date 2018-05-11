@@ -30,14 +30,14 @@ function performAjaxPOST(url, data, callback, failureCallback){
     });
 }
 
-function performAjaxGET(url, callback, failureCallback){
+function performAjaxGET(url, data, callback, failureCallback){
 /*
     Function to abstract away AJAX calls, somewhat reducing the volume of code to be drudging through
 */
     $j.ajax({
         type:"GET",
         url: url,
-        // data: data,
+        data: data,
         dataType: 'json',
         headers: { 'X-CSRFToken': $j('input[name="csrfmiddlewaretoken"]').val() }, 
         success: callback,
