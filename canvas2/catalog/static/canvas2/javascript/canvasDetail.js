@@ -72,7 +72,7 @@ $j(document).ready(function(data){
 **************************************************************************************************************   
 **************************************************************************************************************/
 
-$j(document).on("select", ".idea-form", function(e){
+$j(document).on("select", ".idea-input", function(e){
 /*
     Function to maintain the most recently selected piece of text
     for use by the create-tag button
@@ -86,23 +86,6 @@ $j(document).on("select", ".idea-form", function(e){
     console.log(end);
     console.log(selection);
 });
-
-
-$j(".new-tag").click(function(e){
-/*
-    Handler for addition of a tag
-*/
-    e.preventDefault();
-    // url = "/catalog/canvas/" 
-    data = {
-        "canvas_pk": canvasPK,
-        "operation": "add_tag",
-        "tag": selection
-    };
-    performAjaxGET(currentURL, data, newTagSuccessCallback, newTagFailureCallback);
-    selection = "";
-});
-
 /*************************************************************************************************************
 **************************************************************************************************************
                                             CALLBACK FUNCTIONS
@@ -249,10 +232,9 @@ function newTagFailureCallback(data){
 function deleteTagSuccessCallback(data){
     var i = thisCanvas.fields.tags.indexOf(data);
     
-    tags.splice(i, 1);
     tagOccurrences.splice(i, 1);        
     thisCanvas.fields.tags.splice(i, 1);
-
+    tags = thisCanvas.fields.tags;
 }
 
 function deleteTagFailureCallback(data){
@@ -476,7 +458,7 @@ Vue.component('idea', {
                         <input class="idea-input" type="text" :value="idea.fields.text" @change="changed($event, idea)" placeholder="Enter an idea">\
                         </br>\
                         <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
-                        <button class="comments" v-on:click="displayMe(i)">Comments</button>\
+                        <button class="comments" v-on:click="displayMe(i)">Comments (<% commentList[i].length %>)</button>\
                         <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)">\
                         </comment>\
                     </div>\
@@ -484,6 +466,7 @@ Vue.component('idea', {
                     \
                     </br>\
                     <button class="new-idea" @click="newIdea($event)">+</button>\
+                    <button class="new-tag" v-on:click="newTag()">Tag Selected Term</button>\
                     </br>\
                     </br>\
                 </div>\
@@ -623,6 +606,16 @@ Vue.component('idea', {
             // does this maintain the new value?
             idea.fields.text = text
         },
+
+        newTag(){
+             data = {
+                "canvas_pk": canvasPK,
+                "operation": "add_tag",
+                "tag": selection
+            }
+            performAjaxGET(currentURL, data, newTagSuccessCallback, newTagFailureCallback)
+            selection = ""
+        }
 
     },
 

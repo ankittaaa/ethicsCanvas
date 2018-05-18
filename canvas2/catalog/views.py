@@ -128,8 +128,6 @@ class CanvasDetailView(generic.DetailView):
     model = Canvas
 
     def get(self, request, pk):
-
-        
         '''
         function for post requests, sent by a canvas on loading
         purpose is to return the canvas information as a JSON
@@ -141,72 +139,17 @@ class CanvasDetailView(generic.DetailView):
 
         if not user_permission(logged_in_user, canvas):
             return HttpResponse('Unauthorized', status = 401)
+
         if request.is_ajax():
             op = request.GET['operation']
 
             if op == 'add_tag':
-                '''
-                ADDITION OF NEW TAG 
-                '''
-                label = request.GET['tag']
+                return add_tag(self, request, canvas, logged_in_user)
                 
-                # check presence of tag - avoid duplicating tags
-                if CanvasTag.objects.filter(label=label).exists():
-                    tag = CanvasTag.objects.get(label=label)
-
-                else:
-                    # only create tag if it doesn't exist anywhere visible to the user
-                    tag = CanvasTag(label = request.GET['tag'])
-
-                # check tags in current canvas
-                labels = canvas.tags.filter(label = label)
-
-                if not labels:
-                    tag.save()
-                    canvas.tags.add(tag)
-
-                    json_tags = serialize(
-                        'json', 
-                        canvas.tags.all(), 
-                        cls = CanvasTagEncoder
-                    )
-                    update_canvas_session_variables(self, logged_in_user)
-
-                    public_canvasses = request.session['public']
-                    private_canvasses = request.session['private']
-                    all_canvasses = request.session['all_canvasses']
-
-                    data = {
-                        'tags': json_tags,
-                        'public': public_canvasses,
-                        'private': private_canvasses,
-                        'allCanvasses': all_canvasses
-                    }
-
-                    return JsonResponse(data, safe = False)
-                else :
-                    return HttpResponse("Tag already exists!", status = 500)
-
-            
-
             # NOTE: for now, deleting a tag only deletes from the current canvas
             # it may still be useful in other canvasses if it exists there
             elif op == 'delete_tag':
-                '''
-                REMOVAL OF TAG
-                '''
-                tag = CanvasTag.objects.get(pk=request.GET['tag_pk'])
-                canvas.tags.remove(tag)
-
-                # delete any tags that aren't attached to a canvas: they are never useful
-                CanvasTag.objects.filter(canvas_set=None).delete()
-
-
-                return JsonResponse(request.GET['tag_pk'], safe=False)
-
-
-
-
+                return remove_tag(self, request, canvas)
 
             else:
                 '''
@@ -801,7 +744,61 @@ def delete_user(request):
 #                                                           TAG VIEWS                                                            #
 ##################################################################################################################################
 
+def add_tag(self, request, canvas, logged_in_user):
+    '''
+    ADDITION OF NEW TAG 
+    '''
+    label = request.GET['tag']
+    
+    # check presence of tag - avoid duplicating tags
+    if CanvasTag.objects.filter(label=label).exists():
+        tag = CanvasTag.objects.get(label=label)
+
+    else:
+        # only create tag if it doesn't exist anywhere visible to the user
+        tag = CanvasTag(label = request.GET['tag'])
+
+    # check tags in current canvas
+    labels = canvas.tags.filter(label = label)
+
+    if not labels:
+        tag.save()
+        canvas.tags.add(tag)
+
+        json_tags = serialize(
+            'json', 
+            canvas.tags.all(), 
+            cls = CanvasTagEncoder
+        )
+        update_canvas_session_variables(self, logged_in_user)
+
+        public_canvasses = request.session['public']
+        private_canvasses = request.session['private']
+        all_canvasses = request.session['all_canvasses']
+
+        data = {
+            'tags': json_tags,
+            'public': public_canvasses,
+            'private': private_canvasses,
+            'allCanvasses': all_canvasses
+        }
+
+        return JsonResponse(data, safe = False)
+    else :
+        return HttpResponse("Tag already exists!", status = 500)
  
+
+def remove_tag(self, request, canvas):
+    '''
+    REMOVAL OF TAG
+    '''
+    tag = CanvasTag.objects.get(pk=request.GET['tag_pk'])
+    canvas.tags.remove(tag)
+
+    # delete any tags that aren't attached to a canvas: they are never useful
+    CanvasTag.objects.filter(canvas_set=None).delete()
+
+    return JsonResponse(request.GET['tag_pk'], safe=False)
 
 
 ##################################################################################################################################
