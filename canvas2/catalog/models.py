@@ -77,13 +77,13 @@ def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
 class Idea(models.Model):
     """Idea
     A block/post belonging to a category on the Canvas"""
-    title = models.CharField(max_length=50, db_index=True)
-    text = models.CharField(max_length=255, db_index=True)
+    title = models.CharField(max_length=50)
+    text = models.CharField(max_length=255)
+    # Default = 9 for uncategorised
+    category = models.PositiveSmallIntegerField(default=9, db_index=True);
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
-    # Default = 9 for uncategorised
-    category = models.PositiveSmallIntegerField(default=9);
     # @andrew an Idea cannot exist without the canvas, so null=False
     canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
     # @andrew an idea does not have any tags
@@ -125,7 +125,6 @@ class CanvasTag(models.Model):
     def __str__(self):
         return self.label
 
-    # ordering tags by date modified makes rendering new ones separated by commas less painful
     class Meta:
         ordering = ('-date_modified',)
 
@@ -135,14 +134,15 @@ class IdeaComment(models.Model):
     Comments on an idea
     """
     text = models.CharField(max_length=255, help_text="Type a comment")
-    resolved = models.BooleanField(default=False, db_index=True)
+    resolved = models.BooleanField(default=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     # NOTE: when creating JSON, add comment and comment.user.name
     # @andrew a comment will always be on an Idea, so idea cannot be null
     idea = models.ForeignKey(
         'Idea', null = False,
         on_delete=models.CASCADE, 
-        related_name='comments'
+        related_name='comments',
+        db_index=True
     )
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 

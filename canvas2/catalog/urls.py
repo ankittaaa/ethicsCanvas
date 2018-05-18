@@ -9,7 +9,7 @@ urlpatterns = [
     path('canvas/<int:pk>/', views.CanvasDetailView.as_view(), name='canvas-detail'),
     path('canvas-list/', views.CanvasList.as_view(), name='canvas-list'),
     path('idea_detail/', views.idea_detail, name='idea-detail'),
-    path('collaborators/<int:pk>/', views.collaborators, name='collaborators'),
+    path('collaborators/', views.collaborators, name='collaborators'),
 
     path('new_canvas/', views.new_canvas, name='new-canvas'),
     path('new_idea/', views.new_idea, name='new-idea'),
@@ -22,8 +22,8 @@ urlpatterns = [
     path('delete_comment/', views.delete_comment, name='delete-comment'),
     path('delete_canvas/<int:pk>/', views.delete_canvas, name='delete-canvas'), 
     path('delete_user/', views.delete_user, name='delete-user'),
-    path('add_admin/', views.add_admin, name='add-admin'),
-    path('delete_admin/', views.delete_admin, name='delete-admin'),
+    path('promote_user/', views.promote_user, name='promote-user'),
+    path('demote_admin/', views.demote_admin, name='demote-admin'),
     
     path('register/', views.register, name='register'),
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html')),

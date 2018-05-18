@@ -2,26 +2,11 @@
 {% load static %}
 
 {% block title %}
-<title id = 'thread-title'></title>
 {% endblock %}
 
 {% block content %}
-
-<form id = "add-comment" action = "" method = "post">
-    <input value = "" placeholder = "Type a comment">
-    <input type = "submit" value = "Submit"/>
-</form>
-
-
-<ul id = "comment-thread">
-    
-</ul>
-
-<button id = "resolve-comments">Resolve Comments</a>
-
-<button id = "back">Return to Canvas</a>        
+       
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'canvas2/javascript/commentThread.js' %}"></script>
 {% endblock %}

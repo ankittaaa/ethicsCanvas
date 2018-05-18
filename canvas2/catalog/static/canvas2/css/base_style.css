@@ -2,11 +2,11 @@
   font-size: 10px;
   color: black;
 }
-ul[id ^= "idea-list"] {
+ul {
   list-style-type: none;
 }
 
-li[id ^= "comment-thread" ] {
+li {
   list-style-type: none;
 }
 

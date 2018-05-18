@@ -19,15 +19,12 @@ var categories = [
 
 var thisCanvas;
 var ideas;
-// sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the  
-// 'j' indices will be an object encapulating and idea and an array of its comments
-
+// sortedIdeas will become a 2d array, ordering ideas by their category
 var sortedIdeas = new Array(10);
 
 
 var comments;
 var tags = [];
-var tagOccurrences = new Array();
 var taggedCanvasses;
 var admins;
 var adminNames = [];
@@ -63,6 +60,9 @@ $j(document).ready(function(data){
     };
 
     // INITIAL AJAX REQUEST TO GET CANVAS INFORMATION AND RENDER IT TO PAGE
+    // data = {
+    //     "canvas_pk": canvasPK
+    // };
     performAjaxGET(currentURL, data, initSuccessCallback, initFailureCallback);
 });
 
@@ -71,6 +71,16 @@ $j(document).ready(function(data){
                                             EVENT HANDLERS
 **************************************************************************************************************   
 **************************************************************************************************************/
+
+// $j(document).on("click", ".comments", function(e){
+// /*
+//     Handler for opening the comment thread for the clicked idea
+// */
+//     idea_pk = this.attributes[1].value;
+//     url = "/catalog/comment_thread/" + idea_pk + "/";
+//     window.location.href = url;
+// });
+
 
 $j(document).on("select", ".idea-form", function(e){
 /*
@@ -115,34 +125,7 @@ $j(".new-tag").click(function(e){
 
 
 function deleteIdeaSuccessCallback(data){
-    var i = JSON.parse(data.i);
-    var tempCategory = JSON.parse(data.category);
-
-    // remove the victim {idea, [comments]} from the sorted ideas list
-    var tempIdea = sortedIdeas[tempCategory][i].idea;
-    for (t in tags){
-        if (tempIdea.fields.text.includes(tags[t].fields.label))
-            // decrement the tag if it occurs in the victim idea
-            tagOccurrences[t]--;
-        if (tagOccurrences[t] === 0){
-            // delete the tag if it now does not occur 
-            var thisTag = tags[t];
-            data = {
-                "tag_pk": thisTag.pk,
-                "operation": "delete_tag"
-            };
-            performAjaxGET(currentURL, data, deleteTagSuccessCallback, deleteTagFailureCallback);
-        }
-    }
-
-    sortedIdeas[tempCategory].splice(i, 1);
-
-    ideaListComponent.ideaList = sortedIdeas;
-    ideaListComponent.$children[0].$children[tempCategory].ideaList = sortedIdeas[tempCategory];
-    
-    // update every comment component inside the category
-    for (i in sortedIdeas[tempCategory])
-        ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = sortedIdeas[tempCategory][i].comments;
+    populateCategoryIdeaList(data);
 }
 
 function deleteIdeaFailureCallback(data){
@@ -150,26 +133,7 @@ function deleteIdeaFailureCallback(data){
 }
 
 function newIdeaSuccessCallback(data){
-/*
-    Function for updating the idea list for the modified category
-    upon addition of new or deletion of current idea
-*/
-    var tempIdea = JSON.parse(data.idea);
-    var tempCategory = tempIdea[0].fields.category;
-
-    // since ideas are sorted from newest to oldest, push the new idea to the front of sortedIdeas for the category
-    // and an empty array for the comments, as a brand-new idea has no comments yet    
-    sortedIdeas[tempCategory].unshift({
-        idea: tempIdea[0],
-        comments: []
-    });
-
-    ideaListComponent.ideaList = sortedIdeas;
-    ideaListComponent.$children[0].$children[tempCategory].ideaList = sortedIdeas[tempCategory];
-    
-    // update every comment component inside the category
-    for (i in ideaListComponent.$children[0].$children[tempCategory].$children)
-        ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = sortedIdeas[tempCategory][i].comments;
+    populateCategoryIdeaList(data);
 }
 
 function newIdeaFailureCallback(data){
@@ -191,35 +155,30 @@ function editIdeaFailureCallback(data){
 
 
 function addCommentSuccessCallback(data){
-    populateCommentList(data);
+    var tempIdea = JSON.parse(data.idea);
+    comments = JSON.parse(data.comments);
+    ideaListComponent.commentList = comments;
+    ideaListComponent.$forceUpdate();
+    // var i = JSON.parse(data.i)
+
+    // for (i in sortedIdeas){
+    //     for (j in sortedIdeas[i])
+    //         console.log(sortedIdeas[i][j].pk)
+    // // }
+    // ideaListComponent.$children[0].$children[tempIdea[0].fields.category].commentList = comments;
+    // ideaListComponent.$children[0].$children[tempIdea[0].fields.category].currentIdeaComments(tempIdea, comments);
+    // ideaListComponent.$children[0].$children[idea.fields.category].commentList
 }
 
 function addCommentFailureCallback(data){
     console.log(data);
 }
 
-
 function deleteCommentSuccessCallback(data){
-    populateCommentList(data);
+
 }
 
 function deleteCommentFailureCallback(data){
-    console.log(data);
-}
-
-
-function resolveCommentSuccessCallback(data){
-    var tempCategory = JSON.parse(data.category);
-    var i = JSON.parse(data.i);
-
-    // empty the comments for the idea
-    sortedIdeas[tempCategory][i].comments = [];
-    ideaListComponent.ideaList = sortedIdeas;
-    
-    ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = [];
-
-}
-function resolveCommentFailureCallback(data){
     console.log(data);
 }
 
@@ -248,9 +207,6 @@ function newTagFailureCallback(data){
 
 function deleteTagSuccessCallback(data){
     var i = thisCanvas.fields.tags.indexOf(data);
-    
-    tags.splice(i, 1);
-    tagOccurrences.splice(i, 1);        
     thisCanvas.fields.tags.splice(i, 1);
 
 }
@@ -312,48 +268,22 @@ function initSuccessCallback(data){
     for (var i = 0; i < sortedIdeas.length; i++){
         sortedIdeas[i] = new Array();
     }
-    comments = JSON.parse(data.comments);
+
     ideas = JSON.parse(data.ideas);
+
+    for (idea in ideas){
+        sortedIdeas[ideas[idea].fields.category].push(ideas[idea]);
+    }
+
+    comments = JSON.parse(data.comments);
+
+
+
     tags = JSON.parse(data.tags);
-    
+
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
-    
-    taggedCanvasses = new Array(tags.length);
-
-    
-    for (t in tags){
-        tagOccurrences.push(0);
-    }
-
-    publicCanvasses = JSON.parse(data.public);
-    privateCanvasses = JSON.parse(data.private);
-    var allCanvasses = JSON.parse(data.allCanvasses);
-
-
-    for (idea in ideas){
-        var ideaComments = [];
-
-        for (comment in comments){
-            if (comments[comment].fields.idea === ideas[idea].pk){
-                ideaComments.push(comments[comment]);
-            }
-        }
-
-        for (t in tags){
-            // keep track of how many times a tag occurs. on deletion of all ideas containing the tag, the occurrences reaches
-            // 0 and the tag is removed 
-            if (ideas[idea].fields.text.includes(tags[t].fields.label))
-                tagOccurrences[t]++;
-        }
-
-        sortedIdeas[ideas[idea].fields.category].push({
-            idea: ideas[idea],
-            comments: ideaComments
-        });
-    }
-
     
     for (a in admins)
         adminNames.push(admins[a].fields.username);
@@ -362,6 +292,12 @@ function initSuccessCallback(data){
         isAdmin = true;
     else
         isAdmin = false;
+
+    taggedCanvasses = new Array(tags.length);
+    publicCanvasses = JSON.parse(data.public);
+    privateCanvasses = JSON.parse(data.private);
+
+    var allCanvasses = JSON.parse(data.allCanvasses);
 
     for (c in allCanvasses){
         if (allCanvasses[c].pk == canvasPK){
@@ -403,6 +339,7 @@ function initSuccessCallback(data){
         data: {
             ideaList: sortedIdeas,
             categories: categories,
+            commentList: comments,
         }
     })
 
@@ -415,6 +352,88 @@ function initFailureCallback(data){
 
 /*************************************************************************************************************
 **************************************************************************************************************
+                                            MISCELLANEOUS
+**************************************************************************************************************   
+**************************************************************************************************************/
+function populateTagList(){
+/*
+    This function's purpose is to populate a 2D array of canvasses. Each 'i' element represents a tag,
+    while the 'j' element represents the list of canvasses attached to that tag. 
+*/
+    var taggedPublic = [];
+    var taggedPrivate = [];
+    var tagged = [];
+
+    for (var i = 0; i < tags.length; i++){
+
+        // get a list of all public canvasses containing the current tag
+        for (var j = 0; j < publicCanvasses.length; j++){
+            if (publicCanvasses[j].fields.tags.includes(tags[i].pk)){
+                taggedPublic.push(publicCanvasses[j]);
+            }
+        }
+
+        // get a list of all private canvasses containing the current tag
+        for (var j = 0; j < privateCanvasses.length; j++){
+            if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
+                taggedPrivate.push(privateCanvasses[j]);
+            }
+        }  
+
+        tagged.push(taggedPublic);
+        tagged.push(taggedPrivate);
+        tagged = tagged[0].concat(tagged[1])
+
+        taggedCanvasses[i] = tagged;
+
+        taggedPublic = [];
+        taggedPrivate = [];
+        tagged = [];
+    }
+}
+
+function populateUsersAdmins(data){
+/*
+    Function for updating the user/admin list for the 
+    collaborator component upon modification of either list
+*/
+    admins = JSON.parse(data.admins);
+
+    collabComponent.adminsList = admins;
+    collabComponent.$children[0].adminsList = admins;    
+
+    users = JSON.parse(data.users);
+
+    collabComponent.usersList = users;
+    collabComponent.$children[0].usersList = users;
+
+    adminNames = [];
+
+    for (a in admins)
+        adminNames.push(admins[a].fields.username);
+
+    collabComponent.adminNameList = adminNames;
+    collabComponent.$children[0].adminNameList = adminNames; 
+
+}
+
+function populateCategoryIdeaList(data){
+/*
+    Function for updating the idea list for the modified category
+    upon addition of new or deletion of current idea
+*/
+    ideas = JSON.parse(data);
+    console.log(ideas);
+    var tempCategory = ideas[0].fields.category;
+    sortedIdeas[tempCategory] = ideas;
+
+    ideaListComponent.ideaList = sortedIdeas;
+    ideaListComponent.$children[0].$children[tempCategory].ideaList = sortedIdeas[tempCategory];
+}
+
+
+/*************************************************************************************************************
+**************************************************************************************************************
                                             VUE COMPONENTS
 **************************************************************************************************************   
 **************************************************************************************************************/
@@ -422,6 +441,7 @@ function initFailureCallback(data){
 /*************************************************************************************************************
                                             IDEA-LIST COMPONENT
 *************************************************************************************************************/
+
 
 
 Vue.component('idea-list', {
@@ -432,6 +452,7 @@ Vue.component('idea-list', {
         return {
             ideaList: sortedIdeas,
             categories: categories,
+            commentList: comments,
         }
     },
 
@@ -457,11 +478,13 @@ Vue.component('idea-list', {
 *************************************************************************************************************/
  
 Vue.component('idea', {
-    props: ['ideas', 'index', 'categories'],
+    props: ['ideas', 'index', 'categories', 'comments'],
     delimiters: ['<%', '%>'],
     
     data: function(){
         return {
+            ideaList: this.ideas,
+            commentList: this.comments,
             showComments: false,
             // Array of booleans for displaying individual modal components. As a single boolean, all modals will be rendered instead of the one for the comment thread of the clicked idea. 
             showCommentThread: new Array(this.ideas.length)
@@ -475,10 +498,37 @@ Vue.component('idea', {
                     \
                         <input class="idea-input" type="text" :value="idea.fields.text" @change="changed($event, idea)" placeholder="Enter an idea">\
                         </br>\
-                        <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
+                        <button id="delete-idea" class="delete" @click="deleteIdea($event, idea)">Delete</button>\
                         <button class="comments" v-on:click="displayMe(i)">Comments</button>\
-                        <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)">\
-                        </comment>\
+                        \
+                        \
+                        <modal v-show="showCommentThread[i]">\
+                        \
+                        \
+                            <div slot="header">\
+                                <h3>Comments</h3>\
+                                <input value = "" placeholder = "Type a comment" @change="newComment($event, idea, i)">\
+                                <button>Post</button>\
+                            </div>\
+                            \
+                            \
+                            <div slot="body">\
+                                <ul>\
+                                    <li v-for="c in currentIdeaComments(idea, comments)" style="list-style-type:none;">\
+                                        <% c.fields.text %>\
+                                        <button class="delete-comment" @click="deleteComment($event, a)">Delete</button>\
+                                    </li>\
+                                </ul>\
+                            </div>\
+                            \
+                            \
+                            <div slot="footer">\
+                                <button class="resolve-comments" @click="resolveComments(idea, comments)">Resolve</button>\
+                                <button class="modal-default-button" @click="displayMe(i)">Close</button>\
+                            </div>\
+                            \
+                            \
+                        </modal>\
                     </div>\
                     \
                     \
@@ -490,35 +540,6 @@ Vue.component('idea', {
     ',
          
     computed: {
-        category: function(){
-            return this.ideaList[0].fields.category
-        },
-
-        ideaList: {
-            get: function(){
-                var list = []
-                for (i in this.ideas){
-                    list.push(this.ideas[i].idea)
-                }
-                return list
-            },
-
-            set: function(ideasInput){
-                var list = []
-                for (i in this.ideasInput){
-                    list.push(this.ideasInput[i].idea)
-                }
-                return list
-            },
-        },
-
-        commentList: function(){
-            var list = []
-            for (i in this.ideas){
-                list.push(this.ideas[i].comments)
-            }
-            return list
-        },
         /* 
             using computed property to escape the html characters such as &apos as vue throws an 
             "invalid assignment left-hand side" error when I call the method directly with v-model, 
@@ -532,6 +553,21 @@ Vue.component('idea', {
             }
             return escaped
         },
+        category: function(){
+            return this.ideas[0].fields.category
+        },
+        // showCommentThread: { 
+        //     get: function(){
+        //         var shows = []
+        //         for (i in this.ideas)
+        //             shows.push(false)
+
+        //         return this.shows
+        //     }, 
+        //     set: function(newVal, i){
+        //         this.showCommentThread[i] = newVal
+        //     }          
+        // },
     },
     
     watch: {
@@ -588,11 +624,10 @@ Vue.component('idea', {
             performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback)
         },
 
-        deleteIdea(event, idea, i){
+        deleteIdea(event, idea){
             url = "/catalog/delete_idea/";
             data = {
-                "idea_pk": idea.pk,
-                'i': i
+                "idea_pk": idea.pk
             };
 
             performAjaxPOST(url, data, deleteIdeaSuccessCallback, deleteIdeaFailureCallback);
@@ -604,6 +639,8 @@ Vue.component('idea', {
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
 
+            // if a user entered loads of whitespace, then replace current input field with trimmed text
+            event.target.value = text
             
             /* 
                 if the new value is different to the old value after stripping
@@ -618,10 +655,29 @@ Vue.component('idea', {
                 }
                 performAjaxPOST(url, data, editIdeaSuccessCallback, editIdeaFailureCallback);
             }
-            // if a user entered loads of whitespace, then replace current input field with trimmed text
-            event.target.value = text
-            // does this maintain the new value?
-            idea.fields.text = text
+        },
+
+        newComment(event, idea, i){
+            var text = escapeChars(event.target.value)
+            text = text.replace(/[\t\s\n\r]+/g, " ")
+            text = text.trim()
+            
+             url = "/catalog/new_comment/";
+
+            data = {
+                "input_text": text,
+                "idea_pk": idea.pk,
+                'i': i
+            };
+            performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback);
+        },
+
+        deleteComment(event, c){
+            console.log(c)
+        },
+
+        resolveComments(idea, comments){
+            console.log(idea)
         },
 
     },
@@ -630,8 +686,6 @@ Vue.component('idea', {
         for (var i = 0; i < this.showCommentThread.length; i++){
             this.showCommentThread[i] = false
         }
-        // console.log(this.ideaList)
-        // console.log(this.commentList)
     }
 })
 
@@ -664,59 +718,21 @@ Vue.component('comment-list', {
 })
 
 /*************************************************************************************************************
-                                            COMMENT COMPONENT
+                                            COMMENT-POPUP COMPONENT
 *************************************************************************************************************/
  
 Vue.component('comment', {
-    props: ['comment-list', 'show-comments', 'idea', 'i'],
+    props: ['index'],
     delimiters: ['<%', '%>'],
     
     data: function(){
-        return {
-            comments: this.commentList,
-        }
+    
     },
     
-    template:'\
-                <modal v-show="show">\
-                \
-                \
-                    <div slot="header">\
-                        <h3>Comments</h3>\
-                        <input value = "" placeholder = "Type a comment" @change="newComment($event)">\
-                        <button>Post</button>\
-                    </div>\
-                \
-                \
-                    <div slot="body">\
-                        <ul>\
-                            <li v-for="c in comments" style="list-style-type:none;">\
-                                <% commentString(c) %>\
-                                <button class="delete-comment" @click="deleteComment($event, c)">Delete</button>\
-                            </li>\
-                        </ul>\
-                    </div>\
-                \
-                \
-                    <div slot="footer">\
-                        <button class="resolve-comments" @click="resolveComments(idea, comments)">Resolve All</button>\
-                        <button class="modal-default-button" @click="$emit(\'close\')">Close</button>\
-                    </div>\
-                \
-                \
-                </modal>'
-,
+    template:'#comment',
          
     computed: {
-        currentIdea: function(){
-            return this.idea
-        },
-        show: function(){
-            return this.showComments
-        },
-        selfIndex: function(){
-            return this.i
-        }
+
     },
     
     watch: {
@@ -724,50 +740,7 @@ Vue.component('comment', {
     },   
 
     methods: {
-        commentString: function(c){
-            var string = escapeChars(c.fields.text)
-            // the following is to convert elements like &apos back to " ' " 
-            var scratch = document.createElement("textarea")
-            scratch.innerHTML = string
 
-            return scratch.value
-        },
-
-        newComment(event){
-            var text = escapeChars(event.target.value)
-            text = text.replace(/[\t\s\n\r]+/g, " ")
-            text = text.trim()
-            
-            url = "/catalog/new_comment/"
-
-            data = {
-                "input_text": text,
-                "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex
-            };
-            performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback)
-            event.target.value = ''
-        },
-
-        deleteComment(event, c){
-            url = "/catalog/delete_comment/"
-
-            data = {
-                "comment_pk": c.pk,
-                "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex
-            };
-            performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback)
-        },
-
-        resolveComments(idea, comments){
-            url = "/catalog/comment_resolve/"
-            data = {
-                "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex,
-            }
-            performAjaxPOST(url, data, resolveCommentSuccessCallback, resolveCommentFailureCallback)
-        },
     },
 })
 
@@ -808,7 +781,7 @@ Vue.component('tag', {
         tagInfo: function(event, index){
         },  
         exitTagInfo: function(event){
-            // console.log('')
+            console.log('')
         }
     }
 })
@@ -1016,91 +989,3 @@ Vue.component('collab-popup', {
 Vue.component('modal', {
   template: '#modal-template'
 })
-
-
-
-
-/*************************************************************************************************************
-**************************************************************************************************************
-                                            MISCELLANEOUS
-**************************************************************************************************************   
-**************************************************************************************************************/
-function populateTagList(){
-/*
-    This function's purpose is to populate a 2D array of canvasses. Each 'i' element represents a tag,
-    while the 'j' element represents the list of canvasses attached to that tag. 
-*/
-    var taggedPublic = [];
-    var taggedPrivate = [];
-    var tagged = [];
-
-    for (var i = 0; i < tags.length; i++){
-
-        // get a list of all public canvasses containing the current tag
-        for (var j = 0; j < publicCanvasses.length; j++){
-            if (publicCanvasses[j].fields.tags.includes(tags[i].pk)){
-                taggedPublic.push(publicCanvasses[j]);
-            }
-        }
-
-        // get a list of all private canvasses containing the current tag
-        for (var j = 0; j < privateCanvasses.length; j++){
-            if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
-                taggedPrivate.push(privateCanvasses[j]);
-            }
-        }  
-
-        tagged.push(taggedPublic);
-        tagged.push(taggedPrivate);
-        tagged = tagged[0].concat(tagged[1])
-
-        taggedCanvasses[i] = tagged;
-
-        taggedPublic = [];
-        taggedPrivate = [];
-        tagged = [];
-    }
-}
-
-function populateUsersAdmins(data){
-/*
-    Function for updating the user/admin list for the 
-    collaborator component upon modification of either list
-*/
-    admins = JSON.parse(data.admins);
-
-    collabComponent.adminsList = admins;
-    collabComponent.$children[0].adminsList = admins;    
-
-    users = JSON.parse(data.users);
-
-    collabComponent.usersList = users;
-    collabComponent.$children[0].usersList = users;
-
-    adminNames = [];
-
-    for (a in admins)
-        adminNames.push(admins[a].fields.username);
-
-    collabComponent.adminNameList = adminNames;
-    collabComponent.$children[0].adminNameList = adminNames; 
-
-}
-
-
-function populateCommentList(data){
-/*
-    Function to populate the comment lists of the idea list component and the 
-    list of comments specific to the single comment component being updated
-*/
-    var tempIdea = JSON.parse(data.idea);
-    var i = JSON.parse(data.i);
-    var tempCategory = tempIdea[0].fields.category;
-    var tempComments = JSON.parse(data.comments);
-    // allComments = JSON.parse(data.allComments);
-
-    sortedIdeas[tempCategory][i].comments = tempComments;
-    ideaListComponent.ideaList = sortedIdeas;
-    
-    ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = tempComments;
-}

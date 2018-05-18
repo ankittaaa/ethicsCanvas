@@ -7,11 +7,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.backends.base import SessionBase
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.serializers import serialize
 from django.utils.html import strip_tags
 from django.db.models import Q
-from django.contrib.sessions.backends.base import SessionBase
 
 from .models import Canvas, CanvasTag, Idea, IdeaComment
 from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
@@ -53,11 +53,10 @@ def delete_canvas(request, pk):
     user = request.user
     canvas = Canvas.objects.get(pk = pk)
 
-    if user in canvas.admins.all():
-        canvas.delete()
-    else:
+    if not admin_permission(logged_in_user, canvas):
         return HttpResponse('Forbidden', status = 403)
-
+        
+    canvas.delete()
     return redirect(request.META.get('HTTP_REFERER'))
 
 
@@ -140,165 +139,161 @@ class CanvasDetailView(generic.DetailView):
         canvas_pk = pk
         canvas = Canvas.objects.get(pk = canvas_pk)
 
-        if logged_in_user in canvas.users.all() or logged_in_user in canvas.admins.all() or canvas.is_public == True:
-            if request.is_ajax():
-                op = request.GET['operation']
+        if not user_permission(logged_in_user, canvas):
+            return HttpResponse('Unauthorized', status = 401)
+        if request.is_ajax():
+            op = request.GET['operation']
 
-                if op == 'add_tag':
-                    '''
-                    ADDITION OF NEW TAG 
-                    '''
-                    label = request.GET['tag']
-                    
-                    # check presence of tag - avoid duplicating tags
+            if op == 'add_tag':
+                '''
+                ADDITION OF NEW TAG 
+                '''
+                label = request.GET['tag']
+                
+                # check presence of tag - avoid duplicating tags
+                if CanvasTag.objects.filter(label=label).exists():
                     tag = CanvasTag.objects.get(label=label)
 
-                    if (tag == None):
-                        # only create tag if it doesn't exist anywhere visible to the user
-                        tag = CanvasTag(label = request.GET['tag'])
-
-                    # check tags in current canvas
-                    labels = canvas.tags.filter(label = label)
-
-                    if not labels:
-                        tag.save()
-                        canvas.tags.add(tag)
-
-                        json_tags = serialize(
-                            'json', 
-                            canvas.tags.all(), 
-                            cls = CanvasTagEncoder
-                        )
-                        update_canvas_session_variables(self, logged_in_user)
-
-                        public_canvasses = request.session['public']
-                        private_canvasses = request.session['private']
-                        all_canvasses = request.session['all_canvasses']
-
-                        data = {
-                            'tags': json_tags,
-                            'public': public_canvasses,
-                            'private': private_canvasses,
-                            'allCanvasses': all_canvasses
-                        }
-
-                        return JsonResponse(data, safe = False)
-                    else :
-                        return HttpResponse("Tag already exists!", status = 500)
-
-                
-
-                # NOTE: for now, deleting a tag only deletes from the current canvas
-                # it may still be useful in other canvasses if it exists there
-                elif op == 'delete_tag':
-                    '''
-                    REMOVAL OF TAG
-                    '''
-                    tag = CanvasTag.objects.get(pk=request.GET['tag_pk'])
-                    canvas.tags.remove(tag)
-
-                    # delete any tags that aren't attached to a canvas: they are never useful
-                    CanvasTag.objects.filter(canvas_set=None).delete()
-
-
-                    return JsonResponse(request.GET['tag_pk'], safe=False)
-
-
-
-
-
                 else:
-                    '''
-                    THE ELSE STANDS IN PLACE FOR INITIALISE OPERATION
-                    '''
+                    # only create tag if it doesn't exist anywhere visible to the user
+                    tag = CanvasTag(label = request.GET['tag'])
+
+                # check tags in current canvas
+                labels = canvas.tags.filter(label = label)
+
+                if not labels:
+                    tag.save()
+                    canvas.tags.add(tag)
+
+                    json_tags = serialize(
+                        'json', 
+                        canvas.tags.all(), 
+                        cls = CanvasTagEncoder
+                    )
                     update_canvas_session_variables(self, logged_in_user)
 
-                    users = canvas.users.all()
-                    admins = canvas.admins.all()
-                    tags = canvas.tags.all()
-
-                    ideas = Idea.objects.filter(canvas = canvas)
-                    comments = IdeaComment.objects.filter(idea__in=ideas)
-                    
-                    # NOTE: Removed comments, users and admins. These are all
-                    # serialised and sent to browser in different views
-                    json_users = '""'
-                    json_admins = '""'
-                    json_comments = '""'
-                    json_ideas = '""'
-                    json_tags = '""'
-                    
-                    # these already exist in JSON form
                     public_canvasses = request.session['public']
                     private_canvasses = request.session['private']
                     all_canvasses = request.session['all_canvasses']
 
-                    if ideas:
-                    # only serialise ideas if they exist
-                        json_ideas = serialize(
-                            'json', 
-                            ideas, 
-                            cls = IdeaEncoder
-                        )
-
-                    if tags:
-                        json_tags = serialize(
-                            'json', 
-                            tags, 
-                            cls = CanvasTagEncoder
-                        )
-
-                    if comments:
-                        json_comments = serialize(
-                            'json',
-                            comments,
-                            cls = IdeaCommentEncoder
-                        )
-
-                    json_admins = serialize(
-                        'json',
-                        admins,
-                        cls = UserModelEncoder
-                    )
-
-                    json_users = serialize(
-                        'json',
-                        users,
-                        cls = UserModelEncoder
-                    )
-
-
                     data = {
-                        'ideas': json_ideas,
-                        'comments': json_comments,
                         'tags': json_tags,
-                        'admins': json_admins,
-                        'users': json_users,
                         'public': public_canvasses,
                         'private': private_canvasses,
                         'allCanvasses': all_canvasses
                     }
 
                     return JsonResponse(data, safe = False)
+                else :
+                    return HttpResponse("Tag already exists!", status = 500)
+
+            
+
+            # NOTE: for now, deleting a tag only deletes from the current canvas
+            # it may still be useful in other canvasses if it exists there
+            elif op == 'delete_tag':
+                '''
+                REMOVAL OF TAG
+                '''
+                tag = CanvasTag.objects.get(pk=request.GET['tag_pk'])
+                canvas.tags.remove(tag)
+
+                # delete any tags that aren't attached to a canvas: they are never useful
+                CanvasTag.objects.filter(canvas_set=None).delete()
+
+
+                return JsonResponse(request.GET['tag_pk'], safe=False)
+
+
+
+
+
             else:
-                return render(
-                    request, 
-                    'catalog/canvas_detail.html', 
-                ) 
+                '''
+                THE ELSE STANDS IN PLACE FOR INITIALISE OPERATION
+                '''
+                update_canvas_session_variables(self, logged_in_user)
+
+                users = canvas.users.all()
+                admins = canvas.admins.all()
+                tags = canvas.tags.all()
+
+                ideas = Idea.objects.filter(canvas = canvas)
+                comments = IdeaComment.objects.filter(idea__in=ideas)
+                
+                # NOTE: Removed comments, users and admins. These are all
+                # serialised and sent to browser in different views
+                json_users = '""'
+                json_admins = '""'
+                json_comments = '""'
+                json_ideas = '""'
+                json_tags = '""'
+                
+                # these already exist in JSON form
+                public_canvasses = request.session['public']
+                private_canvasses = request.session['private']
+                all_canvasses = request.session['all_canvasses']
+
+                if ideas:
+                # only serialise ideas if they exist
+                    json_ideas = serialize(
+                        'json', 
+                        ideas, 
+                        cls = IdeaEncoder
+                    )
+
+                if tags:
+                    json_tags = serialize(
+                        'json', 
+                        tags, 
+                        cls = CanvasTagEncoder
+                    )
+
+                if comments:
+                    json_comments = serialize(
+                        'json',
+                        comments,
+                        cls = IdeaCommentEncoder
+                    )
+
+                json_admins = serialize(
+                    'json',
+                    admins,
+                    cls = UserModelEncoder
+                )
+
+                json_users = serialize(
+                    'json',
+                    users,
+                    cls = UserModelEncoder
+                )
+
+                json_self=serialize(
+                    'json',
+                    [logged_in_user],
+                    cls=UserModelEncoder
+                )
+
+
+                data = {
+                    'ideas': json_ideas,
+                    'comments': json_comments,
+                    'tags': json_tags,
+                    'admins': json_admins,
+                    'users': json_users,
+                    'loggedInUser': json_self,
+                    'public': public_canvasses,
+                    'private': private_canvasses,
+                    'allCanvasses': all_canvasses
+
+                }
+
+                return JsonResponse(data, safe = False)
         else:
-            return HttpResponse('Unauthorized', status = 401)
-
-
-
-
-
-
-
-
-    
-
-     
-
+            return render(
+                request, 
+                'catalog/canvas_detail.html', 
+            ) 
 
 
 
@@ -326,7 +321,7 @@ def new_idea(request):
             return error
 
         # can't add ideas if the canvas is unavailable
-        if logged_in_user not in canvas.users.all() and canvas.is_public == False:
+        if not user_permission(logged_in_user, canvas):
             return HttpResponse('Unauthorized', status = 401)
             
         idea = Idea(
@@ -338,20 +333,31 @@ def new_idea(request):
         # This is so I can click on it in the django admin - should probably delete later
         idea.title = f'Canvas {canvas.pk} Idea {idea.pk}'
         idea.save()
+        ideas = Idea.objects.filter(category=category)
 
+        # get the comments for the idea in the category updated
+        category_comments = IdeaComment.objects.filter(idea__in=ideas)
+        # and the entire comments list for good measure
+
+        # send all ideas for the category - this is so they're always in database order
         return_idea = serialize(
             'json', 
             [idea], 
             cls=IdeaEncoder
         )
+
+        data = {
+            'idea': return_idea,
+            # 'categoryComments': return_category_comments,
+        }
+
         # TODO: why is the JSON not safe?
         # NOTE: without safe = False, throws the following:
         # 'TypeError: In order to allow non-dict objects to be serialized set the safe parameter to False.'
-        return JsonResponse(return_idea, safe = False)            
+        return JsonResponse(data, safe = False)            
 
 
 
-# ADMIN PERMISSION REQUIRED FOR NOW
 def delete_idea(request):
     '''
     Deletion of an idea - return to the calling page
@@ -362,12 +368,18 @@ def delete_idea(request):
         canvas = idea.canvas
         logged_in_user = request.user
 
-        if logged_in_user in canvas.users.all() or canvas.is_public == True:
-            idea.delete()
-            return JsonResponse('""', safe = False);
-        else:
+        if not user_permission(logged_in_user, canvas):
             return HttpResponse('Unauthorized', status = 401)
 
+        category = idea.category
+        idea.delete()
+
+        data = {
+            'i': request.POST['i'],
+            'category': category
+        }
+
+        return JsonResponse(data, safe = False)  
 
 
 
@@ -379,33 +391,28 @@ def idea_detail(request):
         idea_inst = get_object_or_404(Idea, pk = idea_pk)
         canvas = idea_inst.canvas
 
-        if logged_in_user in canvas.users.all() or canvas.is_public == True:
-
-            new_text = request.POST['input_text']
-            new_text = strip_tags(new_text)
-
-            idea_inst.text = new_text
-            idea_inst.save()
-
-            return_idea = serialize(
-                'json', 
-                [idea_inst], 
-                cls=IdeaEncoder
-            )
-
-            return JsonResponse(return_idea, safe = False)
-
-        else:
+        if not user_permission(logged_in_user, canvas):
             return HttpResponse('Unauthorized', status = 401)
 
+        new_text = request.POST['input_text']
+        new_text = strip_tags(new_text)
 
+        idea_inst.text = new_text
+        idea_inst.save()
+
+        return_idea = serialize(
+            'json', 
+            [idea_inst], 
+            cls=IdeaEncoder
+        )
+
+        return JsonResponse(return_idea, safe = False)
 
 
 
 ##################################################################################################################################
 #                                                       COMMENT VIEWS                                                            #
 ################################################################################################################################## 
-
 
 
 
@@ -418,33 +425,27 @@ def comment_thread(request, pk):
     canvas = idea.canvas
     logged_in_user = request.user
 
-    if logged_in_user in canvas.users.all() or canvas.is_public == True:
-        if request.method == 'POST':
-            comments = IdeaComment.objects.filter(idea = idea)
-            users = []
-
-            for comment in comments:
-                users.append(comment.user.username)
-            
-            json_comments = serialize(
-                'json', 
-                comments, 
-                cls = IdeaCommentEncoder
-            )
-
-            data = {
-                'comments': json_comments,
-                'authors': users
-            }
-            return JsonResponse(data, safe = False)
-
-        else:
-            return render(
-                request, 
-                'catalog/comment_thread.html', 
-            )
-    else:
+    if not user_permission(logged_in_user, canvas):
         return HttpResponse('Unauthorized', status = 401)
+
+    if request.method == 'POST':
+        comments = IdeaComment.objects.filter(idea = idea)
+        users = []
+
+        for comment in comments:
+            users.append(comment.user.username)
+        
+        json_comments = serialize(
+            'json', 
+            comments, 
+            cls = IdeaCommentEncoder
+        )
+
+        data = {
+            'comments': json_comments,
+            'authors': users
+        }
+        return JsonResponse(data, safe = False)
 
 
 def new_comment(request):
@@ -458,27 +459,19 @@ def new_comment(request):
         canvas = idea.canvas
         logged_in_user = request.user
 
-        if logged_in_user in canvas.users.all() or canvas.is_public == True:
-            comment = IdeaComment(
-                user = logged_in_user, 
-                text = text,
-                idea = idea
-            )
-            comment.save()
-            json_comment = serialize(
-                'json', 
-                [comment], 
-                cls = IdeaCommentEncoder
-            )
-
-            data = {
-                'comment': json_comment,
-                'author': comment.user.username
-            }
-
-            return JsonResponse(data, safe = False)
-        else:
+        if not user_permission(logged_in_user, canvas):
             return HttpResponse('Unauthorized', status = 401)
+
+        comment = IdeaComment(
+            user = logged_in_user, 
+            text = text,
+            idea = idea
+        )
+        comment.save()
+
+        data = pack_comments_for_json(request, canvas)
+
+        return JsonResponse(data, safe = False)
 
 
 # TODO: ADMIN PERMISSION REQUIRED
@@ -490,14 +483,20 @@ def comment_resolve(request):
         logged_in_user = request.user
 
         idea_pk = request.POST['idea_pk']
-        idea = Idea.objects.get(pk = pk)
+        idea = Idea.objects.get(pk = idea_pk)
         canvas = idea.canvas
 
-        if logged_in_user in canvas.admins.all():
-            IdeaComment.objects.all().filter(idea = idea).delete()
-            return JsonResponse('""', safe = False)
-        else:
+        if not admin_permission(logged_in_user, canvas):
             return HttpResponse('Forbidden', status = 403)
+        
+        else:
+            IdeaComment.objects.all().filter(idea = idea).delete()
+            data = {
+                'category': idea.category,
+                'i': request.POST['i'],
+            }
+            return JsonResponse(data, safe = False)
+        
 
 
 # TODO: ADMIN PERMISSION REQUIRED
@@ -509,18 +508,17 @@ def delete_comment(request):
         logged_in_user = request.user
         comment_pk = request.POST['comment_pk']
         
+        
         comment = IdeaComment.objects.get(pk = comment_pk)
         canvas = comment.idea.canvas
         
-        if logged_in_user in canvas.admins.all():
-            comment.delete()
-            return JsonResponse('""', safe = False)
-        else :
+        if not admin_permission(logged_in_user, canvas):
             return HttpResponse('Forbidden', status = 403)
-
-
-
-
+      
+        else:
+            comment.delete()
+            data = pack_comments_for_json(request, canvas)
+            return JsonResponse(data, safe = False)
 
 
 ##################################################################################################################################
@@ -570,52 +568,27 @@ def register(request):
 
 
 
-def collaborators(request, pk):
+def collaborators(request):
     '''
     Page for viewing the collaborators of a canvas
+
+    All collaborator-modifying views will return the admins and the users, as there is a 
+    general function called by the callbacks for each in the javascript file
     '''
-    canvas = Canvas.objects.get(pk = pk)
 
     logged_in_user = request.user
 
     # check user is an admin
-    if logged_in_user in canvas.admins.all():
-        if request.is_ajax():
-            if request.method == 'GET':
-                admins = canvas.admins.all()
-                users = canvas.users.all()
-
-                json_users = serialize(
-                    'json', 
-                    users, 
-                    cls=UserModelEncoder
-                )
-                json_admins = serialize(
-                    'json', 
-                    admins, 
-                    cls=UserModelEncoder
-                )
-
-                json_me = serialize(
-                    'json',
-                    [logged_in_user],
-                    cls=UserModelEncoder
-
-                )
-
-                data = {
-                    'users': json_users,
-                    'admins': json_admins,
-                    'me': json_me,
-                    'canvasPK': pk
-                }
-
-                return JsonResponse(data, safe = False)
-
-            # 
+    if request.is_ajax():
             # HANDLES ADD-USER FUNCTIONALITY
             # 
-            elif request.method == 'POST':
+        if request.method == 'POST':
+            canvas = Canvas.objects.get(pk=request.POST['canvas_pk'])
+
+            if not admin_permission(logged_in_user, canvas):
+                return HttpResponse('Unauthorized', status = 401)
+
+            else:
                 name = request.POST['name']
                 user = User.objects.get(username = name)
 
@@ -636,13 +609,21 @@ def collaborators(request, pk):
 
                 canvas.users.add(user)
 
-                json_user = serialize(
+                json_users = serialize(
                     'json', 
-                    [user],
+                    canvas.users.all(),
                     cls = UserModelEncoder
                 )
+
+                json_admins = serialize(
+                    'json', 
+                    canvas.admins.all(),
+                    cls = UserModelEncoder
+                )
+
                 data = {
-                    'user': json_user
+                    'users': json_users,
+                    'admins': json_admins
                 }
                 
                 return JsonResponse(data, safe = False)
@@ -652,11 +633,10 @@ def collaborators(request, pk):
                 request, 
                 'catalog/collaborators.html', 
             )
-    else:
-        return HttpResponse('Unauthorized', status = 401)
+        
 
 
-def add_admin(request):
+def promote_user(request):
 
     if request.method == 'POST':
         canvas_pk = request.POST['canvas_pk']
@@ -664,7 +644,7 @@ def add_admin(request):
         logged_in_user = request.user
 
         # check is admin
-        if logged_in_user not in canvas.admins.all():
+        if not admin_permission(logged_in_user, canvas):
             return HttpResponse('Forbidden', status = 403)
 
         user_pk = request.POST['user_pk']
@@ -684,22 +664,29 @@ def add_admin(request):
             return HttpResponse(reply, status = 500)
 
         canvas.admins.add(user)
-        json_user = serialize(
-            'json',
-            [user],
-            cls=UserModelEncoder
 
+        json_users = serialize(
+            'json', 
+            canvas.users.all(),
+            cls = UserModelEncoder
+        )
+
+        json_admins = serialize(
+            'json', 
+            canvas.admins.all(),
+            cls = UserModelEncoder
         )
 
         data = {
-            'user': json_user
+            'users': json_users,
+            'admins': json_admins
         }
-
+        
         return JsonResponse(data, safe = False)
 
 
 
-def delete_admin(request):
+def demote_admin(request):
     '''
     Function to delete a user from the admin field - this is for demotion only.
     For complete deletion, call delete user
@@ -711,7 +698,7 @@ def delete_admin(request):
         canvas = Canvas.objects.get(pk = canvas_pk)
         logged_in_user = request.user
 
-        if logged_in_user not in canvas.admins.all():
+        if not admin_permission(logged_in_user, canvas):
             return HttpResponse('Forbidden', status = 403)
 
         user_pk = request.POST['user_pk']
@@ -730,8 +717,25 @@ def delete_admin(request):
         
 
         canvas.admins.remove(user)
-        reply = 'Admin privileges revoked for ' + user.username
-        return JsonResponse(reply, safe = False)
+
+        json_users = serialize(
+            'json', 
+            canvas.users.all(),
+            cls = UserModelEncoder
+        )
+
+        json_admins = serialize(
+            'json', 
+            canvas.admins.all(),
+            cls = UserModelEncoder
+        )
+
+        data = {
+            'users': json_users,
+            'admins': json_admins
+        }
+        
+        return JsonResponse(data, safe = False)
 
 
 def delete_user(request):
@@ -743,7 +747,7 @@ def delete_user(request):
         canvas = Canvas.objects.get(pk = canvas_pk)
         logged_in_user = request.user
 
-        if logged_in_user not in canvas.admins.all():
+        if not admin_permission(logged_in_user, canvas):
             return HttpResponse('Forbidden', status = 403)
 
         user_pk = request.POST['user_pk']
@@ -764,17 +768,31 @@ def delete_user(request):
             reply = 'Error: You are the only admin, you may not delete yourself!'
             return HttpResponse(reply, status = 500)
 
-        canvas.users.remove(user)
-
         # if the user is also an admin, remove them from that field also
         if user in admins:
-            canvas.admins.remove(user)
-            reply = user.username + ' removed from users and admins.'
-            return JsonResponse(reply, safe = False)
+            canvas.admins.remove(user)      
 
-        # if the user isn't an admin as well, only say they're gone from users
-        reply = user.username + ' removed from users.'
-        return JsonResponse(reply, safe = False)
+        canvas.users.remove(user)
+
+
+        json_users = serialize(
+            'json', 
+            canvas.users.all(),
+            cls = UserModelEncoder
+        )
+
+        json_admins = serialize(
+            'json', 
+            canvas.admins.all(),
+            cls = UserModelEncoder
+        )
+
+        data = {
+            'users': json_users,
+            'admins': json_admins
+        }
+        
+        return JsonResponse(data, safe = False)
 
 
 
@@ -786,14 +804,52 @@ def delete_user(request):
  
 
 
-
-
-
-
-
 ##################################################################################################################################
 #                                                   MISCELLANEOUS FUNCTIONS                                                      #
 ################################################################################################################################## 
+
+def pack_comments_for_json(request, canvas):
+    '''
+    Function to pack the comments for specific idea, every comment, and the current idea
+    for returning to frontend in order to update the idea list component and the comment component
+    '''
+    idea = Idea.objects.get(pk=request.POST['idea_pk'])
+            
+    ideas = Idea.objects.filter(canvas = canvas)
+    comments = IdeaComment.objects.filter(idea=idea)
+    all_comments = IdeaComment.objects.filter(idea__in=ideas)
+    
+    # every comment
+    json_all_comments = serialize(
+        'json',
+        all_comments,
+        cls=IdeaCommentEncoder
+    )
+
+    # comments on modified idea
+    json_comments = serialize(
+        'json', 
+        comments, 
+        cls = IdeaCommentEncoder
+    )
+
+    # modified idea
+    return_idea = serialize(
+        'json', 
+        [idea], 
+        cls=IdeaEncoder
+    )
+
+    data = {
+        'idea': return_idea,
+        'comments': json_comments,
+        'allComments': json_all_comments,
+        # index for finding where the idea is in the array back in javascript
+        'i': request.POST['i']
+    }
+    return data
+
+
 
 def update_canvas_session_variables(self, logged_in_user):
      # NOTE BEGIN: BAND-AID FOR UPDATING SESSION DATA ON LOAD
@@ -842,6 +898,11 @@ def update_canvas_session_variables(self, logged_in_user):
     # NOTE END: BAND-AID FOR UPDATING SESSION DATA ON LOAD
 
 
+def user_permission(logged_in_user, canvas):
+    return (logged_in_user in canvas.users.all() or canvas.is_public == True)
+
+def admin_permission(logged_in_user, canvas):
+    return (logged_in_user in canvas.admins.all())
 
 class IdeaEncoder(DjangoJSONEncoder):
     def default(self, obj):
