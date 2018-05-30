@@ -44,7 +44,16 @@ var tagButtons;
 var collabComponent;
 var ideaListComponent;
 
+
+var ideaSocket;
+var commentSocket;
+var collabSocket;
+var tagSocket;
+
+
+
 $j(document).ready(function(data){
+
 
     $j.ajaxSetup({
         beforeSend: function(xhr, settings) {
@@ -82,9 +91,6 @@ $j(document).on("select", ".idea-input", function(e){
     var wholeString = e.target.value;
 
     selection = wholeString.substr(start, end-start);
-    console.log(start);
-    console.log(end);
-    console.log(selection);
 });
 /*************************************************************************************************************
 **************************************************************************************************************
@@ -101,43 +107,39 @@ function deleteIdeaSuccessCallback(data){
     var i = JSON.parse(data.i);
     var tempCategory = JSON.parse(data.category);
 
-    // remove the victim {idea, [comments]} from the sorted ideas list
-    var tempIdea = sortedIdeas[tempCategory][i].idea;
+    // grab a copy of the victim idea 
+    var tempIdeaText = sortedIdeas[tempCategory][i].idea.fields.text;
+    
+    // search for tags that occur in the victim idea
     for (t in tags){
-        if (tempIdea.fields.text.includes(tags[t].fields.label))
+        if (tempIdeaText.includes(tags[t].fields.label))
             // decrement the tag if it occurs in the victim idea
             tagOccurrences[t]--;
         if (tagOccurrences[t] === 0){
             // delete the tag if it now does not occur 
             var thisTag = tags[t];
-            data = {
+
+            tagSocket.send(JSON.stringify({
+                'function': 'deleteTag',
                 "tag_pk": thisTag.pk,
-                "operation": "delete_tag"
-            };
-            performAjaxGET(currentURL, data, deleteTagSuccessCallback, deleteTagFailureCallback);
+            }));
         }
     }
 
+    // remove the victim {idea, [comments]} from the sorted ideas list
     sortedIdeas[tempCategory].splice(i, 1);
-
-    ideaListComponent.ideaList = sortedIdeas;
-    ideaListComponent.$children[0].$children[tempCategory].ideaList = sortedIdeas[tempCategory];
-    
-    // update every comment component inside the category
-    for (i in sortedIdeas[tempCategory])
-        ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = sortedIdeas[tempCategory][i].comments;
 }
 
 function deleteIdeaFailureCallback(data){
     console.log("Deletion Failed");
 }
 
-function newIdeaSuccessCallback(data){
+function newIdeaSuccessCallback(idea){
 /*
     Function for updating the idea list for the modified category
     upon addition of new or deletion of current idea
 */
-    var tempIdea = JSON.parse(data.idea);
+    var tempIdea = JSON.parse(idea);
     var tempCategory = tempIdea[0].fields.category;
 
     // since ideas are sorted from newest to oldest, push the new idea to the front of sortedIdeas for the category
@@ -146,13 +148,6 @@ function newIdeaSuccessCallback(data){
         idea: tempIdea[0],
         comments: []
     });
-
-    ideaListComponent.ideaList = sortedIdeas;
-    ideaListComponent.$children[0].$children[tempCategory].ideaList = sortedIdeas[tempCategory];
-    
-    // update every comment component inside the category
-    for (i in ideaListComponent.$children[0].$children[tempCategory].$children)
-        ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = sortedIdeas[tempCategory][i].comments;
 }
 
 function newIdeaFailureCallback(data){
@@ -161,7 +156,53 @@ function newIdeaFailureCallback(data){
 
 
 function editIdeaSuccessCallback (data){
+    var inIdea = JSON.parse(data.idea);
+    var tempCategory = inIdea[0].fields.category;
+    var i = JSON.parse(data.i);
+    console.log(data.i);
+    console.log(i);
+    var prevIdea = inIdea[0];
+    var currentIdea;
+    var prevComments = sortedIdeas[tempCategory][i].comments;
+    var currentComments;
+    // comments for modified idea - these aren't modified but will be used when moving the idea to the top
+    // var inComments = sortedIdeas[tempCategory][i].comments;
+    for (s in sortedIdeas[tempCategory])
+        console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+    console.log("\n\n\n");
 
+    for (var x = 0; x <= i; x++){
+    /*
+        Iterate through the list, shifting all elements to the right by one, until the
+        modified idea is reached - this should not be shifted as everything after it
+        will not have their order affected
+    */  
+        // need to hold on to the current idea temporarily as its current position in the array is to be used for the element before it
+        currentIdea = sortedIdeas[tempCategory][x].idea;
+        currentComments = sortedIdeas[tempCategory][x].comments;
+        
+        sortedIdeas[tempCategory].splice(x, 1, { 
+            idea: prevIdea, 
+            comments: prevComments
+        });
+        
+        for (s in sortedIdeas[tempCategory])
+            console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+
+        console.log("\n\n\n");
+        
+        prevIdea = currentIdea;
+        prevComments = currentComments;
+    }
+
+    // sortedIdeas[tempCategory].splice(0, 1, { 
+    //     idea: inIdea[0], 
+    //     comments: inComments
+    // });
+
+    for (s in sortedIdeas[tempCategory])
+        console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+    
 }
 
 function editIdeaFailureCallback(data){
@@ -174,7 +215,10 @@ function editIdeaFailureCallback(data){
 
 
 function addCommentSuccessCallback(data){
-    populateCommentList(data);
+    var i = JSON.parse(data.i);
+    var returnComment = JSON.parse(data.comment);
+    var tempCategory = JSON.parse(data.category);
+    sortedIdeas[tempCategory][i].comments.unshift(returnComment[0]);
 }
 
 function addCommentFailureCallback(data){
@@ -183,7 +227,12 @@ function addCommentFailureCallback(data){
 
 
 function deleteCommentSuccessCallback(data){
-    populateCommentList(data);
+    // var parsedData = JSON.parse(data);
+    var i = JSON.parse(data.i);
+    var c = JSON.parse(data.c);
+    var tempCategory = JSON.parse(data.category);
+
+    sortedIdeas[tempCategory][i].comments.splice(c, 1);
 }
 
 function deleteCommentFailureCallback(data){
@@ -196,10 +245,14 @@ function resolveCommentSuccessCallback(data){
     var i = JSON.parse(data.i);
 
     // empty the comments for the idea
-    sortedIdeas[tempCategory][i].comments = [];
-    ideaListComponent.ideaList = sortedIdeas;
+    var length = sortedIdeas[tempCategory][i].comments.length;
+
+    for (var c = 0; c < length; c++)
+        sortedIdeas[tempCategory][i].comments.pop();
+
+    // ideaListComponent.ideaList = sortedIdeas;
     
-    ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = [];
+    // ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = [];
 
 }
 function resolveCommentFailureCallback(data){
@@ -212,17 +265,16 @@ function resolveCommentFailureCallback(data){
 
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
-    tags = JSON.parse(data.tags);  
+    var newTag = JSON.parse(data.tag);
+    tags.unshift(newTag[0]);  
+    tagOccurrences.unshift(0);
+    thisCanvas.fields.tags = tags;
   
-    taggedCanvasses = new Array(tags.length);
     publicCanvasses = JSON.parse(data.public);
     privateCanvasses = JSON.parse(data.private);
-
-    var allCanvasses = JSON.parse(data.allCanvasses);
-
     populateTagList();
-    tagButtons.tagList = tags
-    tagButtons.canvasList = taggedCanvasses
+
+
 }
 
 function newTagFailureCallback(data){
@@ -230,11 +282,12 @@ function newTagFailureCallback(data){
 }
 
 function deleteTagSuccessCallback(data){
-    var i = thisCanvas.fields.tags.indexOf(data);
+    var i = JSON.parse(data.i);
     
-    tagOccurrences.splice(i, 1);        
-    thisCanvas.fields.tags.splice(i, 1);
-    tags = thisCanvas.fields.tags;
+    tagOccurrences.splice(i, 1);    
+    tags.splice(i, 1);
+    thisCanvas.fields.tags = tags;
+    populateTagList();
 }
 
 function deleteTagFailureCallback(data){
@@ -247,7 +300,8 @@ function deleteTagFailureCallback(data){
 *************************************************************************************************************/
 
 function addUserSuccessCallback(data){
-    populateUsersAdmins(data);
+    var tempUser = JSON.parse(data.user);
+    users.push(tempUser[0]);
 }
 
 function addUserFailureCallback(data){
@@ -255,7 +309,15 @@ function addUserFailureCallback(data){
 }
 
 function deleteUserSuccessCallback(data){
-    populateUsersAdmins(data);
+    var ui = JSON.parse(data.ui);
+    var victimIsAdmin = JSON.parse(data.victimIsAdmin);
+    users.splice(ui, 1);
+
+    if (victimIsAdmin === true){
+        isAdmin = false;
+        adminNames.splice(ui, 1);
+        admins.splice(ui, 1);
+    }
 }
 
 function deleteUserFailureCallback(data){
@@ -263,7 +325,16 @@ function deleteUserFailureCallback(data){
 }
 
 function promoteUserSuccessCallback(data){
-    populateUsersAdmins(data);
+    var tempAdmin = JSON.parse(data.admin);
+    admins.push(tempAdmin[0]);
+    adminNames.push(tempAdmin[0].fields.username);
+
+    if (loggedInUser[0].fields.username === tempAdmin[0].fields.username)
+    {
+        console.log(collabComponent.userIsAdmin);
+        isAdmin = true;
+        console.log(collabComponent.userIsAdmin);
+    }
 }
 
 function promoteUserFailureCallback(data){
@@ -271,7 +342,17 @@ function promoteUserFailureCallback(data){
 }
 
 function demoteAdminSuccessCallback(data){
-    populateUsersAdmins(data);
+    var ai = JSON.parse(data.ai);
+    var victimName = adminNames[ai];
+    admins.splice(ai, 1);
+    adminNames.splice(ai, 1);
+
+    if (loggedInUser[0].fields.username === victimName)
+    {
+        console.log(collabComponent.userIsAdmin);
+        isAdmin = false;
+        console.log(collabComponent.userIsAdmin);
+    }
 }
 
 function demoteAdminFailureCallback(data){
@@ -294,16 +375,15 @@ function initSuccessCallback(data){
     for (var i = 0; i < sortedIdeas.length; i++){
         sortedIdeas[i] = new Array();
     }
+
     comments = JSON.parse(data.comments);
     ideas = JSON.parse(data.ideas);
     tags = JSON.parse(data.tags);
-    
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
     
     taggedCanvasses = new Array(tags.length);
-
     
     for (t in tags){
         tagOccurrences.push(0);
@@ -313,27 +393,35 @@ function initSuccessCallback(data){
     privateCanvasses = JSON.parse(data.private);
     var allCanvasses = JSON.parse(data.allCanvasses);
 
-
-    for (idea in ideas){
-        var ideaComments = [];
-
-        for (comment in comments){
-            if (comments[comment].fields.idea === ideas[idea].pk){
-                ideaComments.push(comments[comment]);
+    if (ideas.length > 0){
+        for (idea in ideas){
+            var ideaComments = [];
+            for (comment in comments){
+                if (comments[comment].fields.idea === ideas[idea].pk){
+                    ideaComments.push(comments[comment]);
+                }
             }
-        }
 
-        for (t in tags){
-            // keep track of how many times a tag occurs. on deletion of all ideas containing the tag, the occurrences reaches
-            // 0 and the tag is removed 
-            if (ideas[idea].fields.text.includes(tags[t].fields.label))
-                tagOccurrences[t]++;
-        }
+            for (t in tags){
+                // keep track of how many times a tag occurs. on deletion of all ideas containing the tag, the occurrences reaches
+                // 0 and the tag is removed 
+                if (ideas[idea].fields.text.includes(tags[t].fields.label))
+                    tagOccurrences[t]++;
+            }
 
-        sortedIdeas[ideas[idea].fields.category].push({
-            idea: ideas[idea],
-            comments: ideaComments
-        });
+            sortedIdeas[ideas[idea].fields.category].push({
+                idea: ideas[idea],
+                comments: ideaComments
+            });
+        }
+    }
+    else {
+        for (s in sortedIdeas){
+            sortedIdeas[s].push({
+                idea: null,
+                comments: []
+            })
+        }
     }
 
     
@@ -352,11 +440,16 @@ function initSuccessCallback(data){
         }
     }
 
+
+    initialiseSockets();
+
+
+
+
     $j('#canvas-title').html(thisCanvas.fields.title);
 
-
     populateTagList();
-    // populateIdeaList(); 
+
 
     tagButtons = new Vue({
         el: '#tag-div',
@@ -387,8 +480,6 @@ function initSuccessCallback(data){
             categories: categories,
         }
     })
-
-
 }
 
 function initFailureCallback(data){
@@ -430,7 +521,6 @@ Vue.component('idea-list', {
 
     },
     created: function(){
-        // console.log(this.ideaList)
     }
 })
 
@@ -452,21 +542,25 @@ Vue.component('idea', {
     
     template:'  <div class="category-detail">\
                     <h3><% title() %></h3>\
-                    <div v-for="(idea, i) in escapedIdeas">\
                     \
-                    \
-                        <input class="idea-input" type="text" :value="idea.fields.text" @change="changed($event, idea)" placeholder="Enter an idea">\
+                    <div  v-if="escapedIdeas[0]" >\
+                        <div v-for="(idea, i) in escapedIdeas">\
+                        \
+                        \
+                            <input class="idea-input" type="text" :value="idea.fields.text" @change="changed($event, idea, i)" placeholder="Enter an idea">\
+                            </br>\
+                            <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
+                            <button class="comments" v-on:click="displayMe(i)">Comments (<% commentList[i].length %>)</button>\
+                            <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)">\
+                            </comment>\
+                        </div>\
                         </br>\
-                        <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
-                        <button class="comments" v-on:click="displayMe(i)">Comments (<% commentList[i].length %>)</button>\
-                        <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)">\
-                        </comment>\
+                        \
+                        \
                     </div>\
                     \
-                    \
-                    </br>\
                     <button class="new-idea" @click="newIdea($event)">+</button>\
-                    <button class="new-tag" v-on:click="newTag()">Tag Selected Term</button>\
+                    <button v-if="escapedIdeas[0]" class="new-tag" v-on:click="newTag()">Tag Selected Term</button>\
                     </br>\
                     </br>\
                 </div>\
@@ -474,22 +568,27 @@ Vue.component('idea', {
          
     computed: {
         category: function(){
-            return this.ideaList[0].fields.category
+            return categories[this.index]
         },
 
         ideaList: {
             get: function(){
                 var list = []
-                for (i in this.ideas){
-                    list.push(this.ideas[i].idea)
+
+                if (this.ideas[0].idea !== null){
+                    for (i in this.ideas){
+                        list.push(this.ideas[i].idea)
+                    }
                 }
                 return list
             },
 
             set: function(ideasInput){
                 var list = []
-                for (i in this.ideasInput){
-                    list.push(this.ideasInput[i].idea)
+                if (this.ideasInput !== null){
+                    for (i in this.ideasInput){
+                        list.push(this.ideasInput[i].idea)
+                    }
                 }
                 return list
             },
@@ -497,8 +596,10 @@ Vue.component('idea', {
 
         commentList: function(){
             var list = []
-            for (i in this.ideas){
-                list.push(this.ideas[i].comments)
+            if (this.ideas[0].idea !== null){
+                for (i in this.ideas){
+                    list.push(this.ideas[i].comments)
+                }
             }
             return list
         },
@@ -514,6 +615,7 @@ Vue.component('idea', {
                 escaped[idea].fields.text = this.ideaString(escaped[idea])
             }
             return escaped
+            
         },
     },
     
@@ -551,7 +653,7 @@ Vue.component('idea', {
         },
 
         title: function(){
-            return categories[this.category]
+            return categories[this.index]
         },
 
         ideaString: function(idea){
@@ -563,57 +665,50 @@ Vue.component('idea', {
             return scratch.value
         },
         newIdea(event){
-            var url = "/catalog/new_idea/"
-            var data = {
-                "canvas_pk": canvasPK,
-                "category": this.category
-            }
-            performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback)
+            ideaSocket.send(JSON.stringify({
+                'function': 'addIdea',
+                'category': this.index,
+            }));
         },
 
         deleteIdea(event, idea, i){
-            url = "/catalog/delete_idea/";
-            data = {
-                "idea_pk": idea.pk,
+            ideaSocket.send(JSON.stringify({
+                'function': 'deleteIdea',
+                'idea_pk': idea.pk,
                 'i': i
-            };
-
-            performAjaxPOST(url, data, deleteIdeaSuccessCallback, deleteIdeaFailureCallback);
+            }));
         },
 
-        changed(event, idea){
+        changed(event, idea, i){
             var old = idea.fields.text
             var text = escapeChars(event.target.value)
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
-
-            
             /* 
                 if the new value is different to the old value after stripping
                 tabs excess spaces, newlines and carriage returns, then the text
                 has meaningfully changed and the database should be updated    
             */ 
             if(text !== old){
-                var url = "/catalog/idea_detail/"
-                data = {
-                    "input_text": text,
-                    "idea_pk": idea.pk
-                }
-                performAjaxPOST(url, data, editIdeaSuccessCallback, editIdeaFailureCallback);
+                ideaSocket.send(JSON.stringify({
+                    'function': 'modifyIdea',
+                    'input_text': text,
+                    'idea_pk': idea.pk,
+                    'category': this.index,
+                    'i': i
+
+                }));
             }
             // if a user entered loads of whitespace, then replace current input field with trimmed text
             event.target.value = text
-            // does this maintain the new value?
             idea.fields.text = text
         },
 
         newTag(){
-             data = {
-                "canvas_pk": canvasPK,
-                "operation": "add_tag",
-                "tag": selection
-            }
-            performAjaxGET(currentURL, data, newTagSuccessCallback, newTagFailureCallback)
+            tagSocket.send(JSON.stringify({
+                'function': 'addTag',
+                "label": selection
+            }));
             selection = ""
         }
 
@@ -623,8 +718,6 @@ Vue.component('idea', {
         for (var i = 0; i < this.showCommentThread.length; i++){
             this.showCommentThread[i] = false
         }
-        // console.log(this.ideaList)
-        // console.log(this.commentList)
     }
 })
 
@@ -676,16 +769,16 @@ Vue.component('comment', {
                 \
                     <div slot="header">\
                         <h3>Comments</h3>\
-                        <input value = "" placeholder = "Type a comment" @change="newComment($event)">\
+                        <input value="" placeholder = "Type a comment" @change="newComment($event)">\
                         <button>Post</button>\
                     </div>\
                 \
                 \
                     <div slot="body">\
                         <ul>\
-                            <li v-for="c in comments" style="list-style-type:none;">\
-                                <% commentString(c) %>\
-                                <button class="delete-comment" @click="deleteComment($event, c)">Delete</button>\
+                            <li v-for="(comment, c) in comments" style="list-style-type:none;">\
+                                <% commentString(comment) %>\
+                                <button class="delete-comment" @click="deleteComment($event, comment, c)">Delete</button>\
                             </li>\
                         </ul>\
                     </div>\
@@ -717,8 +810,8 @@ Vue.component('comment', {
     },   
 
     methods: {
-        commentString: function(c){
-            var string = escapeChars(c.fields.text)
+        commentString: function(comment){
+            var string = escapeChars(comment.fields.text)
             // the following is to convert elements like &apos back to " ' " 
             var scratch = document.createElement("textarea")
             scratch.innerHTML = string
@@ -727,39 +820,37 @@ Vue.component('comment', {
         },
 
         newComment(event){
+            // console.log(event.target.value)
+            // console.log(value)
+
             var text = escapeChars(event.target.value)
+            event.target.value = ''
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
             
-            url = "/catalog/new_comment/"
-
-            data = {
-                "input_text": text,
-                "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex
-            };
-            performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback)
-            event.target.value = ''
+            commentSocket.send(JSON.stringify({
+                'function': 'addComment',
+                'input_text': text,
+                'i': this.selfIndex,
+                'idea_pk': this.currentIdea.pk
+            }));
         },
 
-        deleteComment(event, c){
-            url = "/catalog/delete_comment/"
-
-            data = {
-                "comment_pk": c.pk,
-                "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex
-            };
-            performAjaxPOST(url, data, addCommentSuccessCallback, addCommentFailureCallback)
+        deleteComment(event, comment, c){
+            commentSocket.send(JSON.stringify({
+                'function': 'deleteComment',
+                "comment_pk": comment.pk,
+                'i': this.selfIndex,
+                'c': c
+            }));
         },
 
         resolveComments(idea, comments){
-            url = "/catalog/comment_resolve/"
-            data = {
+            commentSocket.send(JSON.stringify({
+                'function': 'resolveComments',
                 "idea_pk": this.currentIdea.pk,
                 'i': this.selfIndex,
-            }
-            performAjaxPOST(url, data, resolveCommentSuccessCallback, resolveCommentFailureCallback)
+            }));
         },
     },
 })
@@ -793,7 +884,6 @@ Vue.component('tag', {
                 "tag_pk": thisTag.pk,
                 "operation": "delete_tag"
             }
-            performAjaxGET(currentURL, data, deleteTagSuccessCallback, deleteTagFailureCallback)
         },
     },
 
@@ -811,7 +901,7 @@ Vue.component('tag', {
 *************************************************************************************************************/
  
 Vue.component('tag-popup', {
-    props:['label', 'canvas'],
+    props:['label', 'canvas', 'index'],
     delimiters: ['<%', '%>'],
     data: function(){
         return {
@@ -833,7 +923,7 @@ Vue.component('tag-popup', {
                 </ul>\
                 \
                 <div slot="footer">\
-                    <button class="delete-tag" @click="$emit(\'delete-tag\')">Delete</button>\
+                    <button class="delete-tag" @click="deleteTag($event)">Delete</button>\
                     <button class="modal-default-button" @click="$emit(\'close\')">\
                     Close\
                     </button>\
@@ -852,8 +942,11 @@ Vue.component('tag-popup', {
             return "/catalog/canvas/" + c.pk
         },
         deleteTag: function(event){
-            console.log(event.target)
-            console.log(taggedCanvasses.indexOf(this.canvas))
+            tagSocket.send(JSON.stringify({
+                'function': 'removeTag',
+                'i': this.index,
+                'tag_pk': tags[this.index].pk,
+            }));
         }
     }
 
@@ -864,6 +957,9 @@ Vue.component('tag-popup', {
 *************************************************************************************************************/
  
 Vue.component('collabs', {
+    props: ['is-admin'],
+    delimiters: ['<%', '%>'],
+    
     template:'#collabs',
 
     data: function(){
@@ -873,12 +969,17 @@ Vue.component('collabs', {
             adminsList: admins,
             adminNameList: adminNames,
             loggedInUser: loggedInUser,
-            isAdmin: isAdmin,
+            // userIsAdmin: isAdmin
         }
     },
 
     methods: {
     },
+    // watch: {
+    //     userIsAdmin: function(){
+    //         console.log(this.isAdmin)
+    //     }, 
+    // }
 })
 
 /*************************************************************************************************************
@@ -892,10 +993,9 @@ Vue.component('collab-popup', {
     data: function(){
         return {
             currentUser: this.loggedInUser,
-            admin: this.isAdmin,
             name: '',
             a: '',
-            c: ''
+            c: '',
         }
     },
 
@@ -909,6 +1009,9 @@ Vue.component('collab-popup', {
         adminNameList: function(){
             return this.adminNames
         },
+        admin: function(){
+            return this.isAdmin
+        }
     },
 
     template: '\
@@ -920,27 +1023,27 @@ Vue.component('collab-popup', {
                 <div slot="body">\
                     <h3>Admins</h3>\
                         <ul>\
-                        <li v-for="a in adminList" style="list-style-type:none;">\
-                            <% a.fields.username %>\
+                        <li v-for="(a, ai) in adminList" style="list-style-type:none;">\
+                            <% a.fields.username + (loggedInUser[0].fields.username === a.fields.username ? " (you)" : "") %>\
                             <div \
                                 id="admin-buttons"\
-                                v-if="loggedInUser[0].fields.username !== a.fields.username && admin === true"\
+                                v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
                             >\
-                                <button class="delete-admin" @click="deleteUser($event, a)">Delete</button>\
-                                <button class="demote-admin" @click="demoteAdmin($event, a)">Demote</button>\
+                                <button class="delete-admin" @click="deleteUser($event, a, ai)">Delete</button>\
+                                <button class="demote-admin" @click="demoteAdmin($event, a, ai)">Demote</button>\
                             </div>\
                         </li>\
                     </ul>\
                     \
                     <h3>Users</h3>\
                     <ul>\
-                        <li v-for="u in userList" style="list-style-type:none;">\
-                            <% u.fields.username %>\
+                        <li v-for="(u, ui) in userList" style="list-style-type:none;">\
+                            <% u.fields.username  + (loggedInUser[0].fields.username === u.fields.username ? " (you)" : "") %>\
                             <div \
                                 id="user-buttons"\
-                                v-if="loggedInUser[0].fields.username !== u.fields.username && admin === true"\
+                                v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
                             >\
-                                <button class="delete-user" @click="deleteUser($event, u)">Delete</button>\
+                                <button class="delete-user" @click="deleteUser($event, u, ui)">Delete</button>\
                                 <button \
                                     v-if="adminNameList.indexOf(u.fields.username) === -1"\
                                     class="promote-user" @click="promoteUser($event, u)"\
@@ -948,12 +1051,14 @@ Vue.component('collab-popup', {
                             </div>\
                         </li>\
                     </ul>\
+                    <div v-if="adminNameList.includes(loggedInUser[0].fields.username)">\
+                        <h3>Add User</h3>\
+                        <input v-model="name" placeholder="Enter a username">\
+                        <button @click="addUser($event, name, this.isAdmin)">Add User</button>\
+                    </div>\
                 </div>\
                 \
                 <div slot="footer">\
-                    <h3>Add User</h3>\
-                    <input v-model="name" placeholder="Enter a username">\
-                    <button @click="addUser($event, name)">Add User</button>\
                     <button class="modal-default-button" @click="$emit(\'close\')">\
                     Close\
                     </button>\
@@ -962,42 +1067,36 @@ Vue.component('collab-popup', {
         ',
 
     methods: {
-        addUser: function(event, name){
-            var url = '/catalog/collaborators/'
-            var data = {
-                'name': name,
-                'canvas_pk': canvasPK
-            }
-            // sending the POST request to a different URL to keep the view functions smaller. This isn't for redirection.
-            performAjaxPOST(url, data, addUserSuccessCallback, addUserFailureCallback)
+        addUser: function(event, name, isAdmin){
+            console.log(isAdmin);
+            collabSocket.send(JSON.stringify({
+                'function': 'addUser',
+                'name': name
+            }));
             this.name = ""
         },
 
-        deleteUser: function(event, u){
-            var url = "/catalog/delete_user/"
-            var data = {
+        deleteUser: function(event, u, ui){
+            collabSocket.send(JSON.stringify({
+                'function': 'deleteUser',
                 'user_pk': u.pk,
-                'canvas_pk': canvasPK
-            }
-            performAjaxPOST(url, data, deleteUserSuccessCallback, deleteUserFailureCallback)
+                'ui': ui
+            }));
         },
 
         promoteUser: function(event, u){
-            var url = "/catalog/promote_user/"
-            var data = {
+            collabSocket.send(JSON.stringify({
+                'function': 'promoteUser',
                 'user_pk': u.pk,
-                'canvas_pk': canvasPK
-            }
-            performAjaxPOST(url, data, promoteUserSuccessCallback, promoteUserFailureCallback)
+            }));            
         },
 
-        demoteAdmin: function(event, a){
-            var url = "/catalog/demote_admin/"
-            var data = {
+        demoteAdmin: function(event, a, ai){
+            collabSocket.send(JSON.stringify({
+                'function': 'demoteUser',
                 'user_pk': a.pk,
-                'canvas_pk': canvasPK
-            }
-            performAjaxPOST(url, data, demoteAdminSuccessCallback, demoteAdminFailureCallback)
+                'ai': ai
+            }));
         },
     },
 })
@@ -1009,9 +1108,6 @@ Vue.component('collab-popup', {
 Vue.component('modal', {
   template: '#modal-template'
 })
-
-
-
 
 /*************************************************************************************************************
 **************************************************************************************************************
@@ -1047,7 +1143,7 @@ function populateTagList(){
         tagged.push(taggedPrivate);
         tagged = tagged[0].concat(tagged[1])
 
-        taggedCanvasses[i] = tagged;
+        taggedCanvasses.splice(i, 1, tagged);
 
         taggedPublic = [];
         taggedPrivate = [];
@@ -1080,20 +1176,145 @@ function populateUsersAdmins(data){
 
 }
 
+function initialiseSockets(){
 
-function populateCommentList(data){
-/*
-    Function to populate the comment lists of the idea list component and the 
-    list of comments specific to the single comment component being updated
-*/
-    var tempIdea = JSON.parse(data.idea);
-    var i = JSON.parse(data.i);
-    var tempCategory = tempIdea[0].fields.category;
-    var tempComments = JSON.parse(data.comments);
-    // allComments = JSON.parse(data.allComments);
+/********************************************************************
+*********************************************************************
+                        SOCKET DECLARATIONS
+*********************************************************************                            
+*********************************************************************/
 
-    sortedIdeas[tempCategory][i].comments = tempComments;
-    ideaListComponent.ideaList = sortedIdeas;
+    ideaSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/canvas/' + canvasPK + '/idea/'
+    );
+
+    commentSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/canvas/' + canvasPK + '/comment/'
+    );
+
+    collabSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/canvas/' + canvasPK + '/collab/'
+    );
+
+    tagSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/canvas/' + canvasPK + '/tag/'
+    );
+
+/********************************************************************
+*********************************************************************
+                            CALLBACKS
+*********************************************************************                            
+*********************************************************************/
     
-    ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = tempComments;
+    /***********************************
+                IDEA SOCKET
+    ************************************/
+    ideaSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data['function'];
+
+        switch(f) {
+            case "modifyIdea": {
+                editIdeaSuccessCallback(data);
+                console.log("Changing Idea");
+                break;
+            }
+            case "addIdea": {
+                var idea = data['idea'];
+                newIdeaSuccessCallback(idea);
+                console.log("Adding Idea");
+                break;
+            }
+            case "deleteIdea": {
+                deleteIdeaSuccessCallback(data);
+                break;
+            }
+        }
+    };
+
+    /***********************************
+                COMMENT SOCKET
+    ************************************/
+    commentSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data['function'];
+
+        switch(f) {
+            case "addComment": {
+                addCommentSuccessCallback(data);
+                break;
+            }
+            case "deleteComment": {
+                deleteCommentSuccessCallback(data);
+                break;
+            }
+            case "resolveComments": {
+                resolveCommentSuccessCallback(data);
+                break;
+            }
+        }
+    };
+
+    /***********************************
+                COLLAB SOCKET
+    ************************************/
+    collabSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data['function'];
+
+        switch(f) {
+            case "promoteUser": {
+                promoteUserSuccessCallback(data);
+                console.log("Promoting User");
+                break;
+            }
+            case "demoteUser": {
+                demoteAdminSuccessCallback(data);
+                console.log("Demoting User");
+                break;
+            }
+            case "addUser": {
+                addUserSuccessCallback(data);
+                console.log("Adding User");
+                break;
+            }
+            case "deleteUser": {
+                deleteUserSuccessCallback(data);
+                console.log("Deleting User");
+                break;
+            }
+        }
+    };
+
+    /***********************************
+                TAG SOCKET
+    ************************************/
+    tagSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data['function'];
+
+        switch(f) {
+            case "addTag": {
+                newTagSuccessCallback(data);
+                break;
+            }
+            case "removeTag": {
+                deleteTagSuccessCallback(data);
+                break;
+            }
+        }
+    };
+}
+
+function escapeHTMLChars(text){
+
+    var string = escapeChars(text)
+    // the following is to convert elements like &apos back to " ' " 
+    var scratch = document.createElement("textarea")
+    scratch.innerHTML = string
+    return scratch.value
 }

@@ -32,6 +32,7 @@
                 id="tag-popup"
                 v-bind:canvas="canvasList[index]"
                 v-bind:label="this.label"
+                v-bind:index="index"
                 v-show="show" 
                 @close="show=false"
                 @delete-tag="showTag=false" show="false"
@@ -56,6 +57,7 @@
         <div>
             <button @click="showCollab=true">Collaborators</button>
             <collab-popup  
+                id='collab-popup-component'
                 v-show="showCollab" 
                 v-bind:users="usersList"
                 v-bind:admins="adminsList"
@@ -81,7 +83,7 @@
         <div class="idea-category">
             <idea
                 v-for="(ideas, index) in ideaList"
-                v-bind:key="ideas[0].idea.fields.category"
+                v-bind:key="index"
                 v-bind:index="index"
                 v-bind:ideas="ideas"
                 v-bind:id="categories[index]"
