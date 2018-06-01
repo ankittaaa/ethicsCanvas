@@ -60,7 +60,6 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             idea_pk = text_data_json['idea_pk']
             i = text_data_json['i']
             
-            print(i)
 
             return_idea = views.idea_detail(logged_in_user, idea_pk, input_text)
 
@@ -93,6 +92,30 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'category': category,
                 }
             )
+
+        if function == 'typing' or function == 'done_typing':
+            '''
+            USER BEGINS TYPING
+            '''
+            i = text_data_json['i']
+            category = text_data_json['category']
+            username = text_data_json['username']
+
+            print(function)
+            
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'typing',
+                    'function': function,
+                    'i': i, 
+                    'username': username,
+                    'category': category,
+                }
+            )
+
+
+
 
 
     async def new_idea(self, event):
@@ -128,6 +151,21 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             'i': i,
             'category': category
         }))
+
+    async def typing(self, event):
+        i = event['i']
+        function = event['function']
+        username = event['username']
+        category = event['category']
+
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'i': i, 
+            'username': username,
+            'category': category,
+        }))
+
+
 
 
 class CommentConsumer(AsyncWebsocketConsumer):
@@ -341,8 +379,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-
-
         if function == 'demoteUser':
 
             user_pk = text_data_json['user_pk']
@@ -359,11 +395,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
             )
 
 
-
-
-
-
-
     async def add_user(self, event):
         function = event['function']
         user = event['user']
@@ -372,7 +403,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'function': function,
                     'user': user
         }))
-
 
 
     async def delete_user(self, event):
@@ -385,7 +415,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'victimIsAdmin': victim_is_admin,
                     'ui': ui
         }))
-
 
 
     async def promote_user(self, event):

@@ -23,7 +23,8 @@ var ideas;
 // 'j' indices will be an object encapulating and idea and an array of its comments
 
 var sortedIdeas = new Array(10);
-
+var typingBools = new Array(10);
+var typingUser = new Array(10);
 
 var comments;
 var tags = [];
@@ -50,6 +51,13 @@ var commentSocket;
 var collabSocket;
 var tagSocket;
 
+var typingEntered = false;
+// initialise this variable as a timeout handle
+var typingTimer = setInterval(
+            function(){console.log()}
+            , 0);
+
+window.clearTimeout(typingTimer);
 
 
 $j(document).ready(function(data){
@@ -68,7 +76,7 @@ $j(document).ready(function(data){
     var splitURL = currentURL.split("/");
     canvasPK = splitURL[splitURL.length - 2];
     var data = {
-        "operation": "initialise"
+        "operation": " "
     };
 
     // INITIAL AJAX REQUEST TO GET CANVAS INFORMATION AND RENDER IT TO PAGE
@@ -128,6 +136,8 @@ function deleteIdeaSuccessCallback(data){
 
     // remove the victim {idea, [comments]} from the sorted ideas list
     sortedIdeas[tempCategory].splice(i, 1);
+    typingBools[tempCategory].splice(i, 1);
+    typingUser[tempCategory].splice(i, 1);
 }
 
 function deleteIdeaFailureCallback(data){
@@ -148,6 +158,9 @@ function newIdeaSuccessCallback(idea){
         idea: tempIdea[0],
         comments: []
     });
+
+    typingBools[tempCategory].unshift(false);
+    typingUser[tempCategory].unshift('');
 }
 
 function newIdeaFailureCallback(data){
@@ -159,17 +172,17 @@ function editIdeaSuccessCallback (data){
     var inIdea = JSON.parse(data.idea);
     var tempCategory = inIdea[0].fields.category;
     var i = JSON.parse(data.i);
-    console.log(data.i);
-    console.log(i);
+    // console.log(data.i);
+    // console.log(i);
     var prevIdea = inIdea[0];
     var currentIdea;
     var prevComments = sortedIdeas[tempCategory][i].comments;
     var currentComments;
     // comments for modified idea - these aren't modified but will be used when moving the idea to the top
     // var inComments = sortedIdeas[tempCategory][i].comments;
-    for (s in sortedIdeas[tempCategory])
-        console.log(sortedIdeas[tempCategory][s].idea.fields.text);
-    console.log("\n\n\n");
+    // for (s in sortedIdeas[tempCategory])
+    //     console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+    // console.log("\n\n\n");
 
     for (var x = 0; x <= i; x++){
     /*
@@ -186,10 +199,10 @@ function editIdeaSuccessCallback (data){
             comments: prevComments
         });
         
-        for (s in sortedIdeas[tempCategory])
-            console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+        // for (s in sortedIdeas[tempCategory])
+        //     console.log(sortedIdeas[tempCategory][s].idea.fields.text);
 
-        console.log("\n\n\n");
+        // console.log("\n\n\n");
         
         prevIdea = currentIdea;
         prevComments = currentComments;
@@ -200,8 +213,8 @@ function editIdeaSuccessCallback (data){
     //     comments: inComments
     // });
 
-    for (s in sortedIdeas[tempCategory])
-        console.log(sortedIdeas[tempCategory][s].idea.fields.text);
+    // for (s in sortedIdeas[tempCategory])
+    //     console.log(sortedIdeas[tempCategory][s].idea.fields.text);
     
 }
 
@@ -209,6 +222,34 @@ function editIdeaFailureCallback(data){
     console.log(data);
 }
 
+
+function typingCallback(data, f){
+    console.log(f);
+    var tempCategory = data['category'];
+    var tempName = data['username'];
+    var i = data['i']
+    console.log("category: " + tempCategory);
+    console.log("idea: " + i);
+    // do nothing, the logged in user knows when they're typing
+    if (tempName == loggedInUser[0].fields.username)
+        return;
+
+    if (f === "typing"){
+        // console.log(typingBools[tempCategory]);
+        typingUser[tempCategory].splice(i, 1, tempName);
+        typingBools[tempCategory].splice(i, 1, true);
+        // console.log(typingBools[tempCategory]);
+    }
+    else {
+        // console.log(typingBools[tempCategory]);
+        typingUser[tempCategory].splice(i, 1, '');
+        typingBools[tempCategory].splice(i, 1, false);
+        // console.log(typingBools[tempCategory]);
+    }
+
+
+
+}
 /*************************************************************************************************************
                                         COMMENT CALLBACKS
 *************************************************************************************************************/
@@ -374,6 +415,8 @@ function initSuccessCallback(data){
     // initially declare empty arrays for each index of sortedIdeas
     for (var i = 0; i < sortedIdeas.length; i++){
         sortedIdeas[i] = new Array();
+        typingBools[i] = new Array();
+        typingUser[i] = new Array();
     }
 
     comments = JSON.parse(data.comments);
@@ -413,6 +456,8 @@ function initSuccessCallback(data){
                 idea: ideas[idea],
                 comments: ideaComments
             });
+            typingBools[ideas[idea].fields.category].push(false);
+            typingUser[ideas[idea].fields.category].push('');
         }
     }
     else {
@@ -420,7 +465,9 @@ function initSuccessCallback(data){
             sortedIdeas[s].push({
                 idea: null,
                 comments: []
-            })
+            });
+            typingBools[s].push(false);
+            typingUser[s].push('');
         }
     }
 
@@ -478,6 +525,8 @@ function initSuccessCallback(data){
         data: {
             ideaList: sortedIdeas,
             categories: categories,
+            isTyping: typingBools,
+            typingUser: typingUser,
         }
     })
 }
@@ -505,6 +554,8 @@ Vue.component('idea-list', {
         return {
             ideaList: sortedIdeas,
             categories: categories,
+            isTyping: typingBools,
+            typingUser: typingUser,
         }
     },
 
@@ -529,25 +580,34 @@ Vue.component('idea-list', {
 *************************************************************************************************************/
  
 Vue.component('idea', {
-    props: ['ideas', 'index', 'categories'],
+    props: ['user', 'is-typing', 'ideas', 'index', 'categories'],
     delimiters: ['<%', '%>'],
     
     data: function(){
         return {
             showComments: false,
             // Array of booleans for displaying individual modal components. As a single boolean, all modals will be rendered instead of the one for the comment thread of the clicked idea. 
-            showCommentThread: new Array(this.ideas.length)
+            showCommentThread: new Array(this.ideas.length),
+            isTypingBools: this.isTyping,
+            typingUser: this.user,
         }
     },
     
-    template:'  <div class="category-detail">\
+    template:`  <div class="category-detail">\
                     <h3><% title() %></h3>\
                     \
                     <div  v-if="escapedIdeas[0]" >\
                         <div v-for="(idea, i) in escapedIdeas">\
                         \
-                        \
-                            <input class="idea-input" type="text" :value="idea.fields.text" @change="changed($event, idea, i)" placeholder="Enter an idea">\
+                        <span>\
+                            <input class="idea-input"\
+                                type="text" :value="idea.fields.text"\
+                                @blur="changed($event, idea, i)"\
+                                @keydown="keydownCallback($event, idea, i)"\ 
+                                @keypress="setTyping($event, idea, i)"\
+                                @paste="setTyping($event, idea, i)"\
+                                placeholder="Enter an idea"><p v-show="isTypingBools[i] == true"><%typingUser[i]%> is typing...</p>\
+                        </span>\
                             </br>\
                             <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
                             <button class="comments" v-on:click="displayMe(i)">Comments (<% commentList[i].length %>)</button>\
@@ -564,7 +624,7 @@ Vue.component('idea', {
                     </br>\
                     </br>\
                 </div>\
-    ',
+    `,
          
     computed: {
         category: function(){
@@ -618,9 +678,6 @@ Vue.component('idea', {
             
         },
     },
-    
-    watch: {
-    },   
 
     methods: {
 
@@ -680,29 +737,98 @@ Vue.component('idea', {
         },
 
         changed(event, idea, i){
-            var old = idea.fields.text
             var text = escapeChars(event.target.value)
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
-            /* 
-                if the new value is different to the old value after stripping
-                tabs excess spaces, newlines and carriage returns, then the text
-                has meaningfully changed and the database should be updated    
-            */ 
-            if(text !== old){
-                ideaSocket.send(JSON.stringify({
-                    'function': 'modifyIdea',
-                    'input_text': text,
-                    'idea_pk': idea.pk,
-                    'category': this.index,
-                    'i': i
+            window.clearTimeout(typingTimer)
+            
+            ideaSocket.send(JSON.stringify({
+                'function': 'modifyIdea',
+                'input_text': text,
+                'idea_pk': idea.pk,
+                'category': this.index,
+                'i': i
 
-                }));
-            }
+            }));
             // if a user entered loads of whitespace, then replace current input field with trimmed text
             event.target.value = text
             idea.fields.text = text
+            event.target.blur()
+            typingTimer = window.setInterval(
+                setFalse.bind({isTyping: this.isTypingBools, vm: this, i: i, index: this.index})
+                , 0
+            )
         },
+        keydownCallback(event, idea, i){
+            key = event.key
+
+            if (key == "Backspace")
+                if (selection){
+                    var selfLen = idea.fields.text.length
+                    var selLen = selection.length
+                    this.ideaList[i].fields.text = idea.fields.text.slice(0, selfLen - selLen)
+                    selection = ''
+                }
+                else
+                    idea.fields.text = idea.fields.text.slice(0, -1)
+            
+            if (key == "Enter")
+                event.target.blur()
+
+            if (key == "Escape")
+                this.ideaList[i].fields.text = this.ideaList[i].fields.text
+        },
+
+        setTyping(event, idea, i){
+            window.clearTimeout(typingTimer)
+
+            // only want to send something down the socket the first time this function is called
+            console.log(typingEntered)
+
+            if (typingEntered == false){        
+                ideaSocket.send(JSON.stringify({
+                    'function': 'typing',
+                    'category': this.index,
+                    'username': loggedInUser[0].fields.username,
+                    'i': i
+    
+                }))
+            }
+
+            typingEntered = true
+            // Vue.set(this.isTypingBools, i, true)
+            key = event.key
+
+            // if the user has made a text selection, erase it
+            if (selection){
+                var selfLen = this.ideaList[i].fields.text.length
+                var selLen = selection.length
+                this.ideaList[i].fields.text = this.ideaList[i].fields.text.slice(0, selfLen - selLen)
+                selection = ''
+            }
+            this.ideaList[i].fields.text += key
+
+            value = event.target.value
+            value = value + key
+            
+            var worker = new Worker('/static/canvas2/javascript/worker.js');     
+
+            typingTimer = window.setInterval(
+                setFalse.bind({isTyping: this.isTypingBools, vm: this, i: i, index: this.index})
+                , 2000
+            )
+
+        },
+
+
+        // typing(){
+        //     var isTypingBools = true;
+        //     window.setTimeout(setFalse(isTypingBools), 5000);
+
+        //     while(isTypingBools === true){
+        //         console.log("HEY");
+        //     }
+        // },
 
         newTag(){
             tagSocket.send(JSON.stringify({
@@ -714,11 +840,19 @@ Vue.component('idea', {
 
     },
 
+    watch: {
+        // isTypingBools: function(){
+        //     console.log(this.isTypingBools)
+        // }
+
+    },   
+
     created: function(){
+        // console.log(this)
         for (var i = 0; i < this.showCommentThread.length; i++){
             this.showCommentThread[i] = false
         }
-    }
+    },
 })
 
 // TODO: Comment list and comment popup necessary?
@@ -1216,17 +1350,19 @@ function initialiseSockets(){
     ideaSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data['function'];
-
+        
+        if (f.includes("typing")) {
+            typingCallback(data, f);
+            return;
+        }
         switch(f) {
             case "modifyIdea": {
                 editIdeaSuccessCallback(data);
-                console.log("Changing Idea");
                 break;
             }
             case "addIdea": {
                 var idea = data['idea'];
                 newIdeaSuccessCallback(idea);
-                console.log("Adding Idea");
                 break;
             }
             case "deleteIdea": {
@@ -1234,6 +1370,8 @@ function initialiseSockets(){
                 break;
             }
         }
+
+
     };
 
     /***********************************
@@ -1269,22 +1407,18 @@ function initialiseSockets(){
         switch(f) {
             case "promoteUser": {
                 promoteUserSuccessCallback(data);
-                console.log("Promoting User");
                 break;
             }
             case "demoteUser": {
                 demoteAdminSuccessCallback(data);
-                console.log("Demoting User");
                 break;
             }
             case "addUser": {
                 addUserSuccessCallback(data);
-                console.log("Adding User");
                 break;
             }
             case "deleteUser": {
                 deleteUserSuccessCallback(data);
-                console.log("Deleting User");
                 break;
             }
         }
@@ -1318,3 +1452,18 @@ function escapeHTMLChars(text){
     scratch.innerHTML = string
     return scratch.value
 }
+
+function setFalse(){
+    this.isTyping = false;
+
+    ideaSocket.send(JSON.stringify({
+        'function': 'done_typing',
+        'category': this.index,
+        'username': loggedInUser[0].fields.username,
+        'i': this.i
+
+    }))
+    window.clearTimeout(typingTimer)
+    typingEntered = false;
+    console.log(typingEntered)
+}   

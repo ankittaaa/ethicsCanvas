@@ -87,6 +87,8 @@
                 v-bind:index="index"
                 v-bind:ideas="ideas"
                 v-bind:id="categories[index]"
+                v-bind:is-typing="isTyping[index]"
+                v-bind:user="typingUser[index]"
             >
             </idea>
         </div>
@@ -138,5 +140,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'canvas2/javascript/worker.js' %}"></script>
 <script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
 {% endblock %}
