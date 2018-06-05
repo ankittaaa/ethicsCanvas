@@ -17,8 +17,6 @@ var categories = [
     "Uncategorised"
 ];
 
-var thisCanvas;
-var ideas;
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the  
 // 'j' indices will be an object encapulating and idea and an array of its comments
 
@@ -26,20 +24,25 @@ var sortedIdeas = new Array(10);
 var typingBools = new Array(10);
 var typingUser = new Array(10);
 
-var comments;
+
+var thisCanvas;
 var tags = [];
 var tagOccurrences = new Array();
 var taggedCanvasses;
+var ideas;
+var comments;
+
 var admins;
 var adminNames = [];
 var users;
-
+var activeUsers = [];
 var loggedInUser
+var isAdmin;
+
 var publicCanvasses;
 var privateCanvasses;
 var selection;
 var currentURL;
-var isAdmin;
 
 var tagButtons;
 var collabComponent;
@@ -400,6 +403,41 @@ function demoteAdminFailureCallback(data){
     console.log(data.responseText);
 }
 
+function newActiveUserCallback(data){
+    console.log("Before addition: " + activeUsers);
+
+    user = data.user;
+    activeUsers.push(user[0].fields.username);
+
+    collabSocket.send(JSON.stringify({
+        'function': 'sendWholeList',
+        'users': activeUsers,
+    }));
+}
+
+function wholeListCallback(data){
+    users = data.users;
+
+    if (users.length <= activeUsers.length)
+        return;
+    else 
+    {
+        for (u in users){
+            activeUsers.splice(u, 1, users[u]);
+        }
+    }
+}
+
+function removeActiveUserCallback(data){
+    console.log("Before removal: " + activeUsers);
+
+    user = data.user;
+    i = activeUsers.indexOf(user[0].fields.username);
+
+    if (i > -1)
+        activeUsers.splice(i, 1);
+}
+
 
 /*************************************************************************************************************
                                             INITIAL CALLBACK
@@ -516,7 +554,8 @@ function initSuccessCallback(data){
             adminsList: admins,
             adminNameList: adminNames,
             loggedInUser: loggedInUser,
-            isAdmin: isAdmin
+            isAdmin: isAdmin,
+            active: activeUsers
         },
     })
 
@@ -1103,17 +1142,12 @@ Vue.component('collabs', {
             adminsList: admins,
             adminNameList: adminNames,
             loggedInUser: loggedInUser,
-            // userIsAdmin: isAdmin
+            active: activeUsers,
         }
     },
 
     methods: {
     },
-    // watch: {
-    //     userIsAdmin: function(){
-    //         console.log(this.isAdmin)
-    //     }, 
-    // }
 })
 
 /*************************************************************************************************************
@@ -1121,7 +1155,7 @@ Vue.component('collabs', {
 *************************************************************************************************************/
  
 Vue.component('collab-popup', {
-    props: ['users', 'admins', 'logged-in-user', 'is-admin', 'admin-names'],
+    props: ['users', 'admins', 'logged-in-user', 'is-admin', 'admin-names', 'active'],
     delimiters: ['<%', '%>'],
 
     data: function(){
@@ -1130,6 +1164,7 @@ Vue.component('collab-popup', {
             name: '',
             a: '',
             c: '',
+            activeList: this.active,
         }
     },
 
@@ -1148,7 +1183,7 @@ Vue.component('collab-popup', {
         }
     },
 
-    template: '\
+    template: `\
             <modal>\
                 <div slot="header">\
                     <h3>Collaborators</h3>\
@@ -1158,8 +1193,13 @@ Vue.component('collab-popup', {
                     <h3>Admins</h3>\
                         <ul>\
                         <li v-for="(a, ai) in adminList" style="list-style-type:none;">\
-                            <% a.fields.username + (loggedInUser[0].fields.username === a.fields.username ? " (you)" : "") %>\
+                            <span>\
+                                <% a.fields.username\
+                                + ( loggedInUser[0].fields.username === a.fields.username ? " (you)" : activeList.includes(a.fields.username) ? " (active)" : "" ) %>\
+                            </span>\
+
                             <div \
+
                                 id="admin-buttons"\
                                 v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
                             >\
@@ -1172,7 +1212,11 @@ Vue.component('collab-popup', {
                     <h3>Users</h3>\
                     <ul>\
                         <li v-for="(u, ui) in userList" style="list-style-type:none;">\
-                            <% u.fields.username  + (loggedInUser[0].fields.username === u.fields.username ? " (you)" : "") %>\
+                            <span>\
+                                <% u.fields.username  \
+                                + ( loggedInUser[0].fields.username === u.fields.username ? " (you)" : activeList.includes(u.fields.username) ? " (active)" : "" ) %>\
+
+                            </span>\
                             <div \
                                 id="user-buttons"\
                                 v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
@@ -1198,7 +1242,7 @@ Vue.component('collab-popup', {
                     </button>\
                 </div>\
             </modal>\
-        ',
+        `,
 
     methods: {
         addUser: function(event, name, isAdmin){
@@ -1349,7 +1393,7 @@ function initialiseSockets(){
     ************************************/
     ideaSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data['function'];
+        var f = data["function"];
         
         if (f.includes("typing")) {
             typingCallback(data, f);
@@ -1379,7 +1423,7 @@ function initialiseSockets(){
     ************************************/
     commentSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data['function'];
+        var f = data["function"];
 
         switch(f) {
             case "addComment": {
@@ -1402,7 +1446,7 @@ function initialiseSockets(){
     ************************************/
     collabSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data['function'];
+        var f = data["function"];
 
         switch(f) {
             case "promoteUser": {
@@ -1421,15 +1465,43 @@ function initialiseSockets(){
                 deleteUserSuccessCallback(data);
                 break;
             }
+            case "newActiveUser": {
+                newActiveUserCallback(data);
+                break;
+            }
+
+            case "removeActiveUser": {
+                removeActiveUserCallback(data);
+                break;
+            }
+
+            case "sendWholeList": {
+                wholeListCallback(data);
+                break;
+            }
         }
     };
+
+    collabSocket.onopen = function(e){
+        collabSocket.send(JSON.stringify({
+            "function": "newActiveUser",
+            "user": loggedInUser,
+        }));
+    };
+
+    // collabSocket.onclose = function(e){
+    //     collabSocket.send(JSON.stringify({
+    //         "function": "removeActiveUser",
+    //         "user": loggedInUser,
+    //     }));
+    // };
 
     /***********************************
                 TAG SOCKET
     ************************************/
     tagSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data['function'];
+        var f = data["function"];
 
         switch(f) {
             case "addTag": {
@@ -1467,3 +1539,15 @@ function setFalse(){
     typingEntered = false;
     console.log(typingEntered)
 }   
+
+window.onbeforeunload = function(e){
+    collabSocket.send(JSON.stringify({
+            "function": "removeActiveUser",
+            "user": loggedInUser,
+    }));
+
+    collabSocket.close();
+    ideaSocket.close();
+    tagSocket.close();
+    commentSocket.close();
+};

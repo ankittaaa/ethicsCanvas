@@ -223,6 +223,7 @@ class CanvasDetailView(generic.DetailView):
             return render(
                 request, 
                 'catalog/canvas_detail.html', 
+                {'user': logged_in_user},
             ) 
 
 

@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-
+<h3>Signed in as {{ user }}</h3>
 <!--==================================================== 
                 TAG COMPONENT 
 =====================================================-->
@@ -64,6 +64,7 @@
                 v-bind:admin-names="adminNameList"
                 v-bind:logged-in-user="loggedInUser"
                 v-bind:is-admin="isAdmin"
+                v-bind:active="active"
                 @close="showCollab=false"
                 @delete-admin="show=false"
                 @delete-user="show=false"
@@ -136,7 +137,7 @@
 </script>
 </br>
 
-<button id = "back">Return to Dashboard</button>
+<a id = "return-button" href="{% url 'canvas-list' %}">Return to Dashboard</a>
 {% endblock %}
 
 {% block scripts %}

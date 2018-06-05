@@ -394,14 +394,50 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+        if function == 'newActiveUser':
+            user = text_data_json['user']
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'new_active_user',
+                    'function': function,
+                    'user': user,
+                }
+            )
+
+        if function == 'removeActiveUser':
+            user = text_data_json['user']
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'remove_active_user',
+                    'function': function,
+                    'user': user,
+                }
+            )
+
+        if function == 'sendWholeList':
+            users = text_data_json['users']
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'send_whole_list',
+                    'function': function,
+                    'users': users,
+                }
+            )
+
 
     async def add_user(self, event):
         function = event['function']
         user = event['user']
 
         await self.send(text_data=json.dumps({
-                    'function': function,
-                    'user': user
+            'function': function,
+            'user': user
         }))
 
 
@@ -411,9 +447,9 @@ class CollabConsumer(AsyncWebsocketConsumer):
         ui = event['ui']
 
         await self.send(text_data=json.dumps({
-                    'function': function,
-                    'victimIsAdmin': victim_is_admin,
-                    'ui': ui
+            'function': function,
+            'victimIsAdmin': victim_is_admin,
+            'ui': ui
         }))
 
 
@@ -422,8 +458,8 @@ class CollabConsumer(AsyncWebsocketConsumer):
         admin = event['admin']
 
         await self.send(text_data=json.dumps({
-                    'function': function,
-                    'admin': admin
+            'function': function,
+            'admin': admin
         }))
 
 
@@ -437,6 +473,36 @@ class CollabConsumer(AsyncWebsocketConsumer):
             'ai': ai
         }))
 
+
+    async def new_active_user(self, event):
+        function = event['function']
+        user = event['user']
+
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'user': user,
+        }))
+
+
+
+    async def remove_active_user(self, event):
+        function = event['function']
+        user = event['user']
+
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'user': user,
+        }))
+
+
+    async def send_whole_list(self, event):
+        function = event['function']
+        users = event['users']
+
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'users': users,
+        }))
 
 class TagConsumer(AsyncWebsocketConsumer):
     '''
