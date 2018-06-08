@@ -12,8 +12,9 @@
 =====================================================-->
 
 <div id = "tag-div">
-    <h3>Canvas Tags:</h3>
+    <h3 v-if="auth">Canvas Tags:</h3>
     <tag
+        v-if="auth"
         id="tag"
         v-for="(tag, index) in tagList"
         v-bind:key="tag.pk"
@@ -21,6 +22,7 @@
         v-bind:label="tag.fields.label"
         v-bind:canvasses="canvasList"
     >
+        
         <li 
             class="tag-elem" 
             v-show="showTag" 
@@ -28,6 +30,8 @@
             <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
                 <% label %>
             </button>
+
+
             <tag-popup  
                 id="tag-popup"
                 v-bind:canvas="canvasList[index]"
@@ -38,8 +42,10 @@
                 @delete-tag="showTag=false" show="false"
             >
             </tag-popup>
-            
         </li> 
+    </tag>
+    <tag v-else>
+        <p>Disabled for Trial User</p>
     </tag>
 </div>
 </br>
@@ -55,10 +61,14 @@
         id="collabs"
     >
         <div>
-            <button @click="showCollab=true">Collaborators</button>
+            <button v-if="auth" @click="showCollab=true">Collaborators</button>
+            <button v-else title="Sign up to use this feature" disabled>Collaborators</button>
+            <div v-if="auth">
+
             <collab-popup  
                 id='collab-popup-component'
                 v-show="showCollab" 
+                v-bind:is-auth="auth"
                 v-bind:users="usersList"
                 v-bind:admins="adminsList"
                 v-bind:admin-names="adminNameList"
@@ -70,6 +80,7 @@
                 @delete-user="show=false"
             >
             </collab-popup>
+            </div>
         </div>
     </collabs>
 </div>
@@ -90,6 +101,7 @@
                 v-bind:id="categories[index]"
                 v-bind:is-typing="isTyping[index]"
                 v-bind:user="typingUser[index]"
+                v-bind:is-auth="auth"
             >
             </idea>
         </div>
@@ -141,6 +153,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'canvas2/javascript/worker.js' %}"></script>
 <script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
 {% endblock %}

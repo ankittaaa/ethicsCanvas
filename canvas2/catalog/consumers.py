@@ -5,6 +5,32 @@ from . import views
 import json
 
 
+class TrialIdeaConsumer(WebsocketConsumer):
+    '''
+    Synchronous consumer for the trial user - does not need to be asynchronous as it's limited to a single user
+    '''
+    def connect(self):
+        self.accept()
+
+    def receive(self, text_data):
+        logged_in_user = self.scope['user']
+        canvas_pk = self.scope['url_route']['kwargs']['pk']
+        
+        text_data_json = json.loads(text_data)
+
+        category = text_data_json['category']
+        data = views.new_idea(logged_in_user, canvas_pk, category)
+        return_idea = data['return_idea']
+
+        idea_pk = data['pk']
+        views.delete_idea(logged_in_user, idea_pk)
+
+        self.send(text_data=json.dumps({
+            'idea': return_idea
+        }))
+        print("sent!")
+
+
 class IdeaConsumer(AsyncWebsocketConsumer):
     '''
     Consumer for websockets which are for modification of the Idea model
@@ -40,17 +66,22 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             ADDITION OF IDEA
             '''
             category = text_data_json['category']
-            return_idea = views.new_idea(logged_in_user, canvas_pk, category)
+            data = views.new_idea(logged_in_user, canvas_pk, category)
+            return_idea = data['return_idea']
+            
+            idea_pk = data['pk']
+            
+            # 'Trial' will occur in the function field of newIdea calls made by a trial user. The idea must immediately be deleted, we only want a JSON 
+            # model of an idea and not actual idea addition
 
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'new_idea',
-                    'function': function,
+                    'function': 'addIdea',
                     'idea': return_idea
                 }
             )
-
 
         if function == 'modifyIdea':
             '''
@@ -121,11 +152,13 @@ class IdeaConsumer(AsyncWebsocketConsumer):
     async def new_idea(self, event):
         idea = event['idea']
         function = event['function']
+        print("neat")
 
         await self.send(text_data=json.dumps({
             'function': function,
             'idea': idea
         }))
+        print("sent!")
 
 
     async def modify_idea(self, event):
@@ -145,6 +178,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
         i = event['i']
         function = event['function']
         category = event['category']
+        print("DOOM")
 
         await self.send(text_data=json.dumps({
             'function': function,
