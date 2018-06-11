@@ -150,9 +150,9 @@ class CanvasDetailView(generic.DetailView):
         canvas_pk = pk
         canvas = Canvas.objects.get(pk = canvas_pk)
 
-        # if not logged_in_user.is_authenticated and canvas.title == 'blank':
 
-        if (not user_permission(logged_in_user, canvas) and canvas.title != 'blank' and logged_in_user.is_authenticated):
+        # no user permission and the canvas isn't the blank one
+        if (not user_permission(logged_in_user, canvas) and canvas.title != 'blank'):
             return HttpResponse('Unauthorized', status = 401)
 
         if request.is_ajax():
@@ -773,7 +773,7 @@ def update_canvas_session_variables(self, logged_in_user):
     # NOTE END: BAND-AID FOR UPDATING SESSION DATA ON LOAD
 
 def user_permission(logged_in_user, canvas):
-    return (logged_in_user in canvas.users.all() or canvas.is_public == True)
+    return ((logged_in_user in canvas.users.all()) or (canvas.is_public == True))
 
 def admin_permission(logged_in_user, canvas):
     return (logged_in_user in canvas.admins.all())

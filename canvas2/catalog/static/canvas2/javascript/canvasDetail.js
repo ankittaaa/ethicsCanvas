@@ -699,16 +699,18 @@ Vue.component('idea', {
             },
         },
 
-        commentList: function(){
-            var list = []
-            if (isAuth === true && this.ideas[0] !== null){
-                if (this.ideas[0].idea !== null){
-                    for (i in this.ideas){
-                        list.push(this.ideas[i].comments)
+        commentList: {
+            get: function(){
+                var list = []
+                if (isAuth === true && this.ideas[0] !== null){
+                    if (this.ideas[0].idea !== null){
+                        for (i in this.ideas){
+                            list.push(this.ideas[i].comments)
+                        }
                     }
                 }
+                return list
             }
-            return list
         },
         /* 
             using computed property to escape the html characters such as &apos as vue throws an 
@@ -833,11 +835,9 @@ Vue.component('idea', {
                 currIdea.fields.text = text
 
                 if (sortedIdeas[this.index].length > 1){
-                    console.log("longboi")
                     sortIdeas(currIdea, i, this.index)
                 }
                 else{
-                    console.log("shortboi")
                     sortedIdeas[this.index].splice(i, 1, {
                         idea: currIdea,
                         comments: []
@@ -847,18 +847,9 @@ Vue.component('idea', {
             }
 
         },
+
         keydownCallback(event, idea, i){
             key = event.key
-
-            if (key == "Backspace")
-                if (selection){
-                    var selfLen = idea.fields.text.length
-                    var selLen = selection.length
-                    this.ideaList[i].fields.text = idea.fields.text.slice(0, selfLen - selLen)
-                    selection = ''
-                }
-                else
-                    idea.fields.text = idea.fields.text.slice(0, -1)
             
             if (key == "Enter")
                 event.target.blur()
@@ -873,36 +864,18 @@ Vue.component('idea', {
                 window.clearTimeout(typingTimer)
 
                 // only want to send something down the socket the first time this function is called
-                // console.log(typingEntered)
-
                 if (typingEntered == false){        
                     ideaSocket.send(JSON.stringify({
                         'function': 'typing',
                         'category': this.index,
                         'username': loggedInUser[0].fields.username,
                         'i': i
-        
                     }))
                 }
 
                 typingEntered = true
-                // Vue.set(this.isTypingBools, i, true)
-                key = event.key
 
-                // if the user has made a text selection, erase it
-                if (selection){
-                    var selfLen = this.ideaList[i].fields.text.length
-                    var selLen = selection.length
-                    this.ideaList[i].fields.text = this.ideaList[i].fields.text.slice(0, selfLen - selLen)
-                    selection = ''
-                }
-                this.ideaList[i].fields.text += key
-
-                value = event.target.value
-                value = value + key
-                
-                var worker = new Worker('/static/canvas2/javascript/worker.js');     
-
+                // timeout function for clearing the <user> is typing message on other windows - waits 2s 
                 typingTimer = window.setInterval(
                     setFalse.bind({isTyping: this.isTypingBools, vm: this, i: i, index: this.index})
                     , 2000
@@ -923,45 +896,16 @@ Vue.component('idea', {
     },
 
     watch: {
-        // isTypingBools: function(){
-        //     console.log(this.isTypingBools)
+        // commentList: function(){
+        //     console.log(this.commentList)
         // }
 
     },   
 
     created: function(){
-        // console.log(this)
         for (var i = 0; i < this.showCommentThread.length; i++){
             this.showCommentThread[i] = false
         }
-    },
-})
-
-// TODO: Comment list and comment popup necessary?
-/*************************************************************************************************************
-                                            COMMENT-LIST COMPONENT
-*************************************************************************************************************/
- 
-Vue.component('comment-list', {
-    props: ['commentList', 'show-comment-thread'],
-    delimiters: ['<%', '%>'],
-    
-    data: function(){
-        return {
-        }
-    },
-    
-    template:'#comment-list',
-         
-    computed: {
-    },
-    
-    watch: {
-
-    },   
-
-    methods: {
-
     },
 })
 
@@ -992,7 +936,7 @@ Vue.component('comment', {
                 \
                     <div slot="body">\
                         <ul>\
-                            <li v-for="(comment, c) in comments" style="list-style-type:none;">\
+                            <li v-for="(comment, c) in commentList" style="list-style-type:none;">\
                                 <% commentString(comment) %>\
                                 <button class="delete-comment" @click="deleteComment($event, comment, c)">Delete</button>\
                             </li>\
@@ -1001,7 +945,7 @@ Vue.component('comment', {
                 \
                 \
                     <div slot="footer">\
-                        <button class="resolve-comments" @click="resolveComments(idea, comments)">Resolve All</button>\
+                        <button class="resolve-comments" @click="resolveComments(idea)">Resolve All</button>\
                         <button class="modal-default-button" @click="$emit(\'close\')">Close</button>\
                     </div>\
                 \
@@ -1022,6 +966,9 @@ Vue.component('comment', {
     },
     
     watch: {
+        // commentList: function(){
+        //     console.log(this.commentList)
+        // }
 
     },   
 
@@ -1036,9 +983,6 @@ Vue.component('comment', {
         },
 
         newComment(event){
-            // console.log(event.target.value)
-            // console.log(value)
-
             var text = escapeChars(event.target.value)
             event.target.value = ''
             text = text.replace(/[\t\s\n\r]+/g, " ")
@@ -1061,7 +1005,7 @@ Vue.component('comment', {
             }));
         },
 
-        resolveComments(idea, comments){
+        resolveComments(idea){
             commentSocket.send(JSON.stringify({
                 'function': 'resolveComments',
                 "idea_pk": this.currentIdea.pk,
@@ -1582,18 +1526,16 @@ function setFalse(){
 
 
 function sortIdeas(inIdea, i, tempCategory){
-    // console.log(data.i);
-    // console.log(i);
-
-    console.log(inIdea);
-    console.log(tempCategory);
     console.log(i);
-
     var prevIdea = inIdea;
     var currentIdea;
     var prevComments = sortedIdeas[tempCategory][i].comments;
+    console.log(prevComments[0].fields.idea)
+    console.log(prevIdea.pk)
     var currentComments;
 
+
+    console.log(prevComments)
 
     for (var x = 0; x <= i; x++){
     /*
@@ -1612,7 +1554,6 @@ function sortIdeas(inIdea, i, tempCategory){
         
         prevIdea = currentIdea;
         prevComments = currentComments;
-        console.log(sortedIdeas[tempCategory])
     }
 }
 
