@@ -4,21 +4,36 @@
 ****************
 */
 var canvasPK;
-var categories = [
-    "Individuals Affected",
-    "Groups Affected",
-    "Behaviour",
-    "Relations",
-    "World Views",
-    "Group Conflicts",
-    "Product or Service Failure",
-    "Problematic Use of Resources",
-    "What can we do?",
-    "Uncategorised"
+var ethicsCategories = [
+    "individuals-affected",
+    "behaviour",
+    "relations",
+    "what-can-we-do",
+    "world-views",
+    "group-conflicts",
+    "groups-affected",
+    "product-or-service-failure",
+    "problematic-use-of-resources",
+    "uncategorised"
 ];
 
+var businessCategories = [
+    "key-partners",
+    "key-activities",
+    "key-resources",
+    "value-propositions",
+    "customer-relationships",
+    "channels",
+    "customer-segments",
+    "cost-structure",
+    "revenue-streams",
+    "uncategorised"
+];
+
+var theCategories;
+
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the  
-// 'j' indices will be an object encapulating and idea and an array of its comments
+// 'j' indices will be an object encapulating an idea and an array of its comments ( { idea, comments[] } )
 
 var sortedIdeas = new Array(10);
 var typingBools = new Array(10);
@@ -89,7 +104,7 @@ $j(document).ready(function(data){
 
 /*************************************************************************************************************
 **************************************************************************************************************
-                                            EVENT HANDLERS
+                                        JQUERY EVENT HANDLERS
 **************************************************************************************************************   
 **************************************************************************************************************/
 
@@ -155,14 +170,11 @@ function newIdeaSuccessCallback(idea){
 */
     var tempIdea = JSON.parse(idea);
     var tempCategory = tempIdea[0].fields.category;
-    // console.log(tempIdea);
-    // console.log(tempIdea[0]);
 
     // since ideas are sorted from newest to oldest, push the new idea to the front of sortedIdeas for the category
     // and an empty array for the comments, as a brand-new idea has no comments yet    
     if (sortedIdeas[tempCategory][0].idea === null)
     {
-        // console.log("emptyCategory!")
         sortedIdeas[tempCategory].splice(0, 1, {
             idea: tempIdea[0],
             comments: []
@@ -175,12 +187,11 @@ function newIdeaSuccessCallback(idea){
             comments: []
         });
     }   
-    // console.log(sortedIdeas[tempCategory]);
 
-    // if (isAuth === true){
+    if (isAuth === true){
         typingBools[tempCategory].unshift(false);
         typingUser[tempCategory].unshift('');
-    // }
+    }
 }
 
 function newIdeaFailureCallback(data){
@@ -192,7 +203,8 @@ function editIdeaSuccessCallback (data){
     var inIdea = (JSON.parse(data.idea))[0];
     var tempCategory = inIdea.fields.category;
     var i = JSON.parse(data.i);
-    sortIdeas(inIdea, i, tempCategory);
+    var oldText = escapeHTMLChars(data.oldText);
+    sortIdeas(inIdea, i, tempCategory, oldText);
 }
 
 function editIdeaFailureCallback(data){
@@ -285,7 +297,7 @@ function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
     tags.unshift(newTag[0]);  
-    tagOccurrences.unshift(0);
+    tagOccurrences.unshift(1);
     thisCanvas.fields.tags = tags;
   
     publicCanvasses = JSON.parse(data.public);
@@ -304,6 +316,7 @@ function deleteTagSuccessCallback(data){
     
     tagOccurrences.splice(i, 1);    
     tags.splice(i, 1);
+    console.log(tags);
     thisCanvas.fields.tags = tags;
     populateTagList();
 }
@@ -318,8 +331,11 @@ function deleteTagFailureCallback(data){
 *************************************************************************************************************/
 
 function addUserSuccessCallback(data){
-    var tempUser = JSON.parse(data.user);
+    var tempUser = (JSON.parse(data.user));
+    console.log(users);
     users.push(tempUser[0]);
+    console.log(users);
+    // console.log("pushed " + tempUser)
 }
 
 function addUserFailureCallback(data){
@@ -329,12 +345,15 @@ function addUserFailureCallback(data){
 function deleteUserSuccessCallback(data){
     var ui = JSON.parse(data.ui);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
+    console.log(users);
     users.splice(ui, 1);
+    console.log(users);
 
     if (victimIsAdmin === true){
         isAdmin = false;
         adminNames.splice(ui, 1);
         admins.splice(ui, 1);
+        console.log(admins);
     }
 }
 
@@ -349,9 +368,7 @@ function promoteUserSuccessCallback(data){
 
     if (loggedInUser[0].fields.username === tempAdmin[0].fields.username)
     {
-        // console.log(collabComponent.userIsAdmin);
         isAdmin = true;
-        // console.log(collabComponent.userIsAdmin);
     }
 }
 
@@ -367,9 +384,7 @@ function demoteAdminSuccessCallback(data){
 
     if (loggedInUser[0].fields.username === victimName)
     {
-        // console.log(collabComponent.userIsAdmin);
         isAdmin = false;
-        // console.log(collabComponent.userIsAdmin);
     }
 }
 
@@ -378,10 +393,10 @@ function demoteAdminFailureCallback(data){
 }
 
 function newActiveUserCallback(data){
-    // console.log("Before addition: " + activeUsers);
 
     user = data.user;
     activeUsers.push(user[0].fields.username);
+
 
     collabSocket.send(JSON.stringify({
         'function': 'sendWholeList',
@@ -390,20 +405,21 @@ function newActiveUserCallback(data){
 }
 
 function wholeListCallback(data){
-    users = data.users;
 
-    if (users.length <= activeUsers.length)
+    if (data.users.length <= activeUsers.length)
         return;
     else 
     {
-        for (u in users){
-            activeUsers.splice(u, 1, users[u]);
+        for (u in data.users){
+            if (activeUsers.includes(data.users[u]))
+                continue;
+            else
+                activeUsers.push(data.users[u]);
         }
     }
 }
 
 function removeActiveUserCallback(data){
-    // console.log("Before removal: " + activeUsers);
 
     user = data.user;
     i = activeUsers.indexOf(user[0].fields.username);
@@ -437,6 +453,7 @@ function initSuccessCallback(data){
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
+    isEthics = JSON.parse(data.isEthics);
     
     if (loggedInUser.length === 0)
         isAuth = false;
@@ -529,45 +546,52 @@ function initSuccessCallback(data){
             newIdeaSuccessCallback(idea);
         };
 }
+    if (isEthics)
+        theCategories = ethicsCategories;
+    else
+        theCategories = businessCategories;
 
-    tagButtons = new Vue({
-        el: '#tag-div',
-        data: {
-            tagList: tags,
-            canvasList: taggedCanvasses,
-            show: false,
-            showTag: true,
-            auth: isAuth,
-        },
-    })
+
 
     ideaListComponent = new Vue({
         el: '#idea-div',
         data: {
             ideaList: sortedIdeas,
-            categories: categories,
+            categories: theCategories,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
         }
     })
 
-    collabComponent = new Vue({
-        el: '#collab-div',
-        data: {
-            showCollab: false,
-            usersList: users,
-            adminsList: admins,
-            adminNameList: adminNames,
-            loggedInUser: loggedInUser,
-            isAdmin: isAdmin,
-            active: activeUsers,
-            auth: isAuth,
-        },
-    })
+    if (isAuth === true){
+        tagButtons = new Vue({
+            el: '#tag-div',
+            data: {
+                tagList: tags,
+                canvasList: taggedCanvasses,
+                show: false,
+                showTag: true,
+                auth: isAuth,
+            },
+        })
 
 
-    // console.log(loggedInUser);
+
+        collabComponent = new Vue({
+            el: '#collab-div',
+            data: {
+                showCollab: false,
+                usersList: users,
+                adminsList: admins,
+                adminNameList: adminNames,
+                loggedInUser: loggedInUser,
+                isAdmin: isAdmin,
+                active: activeUsers,
+                auth: isAuth,
+            },
+        })                  
+    }
 }
 
 function initFailureCallback(data){
@@ -592,7 +616,7 @@ Vue.component('idea-list', {
     data: function(){
         return {
             ideaList: sortedIdeas,
-            categories: categories,
+            categories: theCategories,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
@@ -630,46 +654,83 @@ Vue.component('idea', {
             showCommentThread: new Array(this.ideas.length),
             isTypingBools: this.isTyping,
             typingUser: this.user,
+            categoryList: this.categories
         }
     },
     
-    template:`  <div class="category-detail">\
-                    <h3><% title() %></h3>\
-                    \
-                    <div  v-if="escapedIdeas[0]" >\
-                        <div v-for="(idea, i) in escapedIdeas">\
-                        \
-                        <span>\
-                            <input class="idea-input"\
-                                type="text" :value="idea.fields.text"\
-                                @blur="changed($event, idea, i)"\
-                                @keydown="keydownCallback($event, idea, i)"\ 
-                                @keypress="setTyping($event, idea, i)"\
-                                @paste="setTyping($event, idea, i)"\
-                                placeholder="Enter an idea"><p v-show="isTypingBools[i] == true"><%typingUser[i]%> is typing...</p>\
-                        </span>\
-                            </br>\
-                            <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)">Delete</button>\
-                            <button v-if="isAuth" class="comments" v-on:click="displayMe(i)">Comments (<% commentList[i].length %>)</button>\
-                            <button v-else class="comments" title="Sign up to use this feature" disabled>Comments</button>\
-                            <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)">\
-                            </comment>\
-                        </div>\
-                        </br>\
-                        \
-                        \
-                    </div>\
-                    \
-                    <button class="new-idea" @click="newIdea($event)">+</button>\
-                    <button v-if="escapedIdeas[0]" class="new-tag" v-on:click="newTag()">Tag Selected Term</button>\
-                    </br>\
-                    </br>\
-                </div>\
+    template:`  <div v-bind:class="this.flexClass">     
+                    <h3><% title() %></h3> 
+                     
+                    <div class="idea-container" v-if="escapedIdeas[0]" > 
+                        <div v-for="(idea, i) in escapedIdeas"> 
+                             
+                            <div v-bind:id=textID(i)> 
+                                <textarea class="idea-input"  
+                                    type="text" :value="idea.fields.text" 
+                                    @blur="changed($event, idea, i)" 
+                                    @keydown="keydownCallback($event, idea, i)"  
+                                    @keypress="setTyping($event, idea, i)" 
+                                    @paste="setTyping($event, idea, i)" 
+                                    placeholder="Enter an idea"/> 
+                                    <p v-show="isTypingBools[i] == true">
+                                        <%typingUser[i]%> is typing...
+                                    </p> 
+                            </div> 
+                            
+                            <div id='idea-buttons'> 
+                                <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)" title="delete">X</button> 
+                                <button v-if="isAuth" id="comment-button" v-on:click="displayMe(i)"> 
+                                    <span>Comments (<% commentList[i].length %>)</span> 
+                                </button> 
+                                <button v-else id="comment-button" title="Sign up to use this feature" disabled> 
+                                    <span>Comments</span> 
+                                </button> 
+                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)"> 
+                                </comment> 
+                            </div> 
+                        </div> 
+                    </div> 
+                    <div id="main-idea-buttons"> 
+                        <button id="new-idea-button" @click="newIdea($event)">+</button> 
+                        <button v-if="escapedIdeas[0]" id="new-tag-button" v-on:click="newTag()">Tag Selected Term</button> 
+                    </div>  
+                </div>
     `,
          
     computed: {
+
+        flexClass: function(){
+            var i = this.index
+
+            switch(i){
+                case 0: {
+                    return "idea-flex-container" + (1)
+                }
+                case 1: {
+                    return "idea-flex-container" + (2)
+                }
+                case 2: {
+                    return "idea-flex-container" + (2)
+                }
+                case 3: {
+                    return "idea-flex-container" + (3)
+                }
+                case 4: {
+                    return "idea-flex-container" + (4 )
+                }
+                case 5: {
+                    return "idea-flex-container" + (4)
+                }
+                default: {
+                    return "idea-flex-container" + (i-1)
+                }
+
+            }
+            // return i-2;
+        },
+
         category: function(){
-            return categories[this.index]
+            return ethicsCategories[this.index]
         },
 
         ideaList: {
@@ -733,6 +794,10 @@ Vue.component('idea', {
 
     methods: {
 
+        textID: function(i){
+            return "category-"+this.index+"-idea-"+i
+        },   
+
         displayMe(i){
         /*
             For setting an individual truth value to display a single modal component's comment thread, or to close it.
@@ -764,7 +829,18 @@ Vue.component('idea', {
         },
 
         title: function(){
-            return categories[this.index]
+            var cat = this.categoryList[this.index]
+            var newCat = []
+            var returnCat = ''
+
+            cat = cat.split('-')
+
+            for (c in cat){
+                var upperCat = cat[c][0].toUpperCase()
+                returnCat += upperCat + cat[c].slice(1, cat[c].length) + ' '
+            }
+
+            return returnCat
         },
 
         ideaString: function(idea){
@@ -835,7 +911,7 @@ Vue.component('idea', {
                 currIdea.fields.text = text
 
                 if (sortedIdeas[this.index].length > 1){
-                    sortIdeas(currIdea, i, this.index)
+                    sortIdeas(currIdea, i, this.index, "")
                 }
                 else{
                     sortedIdeas[this.index].splice(i, 1, {
@@ -938,7 +1014,7 @@ Vue.component('comment', {
                         <ul>\
                             <li v-for="(comment, c) in commentList" style="list-style-type:none;">\
                                 <% commentString(comment) %>\
-                                <button class="delete-comment" @click="deleteComment($event, comment, c)">Delete</button>\
+                                <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">X</button>\
                             </li>\
                         </ul>\
                     </div>\
@@ -1070,26 +1146,29 @@ Vue.component('tag-popup', {
         }
     },
 
-    template:'<modal>\
-                <div slot="header">\
-                <h3><% label %></h3>\
-                <h4>Appears in: </h4>\
-                </div>\
-                <ul slot="body">\
-                    <li v-for="c in canvasData" style="list-style-type:none;">\
-                        <a v-bind:href="url(c)" target="_blank">\
-                            <% c.fields.title %>\
-                        </a>\
-                    </li>\
-                </ul>\
-                \
-                <div slot="footer">\
-                    <button class="delete-tag" @click="deleteTag($event)">Delete</button>\
-                    <button class="modal-default-button" @click="$emit(\'close\')">\
-                    Close\
-                    </button>\
-                </div>\
-            </modal>'
+    template:
+        `
+            <modal>
+                <div slot="header">
+                <h3><% label %></h3>
+                <h4>Appears in: </h4>
+                </div>
+                <ul slot="body">
+                    <li v-for="c in canvasData" style="list-style-type:none;">
+                        <a v-bind:href="url(c)" target="_blank">
+                            <% c.fields.title %>
+                        </a>
+                    </li>
+                </ul>
+                
+                <div slot="footer">
+                    <button class="delete-tag" @click="deleteTag($event)">Delete</button>
+                    <button class="modal-default-button" @click="$emit('close')">
+                    Close
+                    </button>
+                </div>
+            </modal>
+        `
     ,
 
     computed: {
@@ -1173,65 +1252,65 @@ Vue.component('collab-popup', {
         }
     },
 
-    template: `\
-            <modal v-if="isAuth">\
-                <div slot="header">\
-                    <h3>Collaborators</h3>\
-                </div>\
-                \
-                <div slot="body">\
-                    <h3>Admins</h3>\
-                        <ul>\
-                        <li v-for="(a, ai) in adminList" style="list-style-type:none;">\
-                            <span>\
-                                <% a.fields.username\
-                                + ( loggedInUser[0].fields.username === a.fields.username ? " (you)" : activeList.includes(a.fields.username) ? " (active)" : "" ) %>\
-                            </span>\
+    template: ` 
+            <modal> 
+                <div slot="header"> 
+                    <h3>Collaborators</h3> 
+                </div> 
+                 
+                <div slot="body"> 
+                    <h3>Admins</h3> 
+                        <ul> 
+                        <li v-for="(a, ai) in adminList" style="list-style-type:none;"> 
+                            <span> 
+                                <% a.fields.username 
+                                + ( loggedInUser[0].fields.username === a.fields.username ? " (you)" : activeList.includes(a.fields.username) ? " (active)" : "" ) %> 
+                            </span> 
 
-                            <div \
+                            <div  
 
-                                id="admin-buttons"\
-                                v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
-                            >\
-                                <button class="delete-admin" @click="deleteUser($event, a, ai)">Delete</button>\
-                                <button class="demote-admin" @click="demoteAdmin($event, a, ai)">Demote</button>\
-                            </div>\
-                        </li>\
-                    </ul>\
-                    \
-                    <h3>Users</h3>\
-                    <ul>\
-                        <li v-for="(u, ui) in userList" style="list-style-type:none;">\
-                            <span>\
-                                <% u.fields.username  \
-                                + ( loggedInUser[0].fields.username === u.fields.username ? " (you)" : activeList.includes(u.fields.username) ? " (active)" : "" ) %>\
+                                id="admin-buttons" 
+                                v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
+                            > 
+                                <button class="delete-admin" @click="deleteUser($event, a, ai)">Delete</button> 
+                                <button class="demote-admin" @click="demoteAdmin($event, a, ai)">Demote</button> 
+                            </div> 
+                        </li> 
+                    </ul> 
+                     
+                    <h3>Users</h3> 
+                    <ul> 
+                        <li v-for="(u, ui) in this.users" style="list-style-type:none;"> 
+                            <span> 
+                                <% u.fields.username   
+                                + ( loggedInUser[0].fields.username === u.fields.username ? " (you)" : activeList.includes(u.fields.username) ? " (active)" : "" ) %> 
 
-                            </span>\
-                            <div \
-                                id="user-buttons"\
-                                v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)"\
-                            >\
-                                <button class="delete-user" @click="deleteUser($event, u, ui)">Delete</button>\
-                                <button \
-                                    v-if="adminNameList.indexOf(u.fields.username) === -1"\
-                                    class="promote-user" @click="promoteUser($event, u)"\
-                                >Promote</button>\
-                            </div>\
-                        </li>\
-                    </ul>\
-                    <div v-if="adminNameList.includes(loggedInUser[0].fields.username)">\
-                        <h3>Add User</h3>\
-                        <input v-model="name" placeholder="Enter a username">\
-                        <button @click="addUser($event, name, this.isAdmin)">Add User</button>\
-                    </div>\
-                </div>\
-                \
-                <div slot="footer">\
-                    <button class="modal-default-button" @click="$emit(\'close\')">\
-                    Close\
-                    </button>\
-                </div>\
-            </modal>\
+                            </span> 
+                            <div  
+                                id="user-buttons" 
+                                v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
+                            > 
+                                <button class="delete-user" @click="deleteUser($event, u, ui)">Delete</button> 
+                                <button  
+                                    v-if="adminNameList.indexOf(u.fields.username) === -1" 
+                                    class="promote-user" @click="promoteUser($event, u)" 
+                                >Promote</button> 
+                            </div> 
+                        </li> 
+                    </ul> 
+                    <div v-if="adminNameList.includes(loggedInUser[0].fields.username)"> 
+                        <h3>Add User</h3> 
+                        <input v-model="name" placeholder="Enter a username"> 
+                        <button @click="addUser($event, name, this.isAdmin)">Add User</button> 
+                    </div> 
+                </div> 
+                 
+                <div slot="footer"> 
+                    <button class="modal-default-button" @click="$emit( 'close' )"> 
+                    Close 
+                    </button> 
+                </div> 
+            </modal> 
         `,
 
     methods: {
@@ -1267,6 +1346,11 @@ Vue.component('collab-popup', {
             }));
         },
     },
+    watch: {
+
+    },
+    created: function(){
+    }
 })
 
 /*************************************************************************************************************
@@ -1317,6 +1401,7 @@ function populateTagList(){
         taggedPrivate = [];
         tagged = [];
     }
+
 }
 
 function populateUsersAdmins(data){
@@ -1382,7 +1467,6 @@ function initialiseSockets(){
                 IDEA SOCKET
     ************************************/
     ideaSocket.onmessage = function(e){
-        // console.log("Received");
         var data = JSON.parse(e.data);
         var f = data["function"];
         
@@ -1405,8 +1489,6 @@ function initialiseSockets(){
                 break;
             }
         }
-
-
     };
 
     /***********************************
@@ -1521,27 +1603,50 @@ function setFalse(){
     }))
     window.clearTimeout(typingTimer)
     typingEntered = false;
-    // console.log(typingEntered)
 }   
 
 
-function sortIdeas(inIdea, i, tempCategory){
-    console.log(i);
+function sortIdeas(inIdea, i, tempCategory, oldText){
+    /*
+        Function called when an idea has been modified, to move the idea and its attached comments to the top of the list,
+        where it would be if the page was refreshed. Also checks if any tag occurrences have been removed by checking if the substring
+        equal to any tag label existed in the previous idea text field and now no longer occurs
+    */
     var prevIdea = inIdea;
-    var currentIdea;
+    var currentIdea = sortedIdeas[tempCategory][i].idea;
+    
+    if (isAuth === true){
+        for (t in tags){
+            // iterate through tags, check for occurrences in old text that no longer exist in new text
+            var tempIdeaText = currentIdea.fields.text;
+
+            if ((oldText.includes(tags[t].fields.label) === true) && (tempIdeaText.includes(tags[t].fields.label) === false)) {
+                console.log("KILLING THE TAG " + tags[t].fields.label);
+                // decrement the tag if it occured in the old idea and no longer occurs in the new idea
+                    tagOccurrences[t]--;
+                    console.log(tagOccurrences[t]);
+                if (tagOccurrences[t] === 0){
+                    // remove the tag if it now does not occur 
+                    var thisTag = tags[t];
+
+                    tagSocket.send(JSON.stringify({
+                        'function': 'removeTag',
+                        'i': t,
+                        "tag_pk": thisTag.pk,
+                    }));
+                }
+            }
+        }
+    }   
+
     var prevComments = sortedIdeas[tempCategory][i].comments;
-    console.log(prevComments[0].fields.idea)
-    console.log(prevIdea.pk)
     var currentComments;
-
-
-    console.log(prevComments)
 
     for (var x = 0; x <= i; x++){
     /*
         Iterate through the list, shifting all elements to the right by one, until the
-        modified idea is reached - this should not be shifted as everything after it
-        will not have their order affected
+        position of the modified idea is reached - this should not be shifted as everything 
+        after it will not have their order affected
     */  
         // need to hold on to the current idea temporarily as its current position in the array is to be used for the element before it
         currentIdea = sortedIdeas[tempCategory][x].idea;
@@ -1554,6 +1659,7 @@ function sortIdeas(inIdea, i, tempCategory){
         
         prevIdea = currentIdea;
         prevComments = currentComments;
+
     }
 }
 

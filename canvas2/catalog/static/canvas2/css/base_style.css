@@ -10,14 +10,25 @@ li {
   list-style-type: none;
 }
 
-#return-button {
+button {
+  border-radius: 15px;
+}
+
+.collab-button{
+  float: right;
+}
+
+
+.anchor-button {
   -webkit-appearance: button;
   -moz-appearance: button;
   appearance: button;
 
   text-decoration: none;
-  color: initial;
   cursor: default;
+  margin: 5px 5px 5px 5px;
+  padding: 3px;
+  border-radius: 10%;
 }
 
 .tag-elem{
@@ -27,7 +38,6 @@ li {
 }
 
 .tag-button{
-  border-radius: 0px;
   color: blue;
 }
 
@@ -37,6 +47,121 @@ li {
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;
 }
+
+div #idea-div {
+  display: flex;
+}
+
+
+
+textarea.idea-input{
+  width: 90%;
+  height: 4em;
+  border-radius: 4px;
+  resize: none;
+
+}
+
+#idea-field {
+}
+
+#idea-buttons {
+  margin-top: 10px;
+}
+
+#comment-button{
+  margin-left: 5%;
+  float: left;
+}
+
+#delete-idea{
+  margin-right: 5%;
+  float: right;
+}
+
+#main-idea-div{
+  margin-bottom: 10%;
+}
+
+.idea-container{
+  margin-top: 10px;
+  margin-bottom: 100px;
+}
+
+#main-idea-buttons{
+  bottom: 0;
+  margin-left: 10px;
+
+  margin-bottom: 10px;
+}
+
+#new-idea-button{
+}
+
+#new-tag-button{
+}
+
+.flex-container {
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: space-evenly;
+  align-content: center;
+}
+
+.flex-item {
+  height: 100%;
+  min-height: 100%;
+  margin-bottom: 10px;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.flex-item h3{
+  font-size: 18px;
+}
+
+
+
+.idea-flex-container1{
+  width: 13%;
+  background: rgb(200, 0, 255);
+}
+
+.idea-flex-container2{
+  width: 13%;
+  background: rgb(200, 0, 255);
+}
+
+.idea-flex-container3{
+  width: 13%;
+  background: rgb(100, 100, 200);
+}
+
+.idea-flex-container4{
+  width: 13%;
+  background: rgb(200, 0, 255);
+}
+
+.idea-flex-container5{
+  width: 13%;
+  background: rgb(50, 200, 100);
+}
+
+.idea-flex-container6{
+  width: 48.5%;
+  background: rgb(125, 125, 250);
+}
+
+.idea-flex-container7{
+  width: 48.5%;
+  background: rgb(50, 200, 150);
+}
+
+.idea-flex-container8{
+  width: 98%;
+  background: rgb(100, 100, 240);
+}
+
 
 
 /* FROM https://vuejs.org/v2/examples/modal.html */

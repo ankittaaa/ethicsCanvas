@@ -3,10 +3,44 @@
 
 {% block title %}
 <title id="canvas-title"></title>
+{% if user.is_authenticated %}
+    <h3>Signed in as {{ user }}</h3>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<h3>Signed in as {{ user }}</h3>
+
+<!--==================================================== 
+                COLLABORATOR COMPONENT 
+=====================================================-->
+{% if user.is_authenticated %}
+<div id = "collab-div">
+    <collabs 
+        id="collabs"
+    >
+        <div>
+            <button class="collab-button" v-if="auth" title="collaborators" @click="showCollab=true">Collaborators</button>
+            <button class="collab-button" v-else title="Sign up to use this feature" disabled>Collaborators</button>
+
+            <collab-popup  
+                id='collab-popup-component'
+                v-show="showCollab" 
+                v-bind:is-auth="auth"
+                v-bind:users="usersList"
+                v-bind:admins="adminsList"
+                v-bind:admin-names="adminNameList"
+                v-bind:logged-in-user="loggedInUser"
+                v-bind:is-admin="isAdmin"
+                v-bind:active="active"
+                @close="showCollab=false"
+                @delete-admin="show=false"
+                @delete-user="show=false"
+            >
+            </collab-popup>
+        </div>
+    </collabs>
+</div>
+
 <!--==================================================== 
                 TAG COMPONENT 
 =====================================================-->
@@ -49,61 +83,29 @@
     </tag>
 </div>
 </br>
-</br>
 
+{% endif %}
 
-<!--==================================================== 
-                COLLABORATOR COMPONENT 
-=====================================================-->
-
-<div id = "collab-div">
-    <collabs 
-        id="collabs"
-    >
-        <div>
-            <button v-if="auth" @click="showCollab=true">Collaborators</button>
-            <button v-else title="Sign up to use this feature" disabled>Collaborators</button>
-            <div v-if="auth">
-
-            <collab-popup  
-                id='collab-popup-component'
-                v-show="showCollab" 
-                v-bind:is-auth="auth"
-                v-bind:users="usersList"
-                v-bind:admins="adminsList"
-                v-bind:admin-names="adminNameList"
-                v-bind:logged-in-user="loggedInUser"
-                v-bind:is-admin="isAdmin"
-                v-bind:active="active"
-                @close="showCollab=false"
-                @delete-admin="show=false"
-                @delete-user="show=false"
-            >
-            </collab-popup>
-            </div>
-        </div>
-    </collabs>
-</div>
-</br>
 
 <!--==================================================== 
                 IDEA COMPONENT 
 =====================================================-->
 
-<div id="idea-div">
+<div id="idea-div" >
     <idea-list id="ideas">
-        <div class="idea-category">
-            <idea
-                v-for="(ideas, index) in ideaList"
-                v-bind:key="index"
-                v-bind:index="index"
-                v-bind:ideas="ideas"
-                v-bind:id="categories[index]"
-                v-bind:is-typing="isTyping[index]"
-                v-bind:user="typingUser[index]"
-                v-bind:is-auth="auth"
-            >
-            </idea>
+        <div class="flex-container">
+                <idea
+                    v-for="(ideas, index) in ideaList"
+                    v-bind:key="index"
+                    v-bind:index="index"
+                    v-bind:ideas="ideas"
+                    v-bind:is-typing="isTyping[index]"
+                    v-bind:categories="categories"
+                    v-bind:user="typingUser[index]"
+                    v-bind:is-auth="auth"
+                    class="flex-item"
+                >
+                </idea>
         </div>
     </idea-list>
 
@@ -149,7 +151,11 @@
 </script>
 </br>
 
-<a id = "return-button" href="{% url 'canvas-list' %}">Return to Dashboard</a>
+{% if user.is_authenticated %}
+    <a class="anchor-button" href="{% url 'canvas-list' %}">Return to Dashboard</a>
+{% else %}
+    <a class="anchor-button" href="{% url 'index' %}">Return to Landing Page</a>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

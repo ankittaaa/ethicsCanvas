@@ -5,16 +5,19 @@
   <div class="buttons">
     <ul>
       <li>
-        <a href="{% url 'new-canvas' %}">Try Online</a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">Try Ethics Canvas Online</a>
       </li>
       <li>
-        <a href="{% url 'login' %}">Log In</a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">Try Business Canvas Online</a>
       </li>
       <li>
-        <a href="{% url 'register' %}">Register</a>
+        <a class="anchor-button" href="{% url 'login' %}">Log In</a>
       </li>
       <li>
-        <a href="/static/canvas2/images/online-ethics-canvas.pdf" download>Download Blank PDF</a>
+        <a class="anchor-button" href="{% url 'register' %}">Register</a>
+      </li>
+      <li>
+        <a class="anchor-button" href="/static/canvas2/images/online-ethics-canvas.pdf" download>Download Blank PDF</a>
       </li>
     </ul>
   </div>

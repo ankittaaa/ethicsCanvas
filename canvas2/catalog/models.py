@@ -17,6 +17,7 @@ class Canvas(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     is_public = models.BooleanField(default=False, db_index=True)
+    is_ethics = models.BooleanField(default=True)
     # flag the canvas for if it's a temporary canvas or not (created by anon. user or registered user respectively)
     # TODO: remove this field
     # NOTE: if the canvas is temporary, then it doesn't get sent to the server,

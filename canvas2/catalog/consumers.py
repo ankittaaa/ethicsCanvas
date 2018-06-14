@@ -92,7 +92,9 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             
 
-            return_idea = views.idea_detail(logged_in_user, idea_pk, input_text)
+            data = views.idea_detail(logged_in_user, idea_pk, input_text)
+            return_idea = data['return_idea']
+            old_text = data['old_text']
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -100,6 +102,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'type': 'modify_idea',
                     'function': function,
                     'idea': return_idea,
+                    'old_text': old_text,
                     'i': i,
                 }
             )
@@ -164,12 +167,14 @@ class IdeaConsumer(AsyncWebsocketConsumer):
     async def modify_idea(self, event):
         function = event['function']
         return_idea = event['idea']
+        old_text = event['old_text']
         i = event['i']
 
 
         await self.send(text_data=json.dumps({
             'function': function,
             'idea': return_idea,
+            'oldText': old_text,
             'i': i
         }))
     
