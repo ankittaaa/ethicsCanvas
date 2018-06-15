@@ -19,7 +19,8 @@
         {% endfor %}
         </ul>
     {% else %}
-        <p>You have no canvasses. Click <a id = 'new-canvas' href="{% url 'new-canvas' %}">here</a> to create one.</p>
+        <p>You have no canvasses. Click<a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">here</a> to create an ethics canvas, 
+        or<a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">here</a> to create a business canvas.</p>
     {% endif %}
 
     {% if public_canvas_list %}

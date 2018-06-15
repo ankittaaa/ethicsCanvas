@@ -469,6 +469,12 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+        if function == 'togglePublic':
+            canvas_pk = text_data_json['canvas_pk']
+
+            views.toggle_public(canvas_pk, logged_in_user)
+            print("done")
+
 
     async def add_user(self, event):
         function = event['function']

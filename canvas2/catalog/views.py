@@ -462,13 +462,13 @@ def comment_resolve(logged_in_user, idea_pk):
     if (not admin_permission(logged_in_user, canvas) or ('blank-' in canvas.title)):
         return HttpResponse('Forbidden', status = 403)
     
-    IdeaComment.objects.all().filter(idea = idea).delete()
+    IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
 
     return idea.category
         
 
 ##################################################################################################################################
-#                                               USER AND LANDING PAGE VIEWS                                                      #
+#                                           COLLABORATOR AND LANDING PAGE VIEWS                                                  #
 ##################################################################################################################################
 
 
@@ -647,6 +647,19 @@ def demote_user(logged_in_user, canvas_pk, user_pk):
         return HttpResponse(reply, status = 500)
 
     canvas.admins.remove(user)
+
+
+def toggle_public(canvas_pk, logged_in_user):
+    canvas = Canvas.objects.get(pk = canvas_pk)
+    print("hi")
+
+    if (not admin_permission(logged_in_user, canvas) or ('blank-' in canvas.title)):
+        return HttpResponse('Forbidden', status = 403)
+
+    print(canvas.is_public)
+    canvas.is_public = not(canvas.is_public)
+    canvas.save()
+    print(canvas.is_public)
 
 
 

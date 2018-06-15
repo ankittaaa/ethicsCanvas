@@ -19,9 +19,13 @@
         id="collabs"
     >
         <div>
-            <button class="collab-button" v-if="auth" title="collaborators" @click="showCollab=true">Collaborators</button>
-            <button class="collab-button" v-else title="Sign up to use this feature" disabled>Collaborators</button>
-
+            <div v-if="auth" >
+                <button class="collab-button" title="collaborators" @click="showCollab=true">Collaborators</button>
+                <button class="collab-button" title="make public" @click="togglePublic()">Toggle Public</button>
+            </div>
+            <div v-else>
+                <button class="collab-button" title="Sign up to use this feature" disabled>Collaborators</button>
+            </div>  
             <collab-popup  
                 id='collab-popup-component'
                 v-show="showCollab" 
@@ -150,6 +154,8 @@
     </transition>
 </script>
 </br>
+
+
 
 {% if user.is_authenticated %}
     <a class="anchor-button" href="{% url 'canvas-list' %}">Return to Dashboard</a>

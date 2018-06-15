@@ -30,6 +30,21 @@ var businessCategories = [
     "uncategorised"
 ];
 
+var months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
+
 var theCategories;
 
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the  
@@ -276,9 +291,14 @@ function resolveCommentSuccessCallback(data){
 
     // empty the comments for the idea
     var length = sortedIdeas[tempCategory][i].comments.length;
+    var tempComment;
 
     for (var c = 0; c < length; c++)
-        sortedIdeas[tempCategory][i].comments.pop();
+    {
+        tempComment = sortedIdeas[tempCategory][i].comments[c];
+        tempComment.fields.resolved = true;
+        sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
+    }
 
     // ideaListComponent.ideaList = sortedIdeas;
     
@@ -999,34 +1019,41 @@ Vue.component('comment', {
         }
     },
     
-    template:'\
-                <modal v-show="show">\
-                \
-                \
-                    <div slot="header">\
-                        <h3>Comments</h3>\
-                        <input value="" placeholder = "Type a comment" @change="newComment($event)">\
-                        <button>Post</button>\
-                    </div>\
-                \
-                \
-                    <div slot="body">\
-                        <ul>\
-                            <li v-for="(comment, c) in commentList" style="list-style-type:none;">\
-                                <% commentString(comment) %>\
-                                <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">X</button>\
-                            </li>\
-                        </ul>\
-                    </div>\
-                \
-                \
-                    <div slot="footer">\
-                        <button class="resolve-comments" @click="resolveComments(idea)">Resolve All</button>\
-                        <button class="modal-default-button" @click="$emit(\'close\')">Close</button>\
-                    </div>\
-                \
-                \
-                </modal>'
+    template:`
+                <modal v-show="show"> 
+                 
+                 
+                    <div slot="header"> 
+                        <h3>Comments</h3> 
+                        <input value="" placeholder = "Type a comment" @change="newComment($event)"> 
+                        <button>Post</button> 
+                    </div> 
+                 
+                 
+                    <div slot="body"> 
+                        <ul> 
+                            <li v-for="(comment, c) in commentList"> 
+                                <div class="comment-elem" v-if="comment.fields.resolved == false">
+                                    <% comment.fields.text %> 
+                                    </br> 
+                                    <% commentAuthorString(comment) %>
+                                    <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
+                                </div>
+                                <div class="comment-elem resolved" v-else>
+                                    <% comment.fields.text %> <strong> <% " (RESOLVED)" %> </strong>
+                                    </br> 
+                                    <% commentAuthorString(comment) %>
+                                    <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
+                                </div>
+                            </li> 
+                        </ul> 
+                    </div> 
+
+                    <div class='comment-footer' slot="footer">
+                        <button class="resolve-comments" @click="resolveComments(idea)">Resolve All Comments</button>
+                        <button class="modal-default-button" @click="$emit('close')">Close</button>
+                    </div>
+                </modal>`
 ,
          
     computed: {
@@ -1049,13 +1076,14 @@ Vue.component('comment', {
     },   
 
     methods: {
-        commentString: function(comment){
-            var string = escapeChars(comment.fields.text)
-            // the following is to convert elements like &apos back to " ' " 
-            var scratch = document.createElement("textarea")
-            scratch.innerHTML = string
+        commentAuthorString: function(comment){
 
-            return scratch.value
+            var str = "\n By " 
+                + this.getCommentAuthor(comment) 
+                + " at " 
+                + this.getHumanReadableTimestamp(comment.fields.timestamp)
+
+            return str
         },
 
         newComment(event){
@@ -1088,7 +1116,39 @@ Vue.component('comment', {
                 'i': this.selfIndex,
             }));
         },
+
+        getCommentAuthor(comment){
+            userPK = comment.fields.user 
+            
+            for (u in users){
+                if (users[u].pk === userPK)
+                    return users[u].fields.username
+            }
+            return "Unknown"
+        },
+
+        getHumanReadableTimestamp(timestamp){
+            var time = timestamp
+            var splitOne = time.split('T')
+            var year = splitOne[0]
+            var time = splitOne[1].split('.')[0]
+
+            var splitYear = year.split('-')
+
+            var day = splitYear[2]
+            var month = months[parseInt(splitYear[1]) - 1]
+            year = splitYear[0]
+
+            return(day + " " + month + " " + year + " at " + time)
+        }
     },
+    created: function(){
+        // console.log(this.comments.length)
+        // for (c in this.comments) {
+
+        //     console.log(this.comments[c].fields)
+        // }
+    }
 })
 
 /*************************************************************************************************************
@@ -1215,6 +1275,13 @@ Vue.component('collabs', {
     },
 
     methods: {
+        togglePublic: function(){
+            console.log("beep")
+            collabSocket.send(JSON.stringify({
+                'function': 'togglePublic',
+                'canvas_pk': canvasPK
+            }))
+        }
     },
 })
 
@@ -1345,6 +1412,7 @@ Vue.component('collab-popup', {
                 'ai': ai
             }));
         },
+
     },
     watch: {
 
