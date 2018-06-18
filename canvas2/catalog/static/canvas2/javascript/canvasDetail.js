@@ -163,8 +163,10 @@ function deleteIdeaSuccessCallback(data){
             var thisTag = tags[t];
 
             tagSocket.send(JSON.stringify({
-                'function': 'deleteTag',
+                'function': 'removeTag',
+                'i': t,
                 "tag_pk": thisTag.pk,
+                "canvas_pk": canvasPK,
             }));
         }
     }
@@ -317,27 +319,43 @@ function resolveCommentFailureCallback(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
-    
+    var isTagged = false;
+
     var newTagged = JSON.parse(data.taggedCanvasses);
-    taggedCanvasses.unshift(new Array(newTagged.length));
-    
-    console.log(taggedCanvasses[0]);
+    console.log(newTagged.length);
 
-    for (i in newTagged){
-        taggedCanvasses[0].splice(i, 1, newTagged[i]);
+
+
+
+    for (var t = 0; t < newTagged.length; t++){
+        if (newTagged[t].pk == canvasPK){
+            isTagged = true;
+            break;
+        }
     }
-    taggedCanvasses.splice(0, 1, taggedCanvasses[0]);
 
-    tags.unshift(newTag[0]);  
-    
-    
-    tagOccurrences.unshift(1);
-    thisCanvas.fields.tags = tags;
-  
-    publicCanvasses = JSON.parse(data.public);
-    privateCanvasses = JSON.parse(data.private);
-    // populateTagList();
 
+    if (isTagged === true){
+
+        taggedCanvasses.unshift(new Array(newTagged.length));
+        
+        console.log(taggedCanvasses[0]);
+
+        for (i in newTagged){
+            taggedCanvasses[0].splice(i, 1, newTagged[i]);
+        }
+        taggedCanvasses.splice(0, 1, taggedCanvasses[0]);
+
+        tags.unshift(newTag[0]);  
+        
+        
+        tagOccurrences.unshift(1);
+        thisCanvas.fields.tags = tags;
+      
+        // publicCanvasses = JSON.parse(data.public);
+        // privateCanvasses = JSON.parse(data.private);
+        // populateTagList();
+    }
 
 }
 
@@ -345,12 +363,42 @@ function newTagFailureCallback(data){
     console.log(data.responseText);
 }
 
+function removeTagSuccessCallback(data){
+    var i = JSON.parse(data.i);
+    var newTag = JSON.parse(data.tag)[0];
+    var newTagged = JSON.parse(data.taggedCanvasses);
+
+    // if tag exists in this canvas
+    if (tagOccurrences[i] != 0){
+        // replace old tag with new tag 
+        // for (t in newTagged){
+        //     taggedCanvasses[i].splice(t, 1, newTagged[i]);
+        // }
+        taggedCanvasses.splice(i, 1, newTagged);
+    }
+    else {
+        // otherwise, delete it and its corresponding occurrences count
+        tags.splice(i, 1);
+        tagOccurrences.splice(i, 1);
+    }
+
+
+}
+
 function deleteTagSuccessCallback(data){
     var i = JSON.parse(data.i);
+    var tag = JSON.parse(data.tag)[0];
     
-    tagOccurrences.splice(i, 1);    
-    tags.splice(i, 1);
-    thisCanvas.fields.tags = tags;
+    for (t in tags){
+        if (tags[t].fields.label === tag.fields.label){
+            tagOccurrences.splice(i, 1);    
+            tags.splice(i, 1);
+            thisCanvas.fields.tags = tags;
+            break;
+        }
+    }
+
+
     // populateTagList();
 }
 
@@ -997,7 +1045,8 @@ Vue.component('idea', {
             if (isAuth === true){
                 tagSocket.send(JSON.stringify({
                     'function': 'addTag',
-                    "label": selection
+                    "label": selection,
+                    "canvas_pk": canvasPK,
                 }));
                 selection = ""
             }
@@ -1260,8 +1309,9 @@ Vue.component('tag-popup', {
         },
         deleteTag: function(event){
             tagSocket.send(JSON.stringify({
-                'function': 'removeTag',
+                'function': 'deleteTag',
                 'i': this.index,
+                'canvas_pk': canvasPK,
                 'tag_pk': tags[this.index].pk,
             }));
         }
@@ -1663,6 +1713,10 @@ function initialiseSockets(){
                 break;
             }
             case "removeTag": {
+                removeTagSuccessCallback(data);
+                break;
+            }
+            case "deleteTag": {
                 deleteTagSuccessCallback(data);
                 break;
             }
@@ -1712,7 +1766,7 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
                 console.log("KILLING THE TAG " + tags[t].fields.label);
                 // decrement the tag if it occured in the old idea and no longer occurs in the new idea
                     tagOccurrences[t]--;
-                    console.log(tagOccurrences[t]);
+                
                 if (tagOccurrences[t] === 0){
                     // remove the tag if it now does not occur 
                     var thisTag = tags[t];

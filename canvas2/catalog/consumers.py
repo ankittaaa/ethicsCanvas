@@ -552,8 +552,6 @@ class TagConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['pk'] + "_tag"
         self.room_group_name = 'project_%s' %self.room_name
-        print(self.room_name)
-        print(self.room_group_name)
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -570,13 +568,14 @@ class TagConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         logged_in_user = self.scope['user']
-        canvas_pk = self.scope['url_route']['kwargs']['pk']
+        project_pk = self.scope['url_route']['kwargs']['pk']
         
         text_data_json = json.loads(text_data)
         function = text_data_json['function']
+        canvas_pk = text_data_json['canvas_pk']
+
         
         if function == 'addTag':
-
             label = text_data_json['label']
             data = views.add_tag(canvas_pk, logged_in_user, label)
             
@@ -588,26 +587,34 @@ class TagConsumer(AsyncWebsocketConsumer):
                     'data': data,
                 }
             )
-
-            # unplug the channels 
-            # for i in range (len(new_room_group_names)):
-            #     await self.channel_layer.group_discard(
-            #         new_room_group_names[i],
-            #         self.channel_name
-            #     )
-
-
+            
         if function == 'removeTag':
             i = text_data_json['i']
             tag_pk = text_data_json['tag_pk']
-
-            views.remove_tag(tag_pk, canvas_pk)
+            data = views.remove_tag(tag_pk, logged_in_user, canvas_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'remove_tag',
                     'function': function,
+                    'data': data,
+                    'i': i,
+                }
+            )
+
+        if function == 'deleteTag':
+            i = text_data_json['i']
+            tag_pk = text_data_json['tag_pk']
+
+            tag = views.delete_tag(tag_pk, canvas_pk)
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'delete_tag',
+                    'function': function,
+                    'tag': tag,
                     'i': i
                 }
             )
@@ -626,13 +633,29 @@ class TagConsumer(AsyncWebsocketConsumer):
             'taggedCanvasses': data['taggedCanvasses'],
         }))
 
-
     async def remove_tag(self, event):
         function = event['function']
         i = event['i']
+        data = event['data']
         
         await self.send(text_data=json.dumps({
             'function': function,
+            'tag': data['tag'],
+            'public': data['public'],
+            'private': data['private'],
+            'allCanvasses': data['allCanvasses'],
+            'taggedCanvasses': data['taggedCanvasses'],
+            'i': i
+        }))
+
+    async def delete_tag(self, event):
+        function = event['function']
+        i = event['i']
+        tag = event['tag']
+
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'tag': tag,
             'i': i
         }))
 

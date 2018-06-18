@@ -36,14 +36,17 @@ import django.utils.timezone
 def new_canvas(request, canvas_type):
     creator = request.user
     canvas_is_ethics = True
+    split_url = request.META.get('HTTP_REFERER').split('/')
+    project_pk = split_url[len(split_url) - 2]
+    project = Project.objects.get(pk=project_pk)
 
     if canvas_type == 0:
-            canvas_is_ethics = False
+        canvas_is_ethics = False
 
     if creator.is_authenticated:
 
         # canvas_is_ethics bool = true for ethics, false for business 
-        canvas = Canvas(is_ethics=canvas_is_ethics)
+        canvas = Canvas(is_ethics=canvas_is_ethics, project=project)
         canvas.save()
         canvas.title = f'New Canvas {canvas.pk} (Ethics)' if canvas_is_ethics else f'New Canvas {canvas.pk} (Business)'   
 
@@ -789,19 +792,74 @@ def add_tag(canvas_pk, logged_in_user, label):
         return HttpResponse("Tag already exists!", status = 302)
  
 
-def remove_tag(tag_pk, canvas_pk):
+def remove_tag(tag_pk, logged_in_user, canvas_pk):
     '''
-    REMOVAL OF TAG
+    REMOVAL OF TAG - triggered by occurrences of that tag in a canvas reaching zero
     '''
     canvas = Canvas.objects.get(pk=canvas_pk)
-    CanvasTag.objects.get(pk=tag_pk).delete()
+    tag = CanvasTag.objects.get(pk=tag_pk)
+    print(canvas)
 
-    # canvas.tags.remove(tag)
+    canvas.tags.remove(tag)
+    tag.canvas_set.remove(canvas)
+
+    print(tag.canvas_set.all())
+    canvas.save()
 
     # delete any tags that aren't attached to a canvas: they are never useful
-    # CanvasTag.objects.filter(canvas_set=None).delete()
+    CanvasTag.objects.filter(canvas_set=None).delete()
 
-    return 
+
+    data = get_canvasses_accessible_by_user(logged_in_user)
+
+    # check every canvas for presence of new tag's label in those canvasses on creation of new tag
+    # for c in serializers.deserialize("json", data['all_canvasses']):
+        # search_canvas_for_tag(tag, c.object.pk, "delete")
+
+    tagged_canvasses = Canvas.objects.filter(tags__label__contains=tag.label)
+    print(tagged_canvasses)
+
+    json_tagged_canvasses = serialize(
+        'json', 
+        tagged_canvasses,
+        cls=CanvasEncoder
+    )
+
+    json_tag = serialize(
+        'json', 
+        [tag], 
+        cls = CanvasTagEncoder
+    )
+
+    return_data = {
+        'taggedCanvasses': json_tagged_canvasses,
+        'public': data['public'],
+        'private': data['my_private'],
+        'allCanvasses': data['all_canvasses'],
+        'tag': json_tag,
+    }
+
+    return return_data
+
+
+def delete_tag(tag_pk, canvas_pk):
+    '''
+    DELETION OF TAG
+    '''
+    canvas = Canvas.objects.get(pk=canvas_pk)
+    tag = CanvasTag.objects.get(pk=tag_pk)
+    CanvasTag.objects.get(pk=tag_pk).delete()
+
+    # delete any tags that aren't attached to a canvas: they are never useful
+    CanvasTag.objects.filter(canvas_set=None).delete()
+
+    json_tag = serialize(
+        'json', 
+        [tag], 
+        cls = CanvasTagEncoder
+    )
+
+    return json_tag
 
 
 ##################################################################################################################################
