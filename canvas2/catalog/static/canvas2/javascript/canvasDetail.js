@@ -4,6 +4,7 @@
 ****************
 */
 var canvasPK;
+var projectPK;
 var ethicsCategories = [
     "individuals-affected",
     "behaviour",
@@ -316,13 +317,26 @@ function resolveCommentFailureCallback(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
+    
+    var newTagged = JSON.parse(data.taggedCanvasses);
+    taggedCanvasses.unshift(new Array(newTagged.length));
+    
+    console.log(taggedCanvasses[0]);
+
+    for (i in newTagged){
+        taggedCanvasses[0].splice(i, 1, newTagged[i]);
+    }
+    taggedCanvasses.splice(0, 1, taggedCanvasses[0]);
+
     tags.unshift(newTag[0]);  
+    
+    
     tagOccurrences.unshift(1);
     thisCanvas.fields.tags = tags;
   
     publicCanvasses = JSON.parse(data.public);
     privateCanvasses = JSON.parse(data.private);
-    populateTagList();
+    // populateTagList();
 
 
 }
@@ -336,9 +350,8 @@ function deleteTagSuccessCallback(data){
     
     tagOccurrences.splice(i, 1);    
     tags.splice(i, 1);
-    console.log(tags);
     thisCanvas.fields.tags = tags;
-    populateTagList();
+    // populateTagList();
 }
 
 function deleteTagFailureCallback(data){
@@ -474,6 +487,7 @@ function initSuccessCallback(data){
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
     isEthics = JSON.parse(data.isEthics);
+    projectPK = JSON.parse(data.projectPK);
     
     if (loggedInUser.length === 0)
         isAuth = false;
@@ -692,7 +706,7 @@ Vue.component('idea', {
                                     @keypress="setTyping($event, idea, i)" 
                                     @paste="setTyping($event, idea, i)" 
                                     placeholder="Enter an idea"/> 
-                                    <p v-show="isTypingBools[i] == true">
+                                    <p id="user-typing" v-show="isTypingBools[i] == true">
                                         <%typingUser[i]%> is typing...
                                     </p> 
                             </div> 
@@ -736,7 +750,7 @@ Vue.component('idea', {
                     return "idea-flex-container" + (3)
                 }
                 case 4: {
-                    return "idea-flex-container" + (4 )
+                    return "idea-flex-container" + (4)
                 }
                 case 5: {
                     return "idea-flex-container" + (4)
@@ -794,7 +808,7 @@ Vue.component('idea', {
             }
         },
         /* 
-            using computed property to escape the html characters such as &apos as vue throws an 
+            using a computed property to escape the html characters such as &apos as vue throws an 
             "invalid assignment left-hand side" error when I call the method directly with v-model, 
             the error not appearing until @change is triggered   
         */ 
@@ -1182,6 +1196,9 @@ Vue.component('tag', {
                 "operation": "delete_tag"
             }
         },
+        canvasList: function(){
+            // console.log(this.canvasList)
+        }
     },
 
     methods: {
@@ -1198,7 +1215,7 @@ Vue.component('tag', {
 *************************************************************************************************************/
  
 Vue.component('tag-popup', {
-    props:['label', 'canvas', 'index'],
+    props:['label', 'canvasses', 'index'],
     delimiters: ['<%', '%>'],
     data: function(){
         return {
@@ -1214,7 +1231,7 @@ Vue.component('tag-popup', {
                 <h4>Appears in: </h4>
                 </div>
                 <ul slot="body">
-                    <li v-for="c in canvasData" style="list-style-type:none;">
+                    <li v-for="c in this.canvasData" style="list-style-type:none;">
                         <a v-bind:href="url(c)" target="_blank">
                             <% c.fields.title %>
                         </a>
@@ -1233,7 +1250,7 @@ Vue.component('tag-popup', {
 
     computed: {
         canvasData: function(){
-            return this.canvas
+            return this.canvasses
         }
     },
 
@@ -1248,6 +1265,9 @@ Vue.component('tag-popup', {
                 'tag_pk': tags[this.index].pk,
             }));
         }
+    },
+    created: function(){
+        // console.log(this.canvasses)
     }
 
 })
@@ -1522,7 +1542,7 @@ function initialiseSockets(){
 
     tagSocket = new WebSocket(
         'ws://' + window.location.host + 
-        '/ws/canvas/' + canvasPK + '/tag/'
+        '/ws/project/' + projectPK + '/tag/'
     );
 
 /********************************************************************

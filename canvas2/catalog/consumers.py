@@ -1,4 +1,5 @@
 from asgiref.sync import async_to_sync
+from django.core import serializers
 from channels.db import database_sync_to_async
 from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 from . import views
@@ -28,7 +29,6 @@ class TrialIdeaConsumer(WebsocketConsumer):
         self.send(text_data=json.dumps({
             'idea': return_idea
         }))
-        print("sent!")
 
 
 class IdeaConsumer(AsyncWebsocketConsumer):
@@ -134,8 +134,6 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             category = text_data_json['category']
             username = text_data_json['username']
-
-            print(function)
             
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -155,13 +153,11 @@ class IdeaConsumer(AsyncWebsocketConsumer):
     async def new_idea(self, event):
         idea = event['idea']
         function = event['function']
-        print("neat")
 
         await self.send(text_data=json.dumps({
             'function': function,
             'idea': idea
         }))
-        print("sent!")
 
 
     async def modify_idea(self, event):
@@ -183,7 +179,6 @@ class IdeaConsumer(AsyncWebsocketConsumer):
         i = event['i']
         function = event['function']
         category = event['category']
-        print("DOOM")
 
         await self.send(text_data=json.dumps({
             'function': function,
@@ -473,7 +468,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
             canvas_pk = text_data_json['canvas_pk']
 
             views.toggle_public(canvas_pk, logged_in_user)
-            print("done")
 
 
     async def add_user(self, event):
@@ -549,14 +543,17 @@ class CollabConsumer(AsyncWebsocketConsumer):
             'users': users,
         }))
 
+
+
 class TagConsumer(AsyncWebsocketConsumer):
     '''
     Consumer for websockets which are for modification of the Tag model
     '''
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['pk'] + "_tag"
-        self.room_group_name = 'canvas_%s' %self.room_name
-        
+        self.room_group_name = 'project_%s' %self.room_name
+        print(self.room_name)
+        print(self.room_group_name)
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -582,15 +579,22 @@ class TagConsumer(AsyncWebsocketConsumer):
 
             label = text_data_json['label']
             data = views.add_tag(canvas_pk, logged_in_user, label)
-
+            
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'add_tag',
                     'function': function,
-                    'data': data
+                    'data': data,
                 }
             )
+
+            # unplug the channels 
+            # for i in range (len(new_room_group_names)):
+            #     await self.channel_layer.group_discard(
+            #         new_room_group_names[i],
+            #         self.channel_name
+            #     )
 
 
         if function == 'removeTag':
@@ -613,13 +617,13 @@ class TagConsumer(AsyncWebsocketConsumer):
         function = event['function']
         data = event['data']
 
-
         await self.send(text_data=json.dumps({
             'function': function,
             'tag': data['tag'],
             'public': data['public'],
             'private': data['private'],
-            'allCanvasses': data['allCanvasses']
+            'allCanvasses': data['allCanvasses'],
+            'taggedCanvasses': data['taggedCanvasses'],
         }))
 
 

@@ -1,0 +1,40 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+
+{% block title %}
+    <h1>Welcome {{ user.username }}.</h1>
+{% endblock %}
+
+
+{% block content %}
+    {% if private_projects %}
+        <h2>Your projects are listed below.</h2>
+        <ul>
+        {% for project in private_projects %}
+            <li>
+                <a class="anchor-button" id = "select-project" href="{{ project.get_absolute_url }}">{{ project.title }}</a>
+                <a class="anchor-button" id = "delete-project" href="{{ project.get_delete_url }}">X</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>You have no projects. Click<a class="anchor-button" href="{% url 'new-project' %}">here</a> to create one.
+    {% endif %}
+
+    {% if public_projects %}
+        <h2>Public Canvasses listed below.</h2>
+        <ul> 
+        {% for project in public_project_list %}
+            <li>
+                <a class="anchor-button" id = "select-project" href = "{{ project.get_absolute_url }}">{{ project.title }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+
+        <a class="anchor-button" href="{% url 'new-project'%}">New Project</a>
+
+    <!-- On logout, redirect to the landing page -->
+    <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/">Log Out</a>
+{% endblock %}

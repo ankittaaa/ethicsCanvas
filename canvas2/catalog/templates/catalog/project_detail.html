@@ -8,10 +8,10 @@
 
 
 {% block content %}
-    {% if private_canvas_list %}
+    {% if canvases %}
         <h2>Your canvasses are listed below.</h2>
         <ul>
-        {% for canvas in private_canvas_list %}
+        {% for canvas in canvases %}
             <li>
                 <a class="anchor-button" id = "select-canvas" href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
                 <a class="anchor-button" id = "delete-canvas" href="{{ canvas.get_delete_url }}">X</a>
@@ -23,20 +23,12 @@
         or<a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">here</a> to create a business canvas.</p>
     {% endif %}
 
-    {% if public_canvas_list %}
-        <h2>Public Canvasses listed below.</h2>
-        <ul> 
-        {% for canvas in public_canvas_list %}
-            <li>
-                <a class="anchor-button" id = "select-canvas" href = "{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% endif %}
-
+    
         <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">New Ethics Canvas</a>
         <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">New Business Canvas</a>
 
+    <!-- Return to the project list page -->
+    <a class="anchor-button" href="{% url 'project-list' %}">Return to Dashboard</a>
     <!-- On logout, redirect to the landing page -->
     <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/">Log Out</a>
 {% endblock %}

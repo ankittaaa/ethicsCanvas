@@ -8,31 +8,61 @@ from django.dispatch import receiver
 # register = template.Library()
 
 
+class Project(models.Model):
+    '''
+    Project - a collection of (ideally) related canvasses which share users, admins and tags
+    '''
+    title = models.CharField(max_length=25, db_index=True)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+    is_public = models.BooleanField(default=False, db_index=True)
+
+    admins = models.ManyToManyField(User, related_name='admins')
+    users = models.ManyToManyField(User, related_name='users')
+    # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
+    owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
+
+    def get_absolute_url(self):
+        # NOTE: @andrew no need to str(int) here
+        return reverse('project-detail', args=[self.pk])
+
+
+@receiver(pre_save, sender=Project)
+def ensure_project_has_atleast_one_admin(sender, instance, **kwargs):
+    # TODO: check post_save hooks if you want behaviour to happen AFTER instance is saved
+    if instance.pk is not None:
+        ''' The above line is to ensure that it doesn't break when creating a brand new project. It throws an error when the project is new; the project has no pk before it is saved, so 
+            an error is thrown when the m2m field is referenced below 
+        '''
+        if instance.admins.count == 0:
+            raise Exception('Project should have at least one admin.')
 
 
 class Canvas(models.Model):
     """Canvas
     A collection of ideas collected into categories"""
-    title = models.CharField(max_length=255, db_index=True)
+    title = models.CharField(max_length=25, db_index=True)
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
-    is_public = models.BooleanField(default=False, db_index=True)
+    # is_public = models.BooleanField(default=False, db_index=True)
     is_ethics = models.BooleanField(default=True)
     # flag the canvas for if it's a temporary canvas or not (created by anon. user or registered user respectively)
     # TODO: remove this field
     # NOTE: if the canvas is temporary, then it doesn't get sent to the server,
     # and is only rendered on the client side
-    is_temporary = models.BooleanField(default = False)
+    # is_temporary = models.BooleanField(default = False)
     # admins are implicitly assumed to be users
     # should there be a check to see whether some admins are in users
     # and vice versa?
     # NOTE: Ideally, yes, but not urgent or important
-    admins = models.ManyToManyField(User, related_name='admins')
-    users = models.ManyToManyField(User, related_name='users')
+    # admins = models.ManyToManyField(User, related_name='admins')
+    # users = models.ManyToManyField(User, related_name='users')
     # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
-    owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
+    # owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
     # @andrew moved these tags from Idea to here
     tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
+
+    project = models.ForeignKey(Project, related_name='project', on_delete=models.CASCADE, default=0)
 
     def __str__(self):
         return self.title
@@ -56,15 +86,7 @@ class Canvas(models.Model):
         ordering = ('-date_modified',)
 
 
-@receiver(pre_save, sender=Canvas)
-def ensure_canvas_has_atleast_one_admin(sender, instance, **kwargs):
-    # TODO: check post_save hooks if you want behaviour to happen AFTER instance is saved
-    if instance.pk is not None:
-        ''' The above line is to ensure that it doesn't break when creating a brand new canvas. It throws an error when the canvas is new; the canvas has no pk before it is saved, so 
-            an error is thrown when the m2m field is referenced below 
-        '''
-        if instance.admins.count == 0:
-            raise Exception('Canvas should have at least one admin.')
+
 
 
 # TODO: callback function to handle intersection in Canvas admins and users
