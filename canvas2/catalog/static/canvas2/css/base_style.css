@@ -150,47 +150,55 @@ button.delete-comment{
 }
 
 
-
-.idea-flex-container1{
+.idea-flex-container-0{
   width: 13%;
   background: rgb(200, 0, 255);
 }
 
-.idea-flex-container2{
+.idea-flex-container-1{
   width: 13%;
   background: rgb(200, 0, 255);
 }
 
-.idea-flex-container3{
+.idea-flex-container-2{
+  width: 13%;
+  background: rgb(200, 0, 255);
+}
+
+.idea-flex-container-3{
   width: 13%;
   background: rgb(100, 100, 200);
 }
 
-.idea-flex-container4{
+.idea-flex-container-4{
   width: 13%;
   background: rgb(200, 0, 255);
 }
 
-.idea-flex-container5{
+.idea-flex-container-5{
   width: 13%;
   background: rgb(50, 200, 100);
 }
 
-.idea-flex-container6{
-  width: 48.5%;
+.idea-flex-container-6{
+  width: 13%;
   background: rgb(125, 125, 250);
 }
 
-.idea-flex-container7{
+.idea-flex-container-7{
   width: 48.5%;
   background: rgb(50, 200, 150);
 }
 
-.idea-flex-container8{
-  width: 98%;
+.idea-flex-container-8{
+  width: 48.5%;
   background: rgb(100, 100, 240);
 }
 
+.idea-flex-container-9{
+  width: 98%;
+  background: rgb(100, 120, 240);
+}
 
 
 /* FROM https://vuejs.org/v2/examples/modal.html */

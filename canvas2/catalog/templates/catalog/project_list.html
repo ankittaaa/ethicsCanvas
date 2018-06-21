@@ -13,13 +13,13 @@
         <ul>
         {% for project in private_projects %}
             <li>
-                <a class="anchor-button" id = "select-project" href="{{ project.get_absolute_url }}">{{ project.title }}</a>
-                <a class="anchor-button" id = "delete-project" href="{{ project.get_delete_url }}">X</a>
+                <a class="anchor-button" class="select-project" id='select-project-{{project.pk}}' href="{{ project.get_absolute_url }}">{{ project.title }}</a>
+                <a class="anchor-button" class="delete-project" id='delete-project-{{project.pk}}' href="{{ project.get_delete_url }}">X</a>
             </li>
         {% endfor %}
         </ul>
     {% else %}
-        <p>You have no projects. Click<a class="anchor-button" href="{% url 'new-project' %}">here</a> to create one.
+        <p>You have no projects. Click<a class="anchor-button" id='new-project' href="{% url 'new-project' %}">here</a> to create one.
     {% endif %}
 
     {% if public_projects %}

@@ -96,7 +96,7 @@ def delete_canvas(request, pk):
     user = request.user
     canvas = Canvas.objects.get(pk = pk)
 
-    if (not admin_permission(user, canvas) or ('blank-' in canvas.title)):
+    if (not admin_permission(user, canvas.project) or ('blank-' in canvas.title)):
         return HttpResponse('Forbidden', status = 403)
         
     canvas.delete()
@@ -125,7 +125,7 @@ class ProjectListView(LoginRequiredMixin, generic.ListView):
 
     def get_context_data(self, **kwargs):
         '''
-        This function's purpose is to separate the public from the private canvasses
+        This function's purpose is to separate the public from the private canvases
         '''
         logged_in_user = self.request.user
         context = super().get_context_data(**kwargs)
@@ -134,9 +134,9 @@ class ProjectListView(LoginRequiredMixin, generic.ListView):
         user_filter_kwargs = {'users': logged_in_user}
         admin_filter_kwargs = {'admins': logged_in_user}
 
-        # public canvasses are those where public is true
+        # public canvases are those where public is true
         public = Project.objects.filter(**filter_kwargs)
-        # private canvasses where the user is either the owner or a collaborator on the canvas
+        # private canvases where the user is either the owner or a collaborator on the canvas
         private = Project.objects.exclude(**filter_kwargs)
 
         my_private = (
@@ -168,7 +168,7 @@ class ProjectListView(LoginRequiredMixin, generic.ListView):
         #     all_projects,
         #     cls=CanvasEncoder
         # )
-        print(my_private)
+        # print(my_private)
 
         # self.request.session['public_projects'] = json_public
         # self.request.session['private_projects'] = json_private
@@ -188,7 +188,7 @@ class ProjectDetailView(generic.DetailView):
 
         canvas_list = Canvas.objects.filter(project=project)
 
-        # json_canvasses = serialize(
+        # json_canvases = serialize(
         #     'json', 
         #     canvas_list,
         #     cls=CanvasEncoder
@@ -232,37 +232,62 @@ class CanvasDetailView(generic.DetailView):
             json_self = '""'
 
             if (logged_in_user.is_authenticated):
-                update_canvas_session_variables(self, logged_in_user)
+                update_canvas_session_variables(self, logged_in_user, project)
 
                 users = project.users.all()
                 admins = project.admins.all()
                 current = [logged_in_user]
-                
-
-                public_canvasses = request.session['public_canvasses']
-                private_canvasses = request.session['private_canvasses']
-                all_canvasses = request.session['all_canvasses']
+                all_canvases = request.session['all_canvases']
             
             else:
                 users = project.users.none()
                 admins = project.users.none()
                 current = project.users.none()
-                
-
                 comments = "''"
-                public_canvasses  ="''"
-                private_canvasses = "''"
-                all_canvasses = "''"
+                all_canvases = "''"
 
 
             ideas = Idea.objects.filter(canvas = canvas)
             tags = canvas.tags.all()
+            all_tags = CanvasTag.objects.filter(canvas_set__in=Canvas.objects.filter(project=project)).distinct()
+            all_tagged_canvasses_json = []
+
+            for i in range(len(all_tags)):
+                all_tagged_canvasses_json.append(serialize(
+                        'json',
+                        Canvas.objects.filter(tags=all_tags[i]),
+                        cls=CanvasEncoder
+                    ))
+
             comments = IdeaComment.objects.filter(idea__in=ideas)
             
             if tags:
                 json_tags = serialize(
                     'json', 
                     tags, 
+                    cls = CanvasTagEncoder
+                )
+
+            else: 
+                tag = CanvasTag(label=None)
+                json_tags = serialize(
+                    'json', 
+                    [tag], 
+                    cls = CanvasTagEncoder
+                )
+
+            if all_tags:
+                json_all_tags = serialize(
+                    'json', 
+                    all_tags, 
+                    cls = CanvasTagEncoder
+                )
+
+            else: 
+                tag = CanvasTag(label=None)
+                json_all_tags = serialize(
+                    'json', 
+                    [tag], 
                     cls = CanvasTagEncoder
                 )
 
@@ -291,6 +316,12 @@ class CanvasDetailView(generic.DetailView):
                 cls=UserModelEncoder
             )
 
+            json_canvas=serialize(
+                'json',
+                [canvas],
+                cls=CanvasEncoder
+            )
+
             # only serialise ideas if they exist
             if ideas:
                 json_ideas = serialize(
@@ -304,12 +335,15 @@ class CanvasDetailView(generic.DetailView):
                 'ideas': json_ideas,
                 'comments': json_comments,
                 'tags': json_tags,
+                'allTags': json_all_tags,
                 'admins': json_admins,
                 'users': json_users,
                 'loggedInUser': json_self,
-                'public': public_canvasses,
-                'private': private_canvasses,
-                'allCanvasses': all_canvasses,
+                'allTaggedCanvasses': all_tagged_canvasses_json,
+                # 'public': public_canvases,
+                # 'private': private_canvases,
+                'allCanvasses': all_canvases,
+                'thisCanvas': json_canvas,
                 'isEthics': canvas.is_ethics,
                 'projectPK': project.pk,
 
@@ -341,7 +375,6 @@ def new_idea(logged_in_user, canvas_pk, category):
     '''
     Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
     '''
-
     try:
         canvas = Canvas.objects.get(pk = canvas_pk)
     except Canvas.DoesNotExist:
@@ -743,53 +776,55 @@ def add_tag(canvas_pk, logged_in_user, label):
     if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
         return HttpResponse('Forbidden', status = 403)
 
-    # check presence of tag - avoid duplicating tags
-    if CanvasTag.objects.filter(label=label).exists():
+    # check existence of tag within project - avoid duplicating tags
+    if CanvasTag.objects.filter(label=label, canvas_set__project=project).exists():
         tag = CanvasTag.objects.get(label=label)
+
+        tag_canvas_set = tag.canvas_set.all()
+
+        if canvas in tag_canvas_set:
+            print("Oh shit what are you doing it exists already haha")
+        else:
+            tag.canvas_set.add(canvas)
+            tag.save()
 
     else:
         # only create tag if it doesn't exist anywhere visible to the user
         tag = CanvasTag(label=label)
-
-    # check tags in current canvas
-    labels = canvas.tags.filter(label=label)
-
-    if not labels:
         tag.save()
-        canvas.tags.add(tag)
+        tag.canvas_set.add(canvas)
+        tag.save()
 
 
-        data = get_canvasses_accessible_by_user(logged_in_user)
 
-        # check every canvas for presence of new tag's label in those canvasses on creation of new tag
-        for c in serializers.deserialize("json", data['all_canvasses']):
-            search_canvas_for_tag(tag, c.object.pk, "add")
 
-        tagged_canvasses = Canvas.objects.filter(tags__label__contains=tag.label)
+    data = get_canvases_accessible_by_user(logged_in_user, project)
 
-        json_tagged_canvasses = serialize(
-            'json', 
-            tagged_canvasses,
-            cls=CanvasEncoder
-        )
+    # check every canvas for presence of new tag's label in those canvases on creation of new tag
+    for c in serializers.deserialize("json", data['all_canvases']):
+        search_canvas_for_tag(tag, c.object.pk, "add")
 
-        json_tag = serialize(
-            'json', 
-            [tag], 
-            cls = CanvasTagEncoder
-        )
+    tagged_canvases = Canvas.objects.filter(tags__label__contains=tag.label, project=project)
 
-        return_data = {
-            'taggedCanvasses': json_tagged_canvasses,
-            'public': data['public'],
-            'private': data['my_private'],
-            'allCanvasses': data['all_canvasses'],
-            'tag': json_tag,
-        }
+    json_tagged_canvases = serialize(
+        'json', 
+        tagged_canvases,
+        cls=CanvasEncoder
+    )
 
-        return return_data
-    else :
-        return HttpResponse("Tag already exists!", status = 302)
+    json_tag = serialize(
+        'json', 
+        [tag], 
+        cls = CanvasTagEncoder
+    )
+
+    return_data = {
+        'taggedCanvasses': json_tagged_canvases,
+        'allCanvasses': data['all_canvases'],
+        'tag': json_tag,
+    }
+
+    return return_data
  
 
 def remove_tag(tag_pk, logged_in_user, canvas_pk):
@@ -810,18 +845,18 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
     CanvasTag.objects.filter(canvas_set=None).delete()
 
 
-    data = get_canvasses_accessible_by_user(logged_in_user)
+    data = get_canvases_accessible_by_user(logged_in_user, canvas.project)
 
-    # check every canvas for presence of new tag's label in those canvasses on creation of new tag
-    # for c in serializers.deserialize("json", data['all_canvasses']):
+    # check every canvas for presence of new tag's label in those canvases on creation of new tag
+    # for c in serializers.deserialize("json", data['all_canvases']):
         # search_canvas_for_tag(tag, c.object.pk, "delete")
 
-    tagged_canvasses = Canvas.objects.filter(tags__label__contains=tag.label)
-    print(tagged_canvasses)
+    tagged_canvases = Canvas.objects.filter(tags__label__contains=tag.label)
+    print(tagged_canvases)
 
-    json_tagged_canvasses = serialize(
+    json_tagged_canvases = serialize(
         'json', 
-        tagged_canvasses,
+        tagged_canvases,
         cls=CanvasEncoder
     )
 
@@ -832,10 +867,10 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
     )
 
     return_data = {
-        'taggedCanvasses': json_tagged_canvasses,
+        'taggedCanvasses': json_tagged_canvases,
         'public': data['public'],
         'private': data['my_private'],
-        'allCanvasses': data['all_canvasses'],
+        'allCanvasses': data['all_canvases'],
         'tag': json_tag,
     }
 
@@ -868,65 +903,68 @@ def delete_tag(tag_pk, canvas_pk):
 
 
 
-def get_canvasses_accessible_by_user(logged_in_user):
+def get_canvases_accessible_by_user(logged_in_user, project):
     '''
     function to get every canvas accessible to the currently logged-in user
     '''
-    filter_kwargs = {'is_public': True}
-    user_filter_kwargs = {'users': logged_in_user}
-    admin_filter_kwargs = {'admins': logged_in_user}
+    # filter_kwargs = {'is_public': True}
+    # user_filter_kwargs = {'users': logged_in_user}
+    # admin_filter_kwargs = {'admins': logged_in_user}
 
-    # canvasses = Canvas.objects.all()
+    # # canvases = Canvas.objects.all()
 
-    # public canvasses are those where public is true
-    public_projects = Project.objects.filter(**filter_kwargs)
-    # private canvasses where the user is either the owner or a collaborator on the canvas
-    private_projects = Project.objects.exclude(**filter_kwargs)
+    # # public canvases are those where public is true
+    # public_projects = Project.objects.filter(**filter_kwargs)
+    # # private canvases where the user is either the owner or a collaborator on the canvas
+    # private_projects = Project.objects.exclude(**filter_kwargs)
 
-    my_private_projects = (
-        private_projects.filter(**admin_filter_kwargs) | private_projects.filter(**user_filter_kwargs)
-    ).distinct()
+    # my_private_projects = (
+    #     private_projects.filter(**admin_filter_kwargs) | private_projects.filter(**user_filter_kwargs)
+    # ).distinct()
 
-    all_projects = (
-        Project.objects.filter(**filter_kwargs) | private_projects.filter(**admin_filter_kwargs) | private_projects.filter(**user_filter_kwargs)
-    ).distinct()
+    # all_projects = (
+    #     Project.objects.filter(**filter_kwargs) | private_projects.filter(**admin_filter_kwargs) | private_projects.filter(**user_filter_kwargs)
+    # ).distinct()
 
-    public = Canvas.objects.filter(project__in=public_projects)
-    my_private = Canvas.objects.filter(project__in=my_private_projects)
-    all_canvasses = Canvas.objects.filter(project__in=all_projects)
+    # public = Canvas.objects.filter(project__in=public_projects)
+    # my_private = Canvas.objects.filter(project__in=my_private_projects)
+    # all_canvases = Canvas.objects.filter(project__in=all_projects)
 
-    json_public = serialize(
+
+
+    # json_public = serialize(
+    #     'json', 
+    #     public,
+    #     cls=CanvasEncoder
+    # )
+
+    # json_private = serialize(
+    #     'json', 
+    #     my_private,
+    #     cls=CanvasEncoder
+    # )
+    all_canvases = Canvas.objects.filter(project=project)
+    
+    json_all_canvases = serialize(
         'json', 
-        public,
-        cls=CanvasEncoder
-    )
-
-    json_private = serialize(
-        'json', 
-        my_private,
-        cls=CanvasEncoder
-    )
-
-    json_all_canvasses = serialize(
-        'json', 
-        all_canvasses,
+        all_canvases,
         cls=CanvasEncoder
     )   
 
     data = {
-        'public': json_public,
-        'my_private': json_private,
-        'all_canvasses': json_all_canvasses
+        # 'public': json_public,
+        # 'my_private': json_private,
+        'all_canvases': json_all_canvases
     }
 
     return data
 
-def update_canvas_session_variables(self, logged_in_user):
-    data = get_canvasses_accessible_by_user(logged_in_user)
+def update_canvas_session_variables(self, logged_in_user, project):
+    data = get_canvases_accessible_by_user(logged_in_user, project)
 
-    self.request.session['public_canvasses'] = data['public']
-    self.request.session['private_canvasses'] = data['my_private']
-    self.request.session['all_canvasses'] = data['all_canvasses']
+    # self.request.session['public_canvases'] = data['public']
+    # self.request.session['private_canvases'] = data['my_private']
+    self.request.session['all_canvases'] = data['all_canvases']
 
     # NOTE END: BAND-AID FOR UPDATING SESSION DATA ON LOAD
 

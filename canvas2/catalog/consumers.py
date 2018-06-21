@@ -577,6 +577,7 @@ class TagConsumer(AsyncWebsocketConsumer):
         
         if function == 'addTag':
             label = text_data_json['label']
+            print(label)
             data = views.add_tag(canvas_pk, logged_in_user, label)
             
             await self.channel_layer.group_send(
@@ -587,7 +588,7 @@ class TagConsumer(AsyncWebsocketConsumer):
                     'data': data,
                 }
             )
-            
+
         if function == 'removeTag':
             i = text_data_json['i']
             tag_pk = text_data_json['tag_pk']
@@ -627,8 +628,8 @@ class TagConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'function': function,
             'tag': data['tag'],
-            'public': data['public'],
-            'private': data['private'],
+            # 'public': data['public'],
+            # 'private': data['private'],
             'allCanvasses': data['allCanvasses'],
             'taggedCanvasses': data['taggedCanvasses'],
         }))

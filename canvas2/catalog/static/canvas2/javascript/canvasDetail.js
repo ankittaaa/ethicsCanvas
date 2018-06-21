@@ -57,9 +57,11 @@ var typingUser = new Array(10);
 
 
 var thisCanvas;
+var allTags = [];
 var tags = [];
 var tagOccurrences = new Array();
 var taggedCanvasses;
+var allTaggedCanvasses = [];
 var ideas;
 var comments;
 
@@ -70,9 +72,9 @@ var activeUsers = [];
 var loggedInUser
 var isAdmin;
 var isAuth;
-
-var publicCanvasses;
-var privateCanvasses;
+var allCanvasses
+// var publicCanvasses;
+// var privateCanvasses;
 var selection;
 var currentURL;
 
@@ -172,7 +174,10 @@ function deleteIdeaSuccessCallback(data){
     }
 
     // remove the victim {idea, [comments]} from the sorted ideas list
-    sortedIdeas[tempCategory].splice(i, 1);
+    sortedIdeas[tempCategory].splice(i, 1, {
+        idea: null,
+        comments: []
+    });
     typingBools[tempCategory].splice(i, 1);
     typingUser[tempCategory].splice(i, 1);
 }
@@ -186,30 +191,32 @@ function newIdeaSuccessCallback(idea){
     Function for updating the idea list for the modified category
     upon addition of new or deletion of current idea
 */
+
     var tempIdea = JSON.parse(idea);
     var tempCategory = tempIdea[0].fields.category;
+    var newIdea = {
+        idea: tempIdea[0],
+        comments: []
+    };
 
     // since ideas are sorted from newest to oldest, push the new idea to the front of sortedIdeas for the category
     // and an empty array for the comments, as a brand-new idea has no comments yet    
     if (sortedIdeas[tempCategory][0].idea === null)
     {
-        sortedIdeas[tempCategory].splice(0, 1, {
-            idea: tempIdea[0],
-            comments: []
-        });
+        console.log(newIdea);
+        console.log(sortedIdeas[tempCategory][0]);
+        sortedIdeas[tempCategory].splice(0, 1, newIdea);
+        console.log(sortedIdeas[tempCategory][0]);
     }
     else
     {
-        sortedIdeas[tempCategory].unshift({
-            idea: tempIdea[0],
-            comments: []
-        });
+        sortedIdeas[tempCategory].unshift(newIdea);
     }   
 
     if (isAuth === true){
         typingBools[tempCategory].unshift(false);
         typingUser[tempCategory].unshift('');
-    }
+    }    
 }
 
 function newIdeaFailureCallback(data){
@@ -223,6 +230,22 @@ function editIdeaSuccessCallback (data){
     var i = JSON.parse(data.i);
     var oldText = escapeHTMLChars(data.oldText);
     sortIdeas(inIdea, i, tempCategory, oldText);
+
+    for (tag in allTags){
+        // if the new idea string contains a tag declared in a different canvas
+        var tempTag = allTags[tag];
+        console.log(tempTag.fields.text);
+        console.log(inIdea.fields.text);
+        
+        if (inIdea.fields.text.includes(tempTag.fields.label)){
+            // add that tag to the current canvas's list
+            tagSocket.send(JSON.stringify({
+                    'function': 'addTag',
+                    "label": tempTag.fields.label,
+                    "canvas_pk": canvasPK,
+            }));
+        }
+    }
 }
 
 function editIdeaFailureCallback(data){
@@ -319,42 +342,59 @@ function resolveCommentFailureCallback(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
+    var tagExists = false;
     var isTagged = false;
-
     var newTagged = JSON.parse(data.taggedCanvasses);
-    console.log(newTagged.length);
+    
 
-
-
-
-    for (var t = 0; t < newTagged.length; t++){
+    for (t in newTagged){
         if (newTagged[t].pk == canvasPK){
             isTagged = true;
-            break;
         }
     }
 
+    for (t in tags){
+        if (newTag[0].pk === tags[t].pk){
+            // do NOT update if the tag is already present!
+            tagExists = true;
+        }
+    }
 
-    if (isTagged === true){
+    // add the tag iff it occurs in this canvas and isn't currently included!
+    if (tagExists === false && isTagged === true){
 
         taggedCanvasses.unshift(new Array(newTagged.length));
-        
-        console.log(taggedCanvasses[0]);
 
-        for (i in newTagged){
-            taggedCanvasses[0].splice(i, 1, newTagged[i]);
-        }
-        taggedCanvasses.splice(0, 1, taggedCanvasses[0]);
 
-        tags.unshift(newTag[0]);  
+
+        // empty string to signify a "dummy" tag for canvasses which do not contain any actual tags
+        if (tags[0].fields.label === "\0")
+            // delete the dummy and replace it with the new tag
+            tags.splice(0, 1, newTag[0]);
+        else
+            tags.unshift(newTag[0]);   
         
         
-        tagOccurrences.unshift(1);
+        tagOccurrences.unshift(0);
         thisCanvas.fields.tags = tags;
-      
-        // publicCanvasses = JSON.parse(data.public);
-        // privateCanvasses = JSON.parse(data.private);
-        // populateTagList();
+    }
+
+    for (i in sortedIdeas){
+        for (j in sortedIdeas[i]){
+            // it's possible that more than one idea in the same canvas contain occurrences of the new tag label
+            if (sortedIdeas[i][j].idea === null)
+                continue;
+            // console.log(sortedIdeas[i][j].idea.fields.text);
+            else if (sortedIdeas[i][j].idea.fields.text.includes(newTag[0].fields.label)){
+                console.log("nice");
+                tagOccurrences[0]++;
+            }
+        }
+    }
+    // entry for tagList to show each canvas tagged in - this step is always executed
+    // as it's either an update to current tag-holding canvas, or the canvas in which the tag is new
+    for (i in newTagged){
+        taggedCanvasses[0].splice(i, 1, newTagged[i]);
     }
 
 }
@@ -531,12 +571,26 @@ function initSuccessCallback(data){
     comments = JSON.parse(data.comments);
     ideas = JSON.parse(data.ideas);
     tags = JSON.parse(data.tags);
+    allTags = JSON.parse(data.allTags);
+    // taggedCanvasses = JSON.parse(data.taggedCanvasses);
+
+    for (t in data.allTaggedCanvasses){
+        allTaggedCanvasses.push(JSON.parse(data.allTaggedCanvasses[t]))
+    }
+
+    console.log(data.allTags);
+    console.log(data.tags);
+
+    // console.log(tags);
+
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
     isEthics = JSON.parse(data.isEthics);
     projectPK = JSON.parse(data.projectPK);
-    
+    thisCanvas = JSON.parse(data.thisCanvas)[0];
+    allCanvasses = JSON.parse(data.allCanvasses);
+
     if (loggedInUser.length === 0)
         isAuth = false;
     
@@ -548,9 +602,8 @@ function initSuccessCallback(data){
             tagOccurrences.push(0);
         }
 
-        publicCanvasses = JSON.parse(data.public);
-        privateCanvasses = JSON.parse(data.private);
-        var allCanvasses = JSON.parse(data.allCanvasses);
+        // publicCanvasses = JSON.parse(data.public);
+        // privateCanvasses = JSON.parse(data.private);
 
 
         for (a in admins)
@@ -561,16 +614,11 @@ function initSuccessCallback(data){
         else
             isAdmin = false;
 
-        for (c in allCanvasses){
-            if (allCanvasses[c].pk == canvasPK){
-                thisCanvas = allCanvasses[c];
-                break;
-            }
-        }
         populateTagList();
         initialiseSockets();
     }
 
+    // initialise each category as empty
 
 
     if (ideas.length > 0){
@@ -590,7 +638,7 @@ function initSuccessCallback(data){
                 }
             }
 
-            sortedIdeas[ideas[idea].fields.category].push({
+            sortedIdeas[ideas[idea].fields.category].splice(idea, 1, {
                 idea: ideas[idea],
                 comments: ideaComments
             });
@@ -598,8 +646,9 @@ function initSuccessCallback(data){
             typingUser[ideas[idea].fields.category].push('');
         }
     }
-    else {
-        for (s in sortedIdeas){
+
+    for (s in sortedIdeas){
+        if (sortedIdeas[s].length === 0){
             sortedIdeas[s].push({
                 idea: null,
                 comments: []
@@ -608,6 +657,8 @@ function initSuccessCallback(data){
             typingUser[s].push('');
         }
     }
+
+
 
 
     if (isAuth === true)
@@ -653,12 +704,9 @@ function initSuccessCallback(data){
                 tagList: tags,
                 canvasList: taggedCanvasses,
                 show: false,
-                showTag: true,
                 auth: isAuth,
             },
         })
-
-
 
         collabComponent = new Vue({
             el: '#collab-div',
@@ -674,6 +722,7 @@ function initSuccessCallback(data){
             },
         })                  
     }
+    console.log(tags);
 }
 
 function initFailureCallback(data){
@@ -759,7 +808,7 @@ Vue.component('idea', {
                                     </p> 
                             </div> 
                             
-                            <div id='idea-buttons'> 
+                            <div class='idea-buttons'> 
                                 <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)" title="delete">X</button> 
                                 <button v-if="isAuth" id="comment-button" v-on:click="displayMe(i)"> 
                                     <span>Comments (<% commentList[i].length %>)</span> 
@@ -772,7 +821,7 @@ Vue.component('idea', {
                             </div> 
                         </div> 
                     </div> 
-                    <div id="main-idea-buttons"> 
+                    <div class="main-idea-buttons"> 
                         <button id="new-idea-button" @click="newIdea($event)">+</button> 
                         <button v-if="escapedIdeas[0]" id="new-tag-button" v-on:click="newTag()">Tag Selected Term</button> 
                     </div>  
@@ -783,32 +832,7 @@ Vue.component('idea', {
 
         flexClass: function(){
             var i = this.index
-
-            switch(i){
-                case 0: {
-                    return "idea-flex-container" + (1)
-                }
-                case 1: {
-                    return "idea-flex-container" + (2)
-                }
-                case 2: {
-                    return "idea-flex-container" + (2)
-                }
-                case 3: {
-                    return "idea-flex-container" + (3)
-                }
-                case 4: {
-                    return "idea-flex-container" + (4)
-                }
-                case 5: {
-                    return "idea-flex-container" + (4)
-                }
-                default: {
-                    return "idea-flex-container" + (i-1)
-                }
-
-            }
-            // return i-2;
+            return "idea-flex-container-" + i
         },
 
         category: function(){
@@ -934,7 +958,6 @@ Vue.component('idea', {
             return scratch.value
         },
         newIdea(event){
-            // console.log(isAuth)
 
             if (isAuth === true)
             {
@@ -1221,18 +1244,18 @@ Vue.component('comment', {
 Vue.component('tag', {
     props: ['index', 'label'],
     delimiters:['<%', '%>'],
+    template: '#tag',
 
     data: function(){
         return {
             show: false,
             showTag: true,
             canvasList: taggedCanvasses,
-            tagList: '',
+            tagList: [],
             auth: isAuth,
         }
     },
 
-    template: '#tag',
 
     // watcher for when the showTag data is changed by the emission of deleteTag by the 
     // tag-popup child element
@@ -1264,7 +1287,7 @@ Vue.component('tag', {
 *************************************************************************************************************/
  
 Vue.component('tag-popup', {
-    props:['label', 'canvasses', 'index'],
+    props:['label', 'canvases', 'index'],
     delimiters: ['<%', '%>'],
     data: function(){
         return {
@@ -1273,7 +1296,7 @@ Vue.component('tag-popup', {
     },
 
     template:
-        `
+        `   
             <modal>
                 <div slot="header">
                 <h3><% label %></h3>
@@ -1299,7 +1322,7 @@ Vue.component('tag-popup', {
 
     computed: {
         canvasData: function(){
-            return this.canvasses
+            return this.canvases
         }
     },
 
@@ -1317,7 +1340,7 @@ Vue.component('tag-popup', {
         }
     },
     created: function(){
-        // console.log(this.canvasses)
+        // console.log(this.canvases)
     }
 
 })
@@ -1506,37 +1529,37 @@ Vue.component('modal', {
 **************************************************************************************************************/
 function populateTagList(){
 /*
-    This function's purpose is to populate a 2D array of canvasses. Each 'i' element represents a tag,
-    while the 'j' element represents the list of canvasses attached to that tag. 
+    This function's purpose is to populate a 2D array of canvases. Each 'i' element represents a tag,
+    while the 'j' element represents the list of canvases attached to that tag. 
 */
-    var taggedPublic = [];
-    var taggedPrivate = [];
+    // var taggedPublic = [];
+    // var taggedPrivate = [];
     var tagged = [];
 
     for (var i = 0; i < tags.length; i++){
 
-        // get a list of all public canvasses containing the current tag
-        for (var j = 0; j < publicCanvasses.length; j++){
-            if (publicCanvasses[j].fields.tags.includes(tags[i].pk)){
-                taggedPublic.push(publicCanvasses[j]);
+        // get a list of all public canvases containing the current tag
+        for (var j = 0; j < allCanvasses.length; j++){
+            if (allCanvasses[j].fields.tags.includes(tags[i].pk)){
+                tagged.push(allCanvasses[j]);
             }
         }
 
-        // get a list of all private canvasses containing the current tag
-        for (var j = 0; j < privateCanvasses.length; j++){
-            if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
-                taggedPrivate.push(privateCanvasses[j]);
-            }
-        }  
+        // // get a list of all private canvases containing the current tag
+        // for (var j = 0; j < privateCanvasses.length; j++){
+        //     if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
+        //         taggedPrivate.push(privateCanvasses[j]);
+        //     }
+        // }  
 
-        tagged.push(taggedPublic);
-        tagged.push(taggedPrivate);
-        tagged = tagged[0].concat(tagged[1])
+        // tagged.push(taggedPublic);
+        // tagged.push(taggedPrivate);
+        // tagged = tagged[0].concat(tagged[1])
 
         taggedCanvasses.splice(i, 1, tagged);
 
-        taggedPublic = [];
-        taggedPrivate = [];
+        // taggedPublic = [];
+        // taggedPrivate = [];
         tagged = [];
     }
 

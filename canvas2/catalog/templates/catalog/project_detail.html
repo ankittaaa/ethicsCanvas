@@ -13,13 +13,13 @@
         <ul>
         {% for canvas in canvases %}
             <li>
-                <a class="anchor-button" id = "select-canvas" href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
-                <a class="anchor-button" id = "delete-canvas" href="{{ canvas.get_delete_url }}">X</a>
+                <a class="anchor-button" class="select-canvas" id='select-canvas-{{canvas.pk}}' href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
+                <a class="anchor-button" class="delete-canvas" id='delete-canvas-{{canvas.pk}}' href="{{ canvas.get_delete_url }}">X</a>
             </li>
         {% endfor %}
         </ul>
     {% else %}
-        <p>You have no canvasses. Click<a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">here</a> to create an ethics canvas, 
+        <p>You have no canvasses. Click<a class="anchor-button" id='new-ethics-canvas' href="{% url 'new-canvas' canvas_type=1 %}">here</a> to create an ethics canvas, 
         or<a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">here</a> to create a business canvas.</p>
     {% endif %}
 

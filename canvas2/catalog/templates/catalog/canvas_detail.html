@@ -10,10 +10,10 @@
 
 {% block content %}
 
+{% if user.is_authenticated %}
 <!--==================================================== 
                 COLLABORATOR COMPONENT 
 =====================================================-->
-{% if user.is_authenticated %}
 <div id = "collab-div">
     <collabs 
         id="collabs"
@@ -62,7 +62,7 @@
         
         <li 
             class="tag-elem" 
-            v-show="showTag" 
+            v-show="this.label != null"
         >
             <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
                 <% label %>
@@ -71,7 +71,7 @@
 
             <tag-popup  
                 id="tag-popup"
-                v-bind:canvasses="canvasList[index]"
+                v-bind:canvases="canvasList[index]"
                 v-bind:label="this.label"
                 v-bind:index="index"
                 v-show="show" 
