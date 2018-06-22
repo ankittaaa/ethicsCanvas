@@ -45,21 +45,8 @@ class Canvas(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     # is_public = models.BooleanField(default=False, db_index=True)
-    is_ethics = models.BooleanField(default=True)
-    # flag the canvas for if it's a temporary canvas or not (created by anon. user or registered user respectively)
-    # TODO: remove this field
-    # NOTE: if the canvas is temporary, then it doesn't get sent to the server,
-    # and is only rendered on the client side
-    # is_temporary = models.BooleanField(default = False)
-    # admins are implicitly assumed to be users
-    # should there be a check to see whether some admins are in users
-    # and vice versa?
-    # NOTE: Ideally, yes, but not urgent or important
-    # admins = models.ManyToManyField(User, related_name='admins')
-    # users = models.ManyToManyField(User, related_name='users')
-    # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
-    # owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
-    # @andrew moved these tags from Idea to here
+    # 0 for Ethics, 1 for Business, 2 for Privacy (TBD)
+    canvas_type = models.PositiveSmallIntegerField(default=0)
     tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
 
     project = models.ForeignKey(Project, related_name='project', on_delete=models.CASCADE, default=0)

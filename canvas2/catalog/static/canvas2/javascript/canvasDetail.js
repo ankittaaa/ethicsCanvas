@@ -31,6 +31,19 @@ var businessCategories = [
     "uncategorised"
 ];
 
+var privacyCategories = [
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "uncategorised"
+];
+
 var months = [
     "January",
     "February",
@@ -481,7 +494,7 @@ function initSuccessCallback(data){
 
 
     loggedInUser = JSON.parse(data.loggedInUser);
-    isEthics = JSON.parse(data.isEthics);
+    canvasType = JSON.parse(data.canvasType);
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas)[0];
     allCanvasses = JSON.parse(data.allCanvasses);
@@ -565,11 +578,12 @@ function initSuccessCallback(data){
             newIdeaSuccessCallback(idea);
         };
 }
-    if (isEthics)
+    if (canvasType === 0)
         theCategories = ethicsCategories;
-    else
+    else if (canvasType === 1)
         theCategories = businessCategories;
-
+    else if (canvasType === 2)
+        theCategories = privacyCategories;
 
 
     ideaListComponent = new Vue({

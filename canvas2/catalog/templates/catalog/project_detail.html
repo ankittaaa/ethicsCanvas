@@ -48,13 +48,18 @@
         {% endfor %}
         </ul>
     {% else %}
-        <p>You have no canvasses. Click<a class="anchor-button" id='new-ethics-canvas' href="{% url 'new-canvas' canvas_type=1 %}">here</a> to create an ethics canvas, 
-        or<a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">here</a> to create a business canvas.</p>
+        <p>You have no canvasses. Click
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">here</a> to create an ethics canvas, or
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">here</a> to create a business canvas or
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=2 %}">here</a> to create a privacy canvas.
+        </p>
+
     {% endif %}
 
     
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>New Ethics Canvas</button></a>
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>New Business Canvas</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>New Ethics Canvas</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>New Business Canvas</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=2 %}"><button>New Privacy Canvas</button></a>
 
     <!-- Return to the project list page -->
     <a class="anchor-button" href="{% url 'project-list' %}"><button>Return to Dashboard</button></a>

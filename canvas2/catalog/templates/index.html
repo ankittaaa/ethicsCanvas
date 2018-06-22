@@ -5,10 +5,13 @@
   <div class="buttons">
     <ul>
       <li>
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>Try Ethics Canvas Online</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>Try Ethics Canvas Online</button></a>
       </li>
       <li>
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>Try Business Canvas Online</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>Try Business Canvas Online</button></a>
+      </li>
+      <li>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=2 %}"><button>Try Privacy Canvas Online</button></a>
       </li>
       <li>
         <a class="anchor-button" href="{% url 'login' %}"><button>Log In</button></a>
@@ -21,6 +24,10 @@
       </li>
       <li>
         <a class="anchor-button" href="/static/canvas2/images/online-business-model-canvas.pdf" download><button>Download Blank Business Canvas PDF</button></a>
+      </li>
+      <li>
+        <!-- TEMPORARILY DOWNLOADS THE ETHICS CANVAS - TODO: GET A PRIVACY CANVAS PDF -->
+        <a class="anchor-button" href="/static/canvas2/images/online-ethics-model-canvas.pdf" download><button>Download Blank Privacy Canvas PDF</button></a>
       </li>
     </ul>
   </div>

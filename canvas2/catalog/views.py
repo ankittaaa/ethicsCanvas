@@ -35,45 +35,50 @@ import django.utils.timezone
 
 def new_canvas(request, canvas_type):
     creator = request.user
-    canvas_is_ethics = True
+
     split_url = request.META.get('HTTP_REFERER').split('/')
     project_pk = split_url[len(split_url) - 2]
     project = Project.objects.get(pk=project_pk)
 
-    if canvas_type == 0:
-        canvas_is_ethics = False
 
     if creator.is_authenticated:
 
-        # canvas_is_ethics bool = true for ethics, false for business 
-        canvas = Canvas(is_ethics=canvas_is_ethics, project=project)
+        # canvas_type integer: 0 for Ethics, 1 for Business, 2 for Privacy
+        canvas = Canvas(canvas_type=canvas_type, project=project)
         canvas.save()
-        canvas.title = f'New Canvas {canvas.pk} (Ethics)' if canvas_is_ethics else f'New Canvas {canvas.pk} (Business)'   
-
-        # canvas.admins.add(creator)
-        # canvas.users.add(creator)
+        canvas.title =  f'New Canvas {canvas.pk} (Ethics)' if canvas_type == 0 else f'New Canvas {canvas.pk} (Business)' if canvas_type == 1 else f'New Canvas {canvas.pk} (Privacy)' 
         canvas.save()
 
         return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
     else :
         # check that a blank canvas exists - this will be used to render a blank canvas for the anonymous user to interact with
-        if canvas_is_ethics:
+        if canvas_type == 0:
             if Canvas.objects.filter(title='blank-ethics').exists():
                 return redirect(Canvas.objects.get(title='blank-ethics').get_absolute_url()) 
             else :
             # if there is no blank canvas, create one. set public to false so that it remains blank
-                canvas = Canvas(title='blank-ethics', is_ethics=True)
+                canvas = Canvas(title='blank-ethics', canvas_type=canvas_type)
                 canvas.save()
                 return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
-        else: 
+        
+        elif canvas_type == 1: 
             if Canvas.objects.filter(title='blank-business').exists():
                 return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
             else :
             # if there is no blank canvas, create one. set public to false so that it remains blank
-                canvas = Canvas(title='blank-business', is_ethics=False)
+                canvas = Canvas(title='blank-business', canvas_type=canvas_type)
                 canvas.save()
                 return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
         
+        elif canvas_type == 2:
+            if Canvas.objects.filter(title='blank-privacy').exists():
+                return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
+            else :
+            # if there is no blank canvas, create one. set public to false so that it remains blank
+                canvas = Canvas(title='blank-privacy', canvas_type=canvas_type)
+                canvas.save()
+                return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
+
 def new_project(request):
     creator = request.user
 
@@ -356,7 +361,7 @@ class CanvasDetailView(generic.DetailView):
                 # 'private': private_canvases,
                 'allCanvasses': all_canvases,
                 'thisCanvas': json_canvas,
-                'isEthics': canvas.is_ethics,
+                'canvasType': canvas.canvas_type,
                 'projectPK': project.pk,
 
             }
