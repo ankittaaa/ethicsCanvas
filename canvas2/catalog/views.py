@@ -180,30 +180,61 @@ class ProjectDetailView(generic.DetailView):
     model = Project
 
     def get(self, request, pk):
+
         logged_in_user = self.request.user 
         project = Project.objects.get(pk=pk)
 
         if (not user_permission(logged_in_user, project)):
             return HttpResponse('Unauthorized', status = 401)
 
-        canvas_list = Canvas.objects.filter(project=project)
+        if request.is_ajax():
+            json_users = '""'
+            json_admins = '""'
 
-        # json_canvases = serialize(
-        #     'json', 
-        #     canvas_list,
-        #     cls=CanvasEncoder
-        # )
+            users = project.users.all()
+            admins = project.admins.all()
+            current = [logged_in_user]
 
-        print(canvas_list)
+            update_canvas_session_variables(self, logged_in_user, project)
 
-        return render(
-            request,
-            'catalog/project_detail.html',
-            {
-                'user': logged_in_user,
-                'canvases': canvas_list
+            json_admins = serialize(
+                'json',
+                admins,
+                cls = UserModelEncoder
+            )
+
+            json_users = serialize(
+                'json',
+                users,
+                cls = UserModelEncoder
+            )
+
+            json_self=serialize(
+                'json',
+                current,
+                cls=UserModelEncoder
+            )
+
+            data = {
+                'admins': json_admins,
+                'users': json_users,
+                'loggedInUser': json_self,
+
             }
-        )
+            return JsonResponse(data, safe = False)
+
+
+        else:
+            canvas_list = Canvas.objects.filter(project=project)
+            
+            return render(
+                request,
+                'catalog/project_detail.html',
+                {
+                    'user': logged_in_user,
+                    'canvases': canvas_list
+                }
+            )
 
 class CanvasDetailView(generic.DetailView):
     model = Canvas
@@ -224,8 +255,6 @@ class CanvasDetailView(generic.DetailView):
             return HttpResponse('Unauthorized', status = 401)
 
         if request.is_ajax():
-            json_users = '""'
-            json_admins = '""'
             json_comments = '""'
             json_ideas = '""'
             json_tags = '""'
@@ -234,14 +263,10 @@ class CanvasDetailView(generic.DetailView):
             if (logged_in_user.is_authenticated):
                 update_canvas_session_variables(self, logged_in_user, project)
 
-                users = project.users.all()
-                admins = project.admins.all()
                 current = [logged_in_user]
                 all_canvases = request.session['all_canvases']
             
             else:
-                users = project.users.none()
-                admins = project.users.none()
                 current = project.users.none()
                 comments = "''"
                 all_canvases = "''"
@@ -298,17 +323,6 @@ class CanvasDetailView(generic.DetailView):
                     cls = IdeaCommentEncoder
                 )
 
-            json_admins = serialize(
-                'json',
-                admins,
-                cls = UserModelEncoder
-            )
-
-            json_users = serialize(
-                'json',
-                users,
-                cls = UserModelEncoder
-            )
 
             json_self=serialize(
                 'json',
@@ -336,8 +350,6 @@ class CanvasDetailView(generic.DetailView):
                 'comments': json_comments,
                 'tags': json_tags,
                 'allTags': json_all_tags,
-                'admins': json_admins,
-                'users': json_users,
                 'loggedInUser': json_self,
                 'allTaggedCanvasses': all_tagged_canvasses_json,
                 # 'public': public_canvases,
@@ -607,15 +619,15 @@ def register(request):
         {'form': form}
     )
         
-def add_user(logged_in_user, canvas_pk, name):
+def add_user(logged_in_user, project_pk, name):
     '''
-    Function for addition of user to canvas
+    Function for addition of user to project
     '''
 
-    canvas = Canvas.objects.get(pk=canvas_pk)
-    project = canvas.project
+    project = Project.objects.get(pk=project_pk)
+    
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project)):
         return HttpResponse('Unauthorized', status = 401)
 
     else:
@@ -645,14 +657,14 @@ def add_user(logged_in_user, canvas_pk, name):
         
         return json_user
 
-def delete_user(logged_in_user, canvas_pk, user_pk):
+def delete_user(logged_in_user, project_pk, user_pk):
     '''
-    Function for deleting a user from the canvas.
+    Function for deleting a user from the project.
     '''
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    project = canvas.project
+    project = Project.objects.get(pk=project_pk)
+    
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project)):
         return HttpResponse('Forbidden', status = 403)
 
 
@@ -667,7 +679,7 @@ def delete_user(logged_in_user, canvas_pk, user_pk):
     # if there is one admin who is the logged-in user, do not allow them to 
     # delete themselves. It's implied that if there's one admin, the logged_in 
     # user is that admin, as earlier it is checked that the logged_in user
-    # is in the canvas admin set
+    # is in the project admin set
     if (len(admins) == 1 and user in admins):
         reply = 'Error: You are the only admin, you may not delete yourself!'
         return HttpResponse(reply, status = 500)
@@ -684,15 +696,15 @@ def delete_user(logged_in_user, canvas_pk, user_pk):
 
 
 
-def promote_user(logged_in_user, canvas_pk, user_pk):
+def promote_user(logged_in_user, project_pk, user_pk):
     '''
     Function for promoting a user to admin status
     '''
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    project = canvas.project
+    project = Project.objects.get(pk=project_pk)
+    
 
     # check is admin
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project)):
         return HttpResponse('Forbidden', status = 403)
 
     user = User.objects.get(pk = user_pk)
@@ -721,15 +733,15 @@ def promote_user(logged_in_user, canvas_pk, user_pk):
     return json_user
 
 
-def demote_user(logged_in_user, canvas_pk, user_pk):
+def demote_user(logged_in_user, project_pk, user_pk):
     '''
     Function to delete a user from the admin field - this is for demotion only.
     For complete deletion, call delete user
     '''
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    project = canvas.project
+    project = Project.objects.get(pk=project_pk)
     
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    
+    if (not admin_permission(logged_in_user, project)):
         return HttpResponse('Forbidden', status = 403)
 
     user = User.objects.get(pk = user_pk)
@@ -748,11 +760,11 @@ def demote_user(logged_in_user, canvas_pk, user_pk):
     project.admins.remove(user)
 
 
-def toggle_public(canvas_pk, logged_in_user):
-    canvas = Canvas.objects.get(pk = canvas_pk)
-    project = canvas.project
+def toggle_public(project_pk, logged_in_user):
+    project = Project.objects.get(pk=project_pk)
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+
+    if (not admin_permission(logged_in_user, project)):
         return HttpResponse('Forbidden', status = 403)
 
     project.is_public = not(project.is_public)
@@ -833,12 +845,12 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
     '''
     canvas = Canvas.objects.get(pk=canvas_pk)
     tag = CanvasTag.objects.get(pk=tag_pk)
-    print(canvas)
+    # print(canvas)
 
     canvas.tags.remove(tag)
     tag.canvas_set.remove(canvas)
 
-    print(tag.canvas_set.all())
+    # print(tag.canvas_set.all())
     canvas.save()
 
     # delete any tags that aren't attached to a canvas: they are never useful
@@ -852,7 +864,7 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
         # search_canvas_for_tag(tag, c.object.pk, "delete")
 
     tagged_canvases = Canvas.objects.filter(tags__label__contains=tag.label)
-    print(tagged_canvases)
+    # print(tagged_canvases)
 
     json_tagged_canvases = serialize(
         'json', 
@@ -868,8 +880,6 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
 
     return_data = {
         'taggedCanvasses': json_tagged_canvases,
-        'public': data['public'],
-        'private': data['my_private'],
         'allCanvasses': data['all_canvases'],
         'tag': json_tag,
     }

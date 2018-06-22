@@ -4,6 +4,35 @@
 
 {% block title %}
     <h1>Welcome {{ user.username }}.</h1>
+<!--==================================================== 
+                COLLABORATOR COMPONENT 
+=====================================================-->
+<div id = "collab-div">
+    <collabs 
+        id="collabs"
+    >
+        <div>
+            <button class="collab-button" title="collaborators" @click="showCollab=true">Collaborators</button>
+            <button v-if="isAdmin" class="collab-button" title="make public" @click="togglePublic()">Toggle Public</button>
+
+            <collab-popup  
+                id='collab-popup-component'
+                v-show="showCollab" 
+                v-bind:users="usersList"
+                v-bind:admins="adminsList"
+                v-bind:admin-names="adminNameList"
+                v-bind:logged-in-user="loggedInUser"
+                v-bind:is-admin="isAdmin"
+                v-bind:active="active"
+                @close="showCollab=false"
+                @delete-admin="show=false"
+                @delete-user="show=false"
+            >
+            </collab-popup>
+        </div>
+    </collabs>
+</div>
+
 {% endblock %}
 
 
@@ -13,8 +42,8 @@
         <ul>
         {% for canvas in canvases %}
             <li>
-                <a class="anchor-button" class="select-canvas" id='select-canvas-{{canvas.pk}}' href="{{ canvas.get_absolute_url }}">{{ canvas.title }}</a>
-                <a class="anchor-button" class="delete-canvas" id='delete-canvas-{{canvas.pk}}' href="{{ canvas.get_delete_url }}">X</a>
+                <a class="anchor-button" class="select-canvas" id='select-canvas-{{canvas.pk}}' href="{{ canvas.get_absolute_url }}"><button>{{ canvas.title }}</button></a>
+                <a class="anchor-button" class="delete-canvas" id='delete-canvas-{{canvas.pk}}' href="{{ canvas.get_delete_url }}"><button>X</button></a>
             </li>
         {% endfor %}
         </ul>
@@ -24,13 +53,60 @@
     {% endif %}
 
     
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}">New Ethics Canvas</a>
-        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}">New Business Canvas</a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>New Ethics Canvas</button></a>
+        <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>New Business Canvas</button></a>
 
     <!-- Return to the project list page -->
-    <a class="anchor-button" href="{% url 'project-list' %}">Return to Dashboard</a>
+    <a class="anchor-button" href="{% url 'project-list' %}"><button>Return to Dashboard</button></a>
     <!-- On logout, redirect to the landing page -->
-    <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/">Log Out</a>
+    <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/"><button>Log Out</button></a>
+
+
+
+<!--==================================================== 
+                MODAL COMPONENT 
+=====================================================-->
+
+<!-- FROM https://vuejs.org/v2/examples/modal.html -->
+
+<script type="text/x-template" id="modal-template">
+    <transition name="modal">
+        <div class="modal-mask">
+            <div class="modal-wrapper">
+                <div class="modal-container">
+
+                    <div class="modal-header">
+                        <slot name="header">
+                            default header
+                        </slot>
+                    </div>
+
+                    <div class="modal-body">
+                        <slot name="body">
+                            default body
+                        </slot>
+                    </div>
+
+                    <div class="modal-footer">
+                        <slot name="footer">
+                            default footer
+                            <button class="modal-default-button" @click="$emit('close')">
+                                OK
+                            </button>
+                        </slot>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </transition>
+</script>
+</br>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'canvas2/javascript/projectDetail.js' %}"></script>
 {% endblock %}
 
 

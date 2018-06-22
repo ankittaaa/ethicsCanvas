@@ -11,39 +11,6 @@
 {% block content %}
 
 {% if user.is_authenticated %}
-<!--==================================================== 
-                COLLABORATOR COMPONENT 
-=====================================================-->
-<div id = "collab-div">
-    <collabs 
-        id="collabs"
-    >
-        <div>
-            <div v-if="auth" >
-                <button class="collab-button" title="collaborators" @click="showCollab=true">Collaborators</button>
-                <button class="collab-button" title="make public" @click="togglePublic()">Toggle Public</button>
-            </div>
-            <div v-else>
-                <button class="collab-button" title="Sign up to use this feature" disabled>Collaborators</button>
-            </div>  
-            <collab-popup  
-                id='collab-popup-component'
-                v-show="showCollab" 
-                v-bind:is-auth="auth"
-                v-bind:users="usersList"
-                v-bind:admins="adminsList"
-                v-bind:admin-names="adminNameList"
-                v-bind:logged-in-user="loggedInUser"
-                v-bind:is-admin="isAdmin"
-                v-bind:active="active"
-                @close="showCollab=false"
-                @delete-admin="show=false"
-                @delete-user="show=false"
-            >
-            </collab-popup>
-        </div>
-    </collabs>
-</div>
 
 <!--==================================================== 
                 TAG COMPONENT 
@@ -157,9 +124,13 @@
 
 
 {% if user.is_authenticated %}
-    <a class="anchor-button" href="{{ project.get_absolute_url }}">Return to Project</a>
+    <a class="anchor-button" href="{{ project.get_absolute_url }}">
+        <button>Return to Project</button>
+    </a>
 {% else %}
-    <a class="anchor-button" href="{% url 'index' %}">Return to Landing Page</a>
+    <a class="anchor-button" href="{% url 'index' %}">
+        <button>Return to Landing Page</button>
+    </a>
 {% endif %}
 {% endblock %}
 

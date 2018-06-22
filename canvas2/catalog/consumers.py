@@ -358,7 +358,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         logged_in_user = self.scope['user']
-        canvas_pk = self.scope['url_route']['kwargs']['pk']
+        project_pk = self.scope['url_route']['kwargs']['pk']
         
         text_data_json = json.loads(text_data)
         function = text_data_json['function']
@@ -368,7 +368,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
         if function == 'addUser':
 
             name = text_data_json['name']
-            user = views.add_user(logged_in_user, canvas_pk, name)
+            user = views.add_user(logged_in_user, project_pk, name)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -385,7 +385,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
 
             user_pk = text_data_json['user_pk']
             ui = text_data_json['ui']
-            victim_is_admin = views.delete_user(logged_in_user, canvas_pk, user_pk)
+            victim_is_admin = views.delete_user(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -402,7 +402,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
         if function == 'promoteUser':
 
             user_pk = text_data_json['user_pk']
-            admin = views.promote_user(logged_in_user, canvas_pk, user_pk)
+            admin = views.promote_user(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -417,7 +417,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
 
             user_pk = text_data_json['user_pk']
             ai = text_data_json['ai']
-            views.demote_user(logged_in_user, canvas_pk, user_pk)
+            views.demote_user(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -465,9 +465,9 @@ class CollabConsumer(AsyncWebsocketConsumer):
             )
 
         if function == 'togglePublic':
-            canvas_pk = text_data_json['canvas_pk']
+            project_pk = text_data_json['canvas_pk']
 
-            views.toggle_public(canvas_pk, logged_in_user)
+            views.toggle_public(project_pk, logged_in_user)
 
 
     async def add_user(self, event):
@@ -577,7 +577,7 @@ class TagConsumer(AsyncWebsocketConsumer):
         
         if function == 'addTag':
             label = text_data_json['label']
-            print(label)
+            # print(label)
             data = views.add_tag(canvas_pk, logged_in_user, label)
             
             await self.channel_layer.group_send(
@@ -642,8 +642,6 @@ class TagConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'function': function,
             'tag': data['tag'],
-            'public': data['public'],
-            'private': data['private'],
             'allCanvasses': data['allCanvasses'],
             'taggedCanvasses': data['taggedCanvasses'],
             'i': i

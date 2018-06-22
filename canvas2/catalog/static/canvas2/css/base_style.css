@@ -20,15 +20,13 @@ button {
 
 
 .anchor-button {
-  -webkit-appearance: button;
-  -moz-appearance: button;
-  appearance: button;
+  /*background-color: rgb(210,210,210);*/
 
   text-decoration: none;
   cursor: default;
   margin: 5px 5px 5px 5px;
   padding: 3px;
-  border-radius: 10%;
+  border-radius: 10px;
 }
 
 .tag-elem{

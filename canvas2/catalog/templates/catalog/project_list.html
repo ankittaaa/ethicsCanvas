@@ -13,8 +13,8 @@
         <ul>
         {% for project in private_projects %}
             <li>
-                <a class="anchor-button" class="select-project" id='select-project-{{project.pk}}' href="{{ project.get_absolute_url }}">{{ project.title }}</a>
-                <a class="anchor-button" class="delete-project" id='delete-project-{{project.pk}}' href="{{ project.get_delete_url }}">X</a>
+                <a class="anchor-button" class="select-project" id='select-project-{{project.pk}}' href="{{ project.get_absolute_url }}"><button>{{ project.title }}</button></a>
+                <a class="anchor-button" class="delete-project" id='delete-project-{{project.pk}}' href="{{ project.get_delete_url }}"><button>X</button></a>
             </li>
         {% endfor %}
         </ul>
@@ -27,14 +27,14 @@
         <ul> 
         {% for project in public_project_list %}
             <li>
-                <a class="anchor-button" id = "select-project" href = "{{ project.get_absolute_url }}">{{ project.title }}</a>
+                <a class="anchor-button" id = "select-project" href = "{{ project.get_absolute_url }}"><button>{{ project.title }}</button></a>
             </li>
         {% endfor %}
         </ul>
     {% endif %}
 
-        <a class="anchor-button" href="{% url 'new-project'%}">New Project</a>
+        <a class="anchor-button" href="{% url 'new-project'%}"><button>New Project</button></a>
 
     <!-- On logout, redirect to the landing page -->
-    <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/">Log Out</a>
+    <a class="anchor-button" id = "logout" href="{% url 'logout' %}?next=/catalog/"><button>Log Out</button></a>
 {% endblock %}

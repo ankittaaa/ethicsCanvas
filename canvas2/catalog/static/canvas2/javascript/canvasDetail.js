@@ -79,19 +79,17 @@ var selection;
 var currentURL;
 
 var tagButtons;
-var collabComponent;
 var ideaListComponent;
 
 var trialIdeaSocket;
 var ideaSocket;
 var commentSocket;
-var collabSocket;
 var tagSocket;
 
 var typingEntered = false;
 // initialise this variable as a timeout handle
 var typingTimer = setInterval(
-            function(){console.log()}
+            function(){ console.log()}
             , 0);
 
 window.clearTimeout(typingTimer);
@@ -183,7 +181,7 @@ function deleteIdeaSuccessCallback(data){
 }
 
 function deleteIdeaFailureCallback(data){
-    console.log("Deletion Failed");
+    // console.log("Deletion Failed");
 }
 
 function newIdeaSuccessCallback(idea){
@@ -203,10 +201,10 @@ function newIdeaSuccessCallback(idea){
     // and an empty array for the comments, as a brand-new idea has no comments yet    
     if (sortedIdeas[tempCategory][0].idea === null)
     {
-        console.log(newIdea);
-        console.log(sortedIdeas[tempCategory][0]);
+        // console.log(newIdea);
+        // console.log(sortedIdeas[tempCategory][0]);
         sortedIdeas[tempCategory].splice(0, 1, newIdea);
-        console.log(sortedIdeas[tempCategory][0]);
+        // console.log(sortedIdeas[tempCategory][0]);
     }
     else
     {
@@ -220,7 +218,7 @@ function newIdeaSuccessCallback(idea){
 }
 
 function newIdeaFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
@@ -234,8 +232,8 @@ function editIdeaSuccessCallback (data){
     for (tag in allTags){
         // if the new idea string contains a tag declared in a different canvas
         var tempTag = allTags[tag];
-        console.log(tempTag.fields.text);
-        console.log(inIdea.fields.text);
+        // console.log(tempTag.fields.text);
+        // console.log(inIdea.fields.text);
         
         if (inIdea.fields.text.includes(tempTag.fields.label)){
             // add that tag to the current canvas's list
@@ -249,32 +247,32 @@ function editIdeaSuccessCallback (data){
 }
 
 function editIdeaFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
 function typingCallback(data, f){
-    // console.log(f);
+    // // console.log(f);
     var tempCategory = data['category'];
     var tempName = data['username'];
     var i = data['i']
-    // console.log("category: " + tempCategory);
-    // console.log("idea: " + i);
+    // // console.log("category: " + tempCategory);
+    // // console.log("idea: " + i);
     // do nothing, the logged in user knows when they're typing
     if (tempName == loggedInUser[0].fields.username)
         return;
 
     if (f === "typing"){
-        // console.log(typingBools[tempCategory]);
+        // // console.log(typingBools[tempCategory]);
         typingUser[tempCategory].splice(i, 1, tempName);
         typingBools[tempCategory].splice(i, 1, true);
-        // console.log(typingBools[tempCategory]);
+        // // console.log(typingBools[tempCategory]);
     }
     else {
-        // console.log(typingBools[tempCategory]);
+        // // console.log(typingBools[tempCategory]);
         typingUser[tempCategory].splice(i, 1, '');
         typingBools[tempCategory].splice(i, 1, false);
-        // console.log(typingBools[tempCategory]);
+        // // console.log(typingBools[tempCategory]);
     }
 
 
@@ -293,7 +291,7 @@ function addCommentSuccessCallback(data){
 }
 
 function addCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
@@ -307,7 +305,7 @@ function deleteCommentSuccessCallback(data){
 }
 
 function deleteCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
@@ -332,7 +330,7 @@ function resolveCommentSuccessCallback(data){
 
 }
 function resolveCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 /*************************************************************************************************************
@@ -342,6 +340,11 @@ function resolveCommentFailureCallback(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
+    
+    // if it's a null tag being returned, we should do nothing
+    if (newTag[0].fields.label == null)
+        return;
+
     var tagExists = false;
     var isTagged = false;
     var newTagged = JSON.parse(data.taggedCanvasses);
@@ -384,9 +387,9 @@ function newTagSuccessCallback(data){
             // it's possible that more than one idea in the same canvas contain occurrences of the new tag label
             if (sortedIdeas[i][j].idea === null)
                 continue;
-            // console.log(sortedIdeas[i][j].idea.fields.text);
+            // // console.log(sortedIdeas[i][j].idea.fields.text);
             else if (sortedIdeas[i][j].idea.fields.text.includes(newTag[0].fields.label)){
-                console.log("nice");
+                // // console.log("nice");
                 tagOccurrences[0]++;
             }
         }
@@ -400,7 +403,7 @@ function newTagSuccessCallback(data){
 }
 
 function newTagFailureCallback(data){
-    console.log(data.responseText);
+    // console.log(data.responseText);
 }
 
 function removeTagSuccessCallback(data){
@@ -443,110 +446,7 @@ function deleteTagSuccessCallback(data){
 }
 
 function deleteTagFailureCallback(data){
-    console.log(data.responseText);
-}
-
-
-/*************************************************************************************************************
-                                        COLLABORATOR CALLBACKS
-*************************************************************************************************************/
-
-function addUserSuccessCallback(data){
-    var tempUser = (JSON.parse(data.user));
-    console.log(users);
-    users.push(tempUser[0]);
-    console.log(users);
-    // console.log("pushed " + tempUser)
-}
-
-function addUserFailureCallback(data){
-    console.log(data.responseText);
-}
-
-function deleteUserSuccessCallback(data){
-    var ui = JSON.parse(data.ui);
-    var victimIsAdmin = JSON.parse(data.victimIsAdmin);
-    console.log(users);
-    users.splice(ui, 1);
-    console.log(users);
-
-    if (victimIsAdmin === true){
-        isAdmin = false;
-        adminNames.splice(ui, 1);
-        admins.splice(ui, 1);
-        console.log(admins);
-    }
-}
-
-function deleteUserFailureCallback(data){
-    console.log(data);
-}
-
-function promoteUserSuccessCallback(data){
-    var tempAdmin = JSON.parse(data.admin);
-    admins.push(tempAdmin[0]);
-    adminNames.push(tempAdmin[0].fields.username);
-
-    if (loggedInUser[0].fields.username === tempAdmin[0].fields.username)
-    {
-        isAdmin = true;
-    }
-}
-
-function promoteUserFailureCallback(data){
-    console.log(data.responseText);
-}
-
-function demoteAdminSuccessCallback(data){
-    var ai = JSON.parse(data.ai);
-    var victimName = adminNames[ai];
-    admins.splice(ai, 1);
-    adminNames.splice(ai, 1);
-
-    if (loggedInUser[0].fields.username === victimName)
-    {
-        isAdmin = false;
-    }
-}
-
-function demoteAdminFailureCallback(data){
-    console.log(data.responseText);
-}
-
-function newActiveUserCallback(data){
-
-    user = data.user;
-    activeUsers.push(user[0].fields.username);
-
-
-    collabSocket.send(JSON.stringify({
-        'function': 'sendWholeList',
-        'users': activeUsers,
-    }));
-}
-
-function wholeListCallback(data){
-
-    if (data.users.length <= activeUsers.length)
-        return;
-    else 
-    {
-        for (u in data.users){
-            if (activeUsers.includes(data.users[u]))
-                continue;
-            else
-                activeUsers.push(data.users[u]);
-        }
-    }
-}
-
-function removeActiveUserCallback(data){
-
-    user = data.user;
-    i = activeUsers.indexOf(user[0].fields.username);
-
-    if (i > -1)
-        activeUsers.splice(i, 1);
+    // console.log(data.responseText);
 }
 
 
@@ -578,13 +478,8 @@ function initSuccessCallback(data){
         allTaggedCanvasses.push(JSON.parse(data.allTaggedCanvasses[t]))
     }
 
-    console.log(data.allTags);
-    console.log(data.tags);
 
-    // console.log(tags);
 
-    admins = JSON.parse(data.admins);
-    users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
     isEthics = JSON.parse(data.isEthics);
     projectPK = JSON.parse(data.projectPK);
@@ -604,15 +499,6 @@ function initSuccessCallback(data){
 
         // publicCanvasses = JSON.parse(data.public);
         // privateCanvasses = JSON.parse(data.private);
-
-
-        for (a in admins)
-            adminNames.push(admins[a].fields.username);
-
-        if (adminNames.indexOf(loggedInUser[0].fields.username) !== -1)
-            isAdmin = true;
-        else
-            isAdmin = false;
 
         populateTagList();
         initialiseSockets();
@@ -673,7 +559,7 @@ function initSuccessCallback(data){
         );
 
         trialIdeaSocket.onmessage = function(e){
-            // console.log("Received");
+            // // console.log("Received");
             var data = JSON.parse(e.data);
             var idea = data['idea'];
             newIdeaSuccessCallback(idea);
@@ -706,27 +592,12 @@ function initSuccessCallback(data){
                 show: false,
                 auth: isAuth,
             },
-        })
-
-        collabComponent = new Vue({
-            el: '#collab-div',
-            data: {
-                showCollab: false,
-                usersList: users,
-                adminsList: admins,
-                adminNameList: adminNames,
-                loggedInUser: loggedInUser,
-                isAdmin: isAdmin,
-                active: activeUsers,
-                auth: isAuth,
-            },
-        })                  
+        })    
     }
-    console.log(tags);
 }
 
 function initFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 /*************************************************************************************************************
@@ -841,7 +712,7 @@ Vue.component('idea', {
 
         ideaList: {
             get: function(){
-                // console.log(this.ideas[0])
+                // // console.log(this.ideas[0])
                 var list = []
 
                 
@@ -931,7 +802,7 @@ Vue.component('idea', {
         },
 
         displayComments: function(event, idea){
-            // console.log(idea)
+            // // console.log(idea)
         },
 
         title: function(){
@@ -1079,7 +950,7 @@ Vue.component('idea', {
 
     watch: {
         // commentList: function(){
-        //     console.log(this.commentList)
+        //     // console.log(this.commentList)
         // }
 
     },   
@@ -1156,7 +1027,7 @@ Vue.component('comment', {
     
     watch: {
         // commentList: function(){
-        //     console.log(this.commentList)
+        //     // console.log(this.commentList)
         // }
 
     },   
@@ -1229,10 +1100,10 @@ Vue.component('comment', {
         }
     },
     created: function(){
-        // console.log(this.comments.length)
+        // // console.log(this.comments.length)
         // for (c in this.comments) {
 
-        //     console.log(this.comments[c].fields)
+        //     // console.log(this.comments[c].fields)
         // }
     }
 })
@@ -1269,7 +1140,7 @@ Vue.component('tag', {
             }
         },
         canvasList: function(){
-            // console.log(this.canvasList)
+            // // console.log(this.canvasList)
         }
     },
 
@@ -1277,7 +1148,7 @@ Vue.component('tag', {
         tagInfo: function(event, index){
         },  
         exitTagInfo: function(event){
-            // console.log('')
+            // // console.log('')
         }
     }
 })
@@ -1340,178 +1211,9 @@ Vue.component('tag-popup', {
         }
     },
     created: function(){
-        // console.log(this.canvases)
+        // // console.log(this.canvases)
     }
 
-})
-
-/*************************************************************************************************************
-                                            COLLAB-LIST COMPONENT
-*************************************************************************************************************/
- 
-Vue.component('collabs', {
-    props: ['is-admin'],
-    delimiters: ['<%', '%>'],
-    
-    template:'#collabs',
-
-    data: function(){
-        return {
-            showCollab: false,
-            usersList: users,
-            adminsList: admins,
-            adminNameList: adminNames,
-            loggedInUser: loggedInUser,
-            active: activeUsers,
-            auth: isAuth,
-        }
-    },
-
-    methods: {
-        togglePublic: function(){
-            console.log("beep")
-            collabSocket.send(JSON.stringify({
-                'function': 'togglePublic',
-                'canvas_pk': canvasPK
-            }))
-        }
-    },
-})
-
-/*************************************************************************************************************
-                                            COLLAB-POPUP COMPONENT
-*************************************************************************************************************/
- 
-Vue.component('collab-popup', {
-    props: ['users', 'admins', 'logged-in-user', 'is-admin', 'admin-names', 'active', 'auth'],
-    delimiters: ['<%', '%>'],
-
-    data: function(){
-        return {
-            currentUser: this.loggedInUser,
-            name: '',
-            a: '',
-            c: '',
-            activeList: this.active,
-            isAuth: this.auth
-        }
-    },
-
-    computed: {
-        userList: function(){
-            return this.users
-        },
-        adminList: function(){
-            return this.admins
-        },
-        adminNameList: function(){
-            return this.adminNames
-        },
-        admin: function(){
-            return this.isAdmin
-        }
-    },
-
-    template: ` 
-            <modal> 
-                <div slot="header"> 
-                    <h3>Collaborators</h3> 
-                </div> 
-                 
-                <div slot="body"> 
-                    <h3>Admins</h3> 
-                        <ul> 
-                        <li v-for="(a, ai) in adminList" style="list-style-type:none;"> 
-                            <span> 
-                                <% a.fields.username 
-                                + ( loggedInUser[0].fields.username === a.fields.username ? " (you)" : activeList.includes(a.fields.username) ? " (active)" : "" ) %> 
-                            </span> 
-
-                            <div  
-
-                                id="admin-buttons" 
-                                v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
-                            > 
-                                <button class="delete-admin" @click="deleteUser($event, a, ai)">Delete</button> 
-                                <button class="demote-admin" @click="demoteAdmin($event, a, ai)">Demote</button> 
-                            </div> 
-                        </li> 
-                    </ul> 
-                     
-                    <h3>Users</h3> 
-                    <ul> 
-                        <li v-for="(u, ui) in this.users" style="list-style-type:none;"> 
-                            <span> 
-                                <% u.fields.username   
-                                + ( loggedInUser[0].fields.username === u.fields.username ? " (you)" : activeList.includes(u.fields.username) ? " (active)" : "" ) %> 
-
-                            </span> 
-                            <div  
-                                id="user-buttons" 
-                                v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
-                            > 
-                                <button class="delete-user" @click="deleteUser($event, u, ui)">Delete</button> 
-                                <button  
-                                    v-if="adminNameList.indexOf(u.fields.username) === -1" 
-                                    class="promote-user" @click="promoteUser($event, u)" 
-                                >Promote</button> 
-                            </div> 
-                        </li> 
-                    </ul> 
-                    <div v-if="adminNameList.includes(loggedInUser[0].fields.username)"> 
-                        <h3>Add User</h3> 
-                        <input v-model="name" placeholder="Enter a username"> 
-                        <button @click="addUser($event, name, this.isAdmin)">Add User</button> 
-                    </div> 
-                </div> 
-                 
-                <div slot="footer"> 
-                    <button class="modal-default-button" @click="$emit( 'close' )"> 
-                    Close 
-                    </button> 
-                </div> 
-            </modal> 
-        `,
-
-    methods: {
-        addUser: function(event, name, isAdmin){
-            // console.log(isAdmin);
-            collabSocket.send(JSON.stringify({
-                'function': 'addUser',
-                'name': name
-            }));
-            this.name = ""
-        },
-
-        deleteUser: function(event, u, ui){
-            collabSocket.send(JSON.stringify({
-                'function': 'deleteUser',
-                'user_pk': u.pk,
-                'ui': ui
-            }));
-        },
-
-        promoteUser: function(event, u){
-            collabSocket.send(JSON.stringify({
-                'function': 'promoteUser',
-                'user_pk': u.pk,
-            }));            
-        },
-
-        demoteAdmin: function(event, a, ai){
-            collabSocket.send(JSON.stringify({
-                'function': 'demoteUser',
-                'user_pk': a.pk,
-                'ai': ai
-            }));
-        },
-
-    },
-    watch: {
-
-    },
-    created: function(){
-    }
 })
 
 /*************************************************************************************************************
@@ -1565,30 +1267,6 @@ function populateTagList(){
 
 }
 
-function populateUsersAdmins(data){
-/*
-    Function for updating the user/admin list for the 
-    collaborator component upon modification of either list
-*/
-    admins = JSON.parse(data.admins);
-
-    collabComponent.adminsList = admins;
-    collabComponent.$children[0].adminsList = admins;    
-
-    users = JSON.parse(data.users);
-
-    collabComponent.usersList = users;
-    collabComponent.$children[0].usersList = users;
-
-    adminNames = [];
-
-    for (a in admins)
-        adminNames.push(admins[a].fields.username);
-
-    collabComponent.adminNameList = adminNames;
-    collabComponent.$children[0].adminNameList = adminNames; 
-
-}
 
 function initialiseSockets(){
 
@@ -1608,10 +1286,6 @@ function initialiseSockets(){
         '/ws/canvas/' + canvasPK + '/comment/'
     );
 
-    collabSocket = new WebSocket(
-        'ws://' + window.location.host + 
-        '/ws/canvas/' + canvasPK + '/collab/'
-    );
 
     tagSocket = new WebSocket(
         'ws://' + window.location.host + 
@@ -1673,54 +1347,6 @@ function initialiseSockets(){
                 break;
             }
         }
-    };
-
-    /***********************************
-                COLLAB SOCKET
-    ************************************/
-    collabSocket.onmessage = function(e){
-        var data = JSON.parse(e.data);
-        var f = data["function"];
-
-        switch(f) {
-            case "promoteUser": {
-                promoteUserSuccessCallback(data);
-                break;
-            }
-            case "demoteUser": {
-                demoteAdminSuccessCallback(data);
-                break;
-            }
-            case "addUser": {
-                addUserSuccessCallback(data);
-                break;
-            }
-            case "deleteUser": {
-                deleteUserSuccessCallback(data);
-                break;
-            }
-            case "newActiveUser": {
-                newActiveUserCallback(data);
-                break;
-            }
-
-            case "removeActiveUser": {
-                removeActiveUserCallback(data);
-                break;
-            }
-
-            case "sendWholeList": {
-                wholeListCallback(data);
-                break;
-            }
-        }
-    };
-
-    collabSocket.onopen = function(e){
-        collabSocket.send(JSON.stringify({
-            "function": "newActiveUser",
-            "user": loggedInUser,
-        }));
     };
 
     /***********************************
@@ -1786,7 +1412,7 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
             var tempIdeaText = currentIdea.fields.text;
 
             if ((oldText.includes(tags[t].fields.label) === true) && (tempIdeaText.includes(tags[t].fields.label) === false)) {
-                console.log("KILLING THE TAG " + tags[t].fields.label);
+                // console.log("KILLING THE TAG " + tags[t].fields.label);
                 // decrement the tag if it occured in the old idea and no longer occurs in the new idea
                     tagOccurrences[t]--;
                 
@@ -1829,12 +1455,6 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
 }
 
 window.onbeforeunload = function(e){
-    collabSocket.send(JSON.stringify({
-            "function": "removeActiveUser",
-            "user": loggedInUser,
-    }));
-
-    collabSocket.close();
     ideaSocket.close();
     tagSocket.close();
     commentSocket.close();
