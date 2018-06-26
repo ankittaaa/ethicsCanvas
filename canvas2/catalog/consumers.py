@@ -6,6 +6,7 @@ from . import views
 import json
 
 
+
 class TrialIdeaConsumer(WebsocketConsumer):
     '''
     Synchronous consumer for the trial user - does not need to be asynchronous as it's limited to a single user
@@ -29,6 +30,7 @@ class TrialIdeaConsumer(WebsocketConsumer):
         self.send(text_data=json.dumps({
             'idea': return_idea
         }))
+
 
 
 class IdeaConsumer(AsyncWebsocketConsumer):
@@ -127,6 +129,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+
         if function == 'typing' or function == 'done_typing':
             '''
             USER BEGINS TYPING
@@ -145,9 +148,6 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'category': category,
                 }
             )
-
-
-
 
 
     async def new_idea(self, event):
@@ -291,6 +291,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+
     async def add_comment(self, event):
         function = event['function']
         comment = event['comment']
@@ -332,8 +333,6 @@ class CommentConsumer(AsyncWebsocketConsumer):
 
 
 
-
-
 class CollabConsumer(AsyncWebsocketConsumer):
     '''
     Consumer for websockets which are for modification of the User model
@@ -364,7 +363,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
         function = text_data_json['function']
 
 
-
         if function == 'addUser':
 
             name = text_data_json['name']
@@ -378,8 +376,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'user': user
                 }
             )
-
-
 
         if function == 'deleteUser':
 
@@ -396,8 +392,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'ui': ui
                 }
             )
-
-
 
         if function == 'promoteUser':
 
@@ -502,7 +496,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
         }))
 
 
-
     async def demote_user(self, event):
         function = event['function']
         ai = event['ai']
@@ -521,7 +514,6 @@ class CollabConsumer(AsyncWebsocketConsumer):
             'function': function,
             'user': user,
         }))
-
 
 
     async def remove_active_user(self, event):
@@ -572,12 +564,12 @@ class TagConsumer(AsyncWebsocketConsumer):
         
         text_data_json = json.loads(text_data)
         function = text_data_json['function']
-        canvas_pk = text_data_json['canvas_pk']
 
         
         if function == 'addTag':
             label = text_data_json['label']
-            # print(label)
+            canvas_pk = text_data_json['canvas_pk']
+            
             data = views.add_tag(canvas_pk, logged_in_user, label)
             
             await self.channel_layer.group_send(
@@ -592,6 +584,8 @@ class TagConsumer(AsyncWebsocketConsumer):
         if function == 'removeTag':
             i = text_data_json['i']
             tag_pk = text_data_json['tag_pk']
+            canvas_pk = text_data_json['canvas_pk']
+            
             data = views.remove_tag(tag_pk, logged_in_user, canvas_pk)
 
             await self.channel_layer.group_send(
@@ -608,7 +602,7 @@ class TagConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             tag_pk = text_data_json['tag_pk']
 
-            tag = views.delete_tag(tag_pk, canvas_pk)
+            tag = views.delete_tag(tag_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -624,13 +618,11 @@ class TagConsumer(AsyncWebsocketConsumer):
     async def add_tag(self, event):
         function = event['function']
         data = event['data']
+        print(data['tag'])
 
         await self.send(text_data=json.dumps({
             'function': function,
             'tag': data['tag'],
-            # 'public': data['public'],
-            # 'private': data['private'],
-            'allCanvasses': data['allCanvasses'],
             'taggedCanvasses': data['taggedCanvasses'],
         }))
 
@@ -642,7 +634,6 @@ class TagConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'function': function,
             'tag': data['tag'],
-            'allCanvasses': data['allCanvasses'],
             'taggedCanvasses': data['taggedCanvasses'],
             'i': i
         }))

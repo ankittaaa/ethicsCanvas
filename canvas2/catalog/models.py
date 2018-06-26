@@ -23,7 +23,6 @@ class Project(models.Model):
     owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
 
     def get_absolute_url(self):
-        # NOTE: @andrew no need to str(int) here
         return reverse('project-detail', args=[self.pk])
 
 
@@ -74,16 +73,6 @@ class Canvas(models.Model):
 
 
 
-
-
-# TODO: callback function to handle intersection in Canvas admins and users
-# By 'handle' I presume 'do not store in users if they already exist in admins', as all admins are users but not all users are admins.
-
-# @receiver(m2m_changed, sender=Canvas)
-# def enforce_empty_intersection_between_admins_and_users(sender, instance, **kwargs):
-#     print('happy')
-
-
 class Idea(models.Model):
     """Idea
     A block/post belonging to a category on the Canvas"""
@@ -94,11 +83,7 @@ class Idea(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
-    # @andrew an Idea cannot exist without the canvas, so null=False
     canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
-    # @andrew an idea does not have any tags
-    # we are only highlighting the tags on the canvas
-    # moved tags to Canvas
 
     def __str__(self):
         return self.title
@@ -111,10 +96,6 @@ class Idea(models.Model):
 
     def get_comments_url(self):
         return reverse('comment-thread', args=[self.pk])
-
-    # TODO remove whitespace
-
-
 
     class Meta:
         ordering = ('-date_modified',)
@@ -146,8 +127,6 @@ class IdeaComment(models.Model):
     text = models.CharField(max_length=255, help_text="Type a comment")
     resolved = models.BooleanField(default=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    # NOTE: when creating JSON, add comment and comment.user.name
-    # @andrew a comment will always be on an Idea, so idea cannot be null
     idea = models.ForeignKey(
         'Idea', null = False,
         on_delete=models.CASCADE, 
@@ -172,5 +151,5 @@ class IdeaComment(models.Model):
         return reverse('comment-resolve', args=[self.idea.pk])
 
     class Meta:
-        # @andrew comments are ordered by most recent first
+        # comments are ordered by most recent first
         ordering = ('-timestamp',)

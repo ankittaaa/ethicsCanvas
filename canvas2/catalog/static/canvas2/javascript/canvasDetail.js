@@ -78,16 +78,11 @@ var allTaggedCanvasses = [];
 var ideas;
 var comments;
 
-var admins;
-var adminNames = [];
 var users;
 var activeUsers = [];
 var loggedInUser
-var isAdmin;
 var isAuth;
 var allCanvasses
-// var publicCanvasses;
-// var privateCanvasses;
 var selection;
 var currentURL;
 
@@ -98,6 +93,8 @@ var trialIdeaSocket;
 var ideaSocket;
 var commentSocket;
 var tagSocket;
+var collabSocket;
+
 
 var typingEntered = false;
 // initialise this variable as a timeout handle
@@ -154,6 +151,79 @@ $j(document).on("select", ".idea-input", function(e){
 **************************************************************************************************************   
 **************************************************************************************************************/
 
+
+/*************************************************************************************************************
+                                            COLLABORATOR CALLBACKS
+*************************************************************************************************************/
+function addUserSuccessCallback(data){
+    var tempUser = (JSON.parse(data.user));
+    users.push(tempUser[0]);
+}
+
+function addUserFailureCallback(data){
+    console.log(data.responseText);
+}
+
+function deleteUserSuccessCallback(data){
+    var ui = JSON.parse(data.ui);
+    var victimIsAdmin = JSON.parse(data.victimIsAdmin);
+
+    if (users[ui].fields.username === loggedInUser[0].fields.username){
+        alert("You've been removed from the project");
+        // go back to project view after 2s 
+        setInterval(
+            function(){ 
+                window.location.href="/catalog/project-list/"
+            }, 
+            100);
+    }
+    users.splice(ui, 1);
+    /*
+        Unlike the callback in projectDetail, we don't care if it's an admin as there are no
+        admin-permission-required component operations in canvasDetail.
+    */
+}
+
+function deleteUserFailureCallback(data){
+    console.log(data);
+}
+
+
+function newActiveUserCallback(data){
+
+    user = data.user;
+    activeUsers.push(user[0].fields.username);
+
+
+    collabSocket.send(JSON.stringify({
+        'function': 'sendWholeList',
+        'users': activeUsers,
+    }));
+}
+
+function wholeListCallback(data){
+
+    if (data.users.length <= activeUsers.length)
+        return;
+    else 
+    {
+        for (u in data.users){
+            if (activeUsers.includes(data.users[u]))
+                continue;
+            else
+                activeUsers.push(data.users[u]);
+        }
+    }
+}
+
+function removeActiveUserCallback(data){
+
+    user = data.user;
+    i = activeUsers.indexOf(user[0].fields.username);
+
+    if (i > -1)
+        activeUsers.splice(i, 1);
+}
 /*************************************************************************************************************
                                                 IDEA CALLBACKS
 *************************************************************************************************************/
@@ -245,8 +315,6 @@ function editIdeaSuccessCallback (data){
     for (tag in allTags){
         // if the new idea string contains a tag declared in a different canvas
         var tempTag = allTags[tag];
-        // console.log(tempTag.fields.text);
-        // console.log(inIdea.fields.text);
         
         if (inIdea.fields.text.includes(tempTag.fields.label)){
             // add that tag to the current canvas's list
@@ -304,7 +372,7 @@ function addCommentSuccessCallback(data){
 }
 
 function addCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
@@ -318,7 +386,7 @@ function deleteCommentSuccessCallback(data){
 }
 
 function deleteCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
@@ -336,14 +404,9 @@ function resolveCommentSuccessCallback(data){
         tempComment.fields.resolved = true;
         sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
     }
-
-    // ideaListComponent.ideaList = sortedIdeas;
-    
-    // ideaListComponent.$children[0].$children[tempCategory].$children[i].comments = [];
-
 }
 function resolveCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 /*************************************************************************************************************
@@ -353,11 +416,16 @@ function resolveCommentFailureCallback(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
+    console.log(newTag);
+
+    // the canvasses must be made aware that a new tag exists in the project, even if they're not using it at the moment
+    // this does not append to the vue component's list, but makes it so that when an idea is edited and now contains the 
+    // tag's label, it can be found without requiring a page reload first
+    allTags.push(newTag[0]);
     
     // if it's a null tag being returned, we should do nothing
     if (newTag[0].fields.label == null)
         return;
-
     var tagExists = false;
     var isTagged = false;
     var newTagged = JSON.parse(data.taggedCanvasses);
@@ -381,8 +449,6 @@ function newTagSuccessCallback(data){
 
         taggedCanvasses.unshift(new Array(newTagged.length));
 
-
-
         // empty string to signify a "dummy" tag for canvasses which do not contain any actual tags
         if (tags[0].fields.label === "\0")
             // delete the dummy and replace it with the new tag
@@ -400,9 +466,7 @@ function newTagSuccessCallback(data){
             // it's possible that more than one idea in the same canvas contain occurrences of the new tag label
             if (sortedIdeas[i][j].idea === null)
                 continue;
-            // // console.log(sortedIdeas[i][j].idea.fields.text);
             else if (sortedIdeas[i][j].idea.fields.text.includes(newTag[0].fields.label)){
-                // // console.log("nice");
                 tagOccurrences[0]++;
             }
         }
@@ -416,7 +480,7 @@ function newTagSuccessCallback(data){
 }
 
 function newTagFailureCallback(data){
-    // console.log(data.responseText);
+    console.log(data.responseText);
 }
 
 function removeTagSuccessCallback(data){
@@ -427,9 +491,6 @@ function removeTagSuccessCallback(data){
     // if tag exists in this canvas
     if (tagOccurrences[i] != 0){
         // replace old tag with new tag 
-        // for (t in newTagged){
-        //     taggedCanvasses[i].splice(t, 1, newTagged[i]);
-        // }
         taggedCanvasses.splice(i, 1, newTagged);
     }
     else {
@@ -498,6 +559,7 @@ function initSuccessCallback(data){
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas)[0];
     allCanvasses = JSON.parse(data.allCanvasses);
+    users = JSON.parse(data.users);
 
     if (loggedInUser.length === 0)
         isAuth = false;
@@ -509,9 +571,6 @@ function initSuccessCallback(data){
         for (t in tags){
             tagOccurrences.push(0);
         }
-
-        // publicCanvasses = JSON.parse(data.public);
-        // privateCanvasses = JSON.parse(data.private);
 
         populateTagList();
         initialiseSockets();
@@ -963,10 +1022,6 @@ Vue.component('idea', {
     },
 
     watch: {
-        // commentList: function(){
-        //     // console.log(this.commentList)
-        // }
-
     },   
 
     created: function(){
@@ -1248,8 +1303,6 @@ function populateTagList(){
     This function's purpose is to populate a 2D array of canvases. Each 'i' element represents a tag,
     while the 'j' element represents the list of canvases attached to that tag. 
 */
-    // var taggedPublic = [];
-    // var taggedPrivate = [];
     var tagged = [];
 
     for (var i = 0; i < tags.length; i++){
@@ -1261,21 +1314,7 @@ function populateTagList(){
             }
         }
 
-        // // get a list of all private canvases containing the current tag
-        // for (var j = 0; j < privateCanvasses.length; j++){
-        //     if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
-        //         taggedPrivate.push(privateCanvasses[j]);
-        //     }
-        // }  
-
-        // tagged.push(taggedPublic);
-        // tagged.push(taggedPrivate);
-        // tagged = tagged[0].concat(tagged[1])
-
         taggedCanvasses.splice(i, 1, tagged);
-
-        // taggedPublic = [];
-        // taggedPrivate = [];
         tagged = [];
     }
 
@@ -1306,6 +1345,11 @@ function initialiseSockets(){
         '/ws/project/' + projectPK + '/tag/'
     );
 
+
+    collabSocket = new WebSocket(
+        'ws://' + window.location.host + 
+        '/ws/project/' + projectPK + '/collab/'
+    );
 /********************************************************************
 *********************************************************************
                             CALLBACKS
@@ -1385,6 +1429,55 @@ function initialiseSockets(){
             }
         }
     };
+
+
+    /***********************************
+                COLLAB SOCKET
+    ************************************/
+    collabSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data["function"];
+
+        switch(f) {
+            // case "promoteUser": {
+            //     promoteUserSuccessCallback(data);
+            //     break;
+            // }
+            // case "demoteUser": {
+            //     demoteAdminSuccessCallback(data);
+            //     break;
+            // }
+            case "addUser": {
+                addUserSuccessCallback(data);
+                break;
+            }
+            case "deleteUser": {
+                deleteUserSuccessCallback(data);
+                break;
+            }
+            case "newActiveUser": {
+                newActiveUserCallback(data);
+                break;
+            }
+
+            case "removeActiveUser": {
+                removeActiveUserCallback(data);
+                break;
+            }
+
+            case "sendWholeList": {
+                wholeListCallback(data);
+                break;
+            }
+        }
+    };
+
+    collabSocket.onopen = function(e){
+        collabSocket.send(JSON.stringify({
+            "function": "newActiveUser",
+            "user": loggedInUser,
+        }));
+    };
 }
 
 function escapeHTMLChars(text){
@@ -1438,6 +1531,7 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
                         'function': 'removeTag',
                         'i': t,
                         "tag_pk": thisTag.pk,
+                        "canvas_pk": canvasPK,
                     }));
                 }
             }
@@ -1468,8 +1562,20 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
     }
 }
 
+function initCollabSocket(){
+   
+
+}
+
+
 window.onbeforeunload = function(e){
     ideaSocket.close();
     tagSocket.close();
     commentSocket.close();
+    collabSocket.send(JSON.stringify({
+            "function": "removeActiveUser",
+            "user": loggedInUser,
+    }));
+
+    collabSocket.close();
 };

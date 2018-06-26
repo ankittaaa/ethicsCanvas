@@ -51,6 +51,16 @@ function addUserFailureCallback(data){
 function deleteUserSuccessCallback(data){
     var ui = JSON.parse(data.ui);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
+
+    if (users[ui].fields.username === loggedInUser[0].fields.username){
+        alert("You've been removed from the project");
+        // go back to project view after 2s 
+        setInterval(
+            function(){ 
+                window.location.href="/catalog/project-list/"
+            }, 
+            100);
+    }
     // console.log(users);
     users.splice(ui, 1);
     // console.log(users);
@@ -95,7 +105,7 @@ function demoteAdminSuccessCallback(data){
 }
 
 function demoteAdminFailureCallback(data){
-    // console.log(data.responseText);
+    console.log(data.responseText);
 }
 
 function newActiveUserCallback(data){
