@@ -43,7 +43,6 @@ class Canvas(models.Model):
     title = models.CharField(max_length=25, db_index=True)
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
-    # is_public = models.BooleanField(default=False, db_index=True)
     # 0 for Ethics, 1 for Business, 2 for Privacy (TBD)
     canvas_type = models.PositiveSmallIntegerField(default=0)
     tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)

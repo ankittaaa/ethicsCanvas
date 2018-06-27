@@ -73,6 +73,7 @@
                     v-bind:categories="categories"
                     v-bind:user="typingUser[index]"
                     v-bind:is-auth="auth"
+                    v-bind:is-admin="admin"
                     class="flex-item"
                 >
                 </idea>
@@ -125,11 +126,15 @@
 
 {% if user.is_authenticated %}
     <a class="anchor-button" href="{{ project.get_absolute_url }}">
-        <button>Return to Project</button>
+        <button>
+            Return to Project
+        </button>
     </a>
 {% else %}
     <a class="anchor-button" href="{% url 'index' %}">
-        <button>Return to Landing Page</button>
+        <button>
+            Return to Landing Page
+        </button>
     </a>
 {% endif %}
 {% endblock %}

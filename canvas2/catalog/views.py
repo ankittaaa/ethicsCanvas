@@ -241,6 +241,7 @@ class CanvasDetailView(generic.DetailView):
             json_tags = '""'
             json_self = '""'
             json_users = '""'
+            json_admins = '""'
 
             if (logged_in_user.is_authenticated):
                 update_canvas_session_variables(self, logged_in_user, project)
@@ -269,6 +270,8 @@ class CanvasDetailView(generic.DetailView):
             comments = IdeaComment.objects.filter(idea__in=ideas)
             # need the users list for the comment authors, when the comment is parsed the PK of the user is what's used for the user FK, not the user object itself
             users = project.users.all()
+            # also need the admins for enabling or disabling certain buttons
+            admins = project.admins.all()
             
             if tags:
                 json_tags = serialize(
@@ -326,6 +329,12 @@ class CanvasDetailView(generic.DetailView):
                 cls=UserModelEncoder
             )
 
+            json_admins=serialize(
+                'json',
+                admins,
+                cls=UserModelEncoder
+            )
+
             # only serialise ideas if they exist
             if ideas:
                 json_ideas = serialize(
@@ -347,6 +356,7 @@ class CanvasDetailView(generic.DetailView):
                 'canvasType': canvas.canvas_type,
                 'projectPK': project.pk,
                 'users': json_users,
+                'admins': json_admins
 
             }
 
@@ -508,8 +518,25 @@ def delete_comment(logged_in_user, comment_pk):
 
     return category
 
+def single_comment_resolve(logged_in_user, comment_pk):
+    '''
+    Deletion of a comment
+    '''
+    comment = IdeaComment.objects.get(pk = comment_pk)
+    canvas = comment.idea.canvas
+    project = canvas.project
 
-def comment_resolve(logged_in_user, idea_pk):
+    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+        return HttpResponse('Forbidden', status = 403)
+  
+    category = comment.idea.category
+    comment.resolved = True
+    comment.save()
+
+    return category
+
+
+def all_comment_resolve(logged_in_user, idea_pk):
     '''
     Resolution of comments - mark all as resolved
     '''
@@ -825,7 +852,7 @@ def remove_tag(tag_pk, logged_in_user, canvas_pk):
     return return_data
 
 
-def delete_tag(tag_pk):
+def delete_tag(tag_pk, canvas_pk):
     '''
     DELETION OF TAG
     '''

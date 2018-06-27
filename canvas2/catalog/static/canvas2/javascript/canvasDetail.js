@@ -79,9 +79,12 @@ var ideas;
 var comments;
 
 var users;
+var admins;
+var adminNames = [];
 var activeUsers = [];
 var loggedInUser
 var isAuth;
+var isAdmin;
 var allCanvasses
 var selection;
 var currentURL;
@@ -389,8 +392,22 @@ function deleteCommentFailureCallback(data){
     console.log(data);
 }
 
+function resolveIndividualCommentSuccessCallback(data){
+    var i = JSON.parse(data.i);
+    var c = JSON.parse(data.c);
+    var tempCategory = JSON.parse(data.category);
 
-function resolveCommentSuccessCallback(data){
+    var tempComment = sortedIdeas[tempCategory][i].comments[c];
+
+    tempComment.fields.resolved = true;
+    sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
+}
+
+function resolveIndividualCommentFailureCallback(data){
+    console.log(data);
+}
+
+function resolveAllCommentsSuccessCallback(data){
     var tempCategory = JSON.parse(data.category);
     var i = JSON.parse(data.i);
 
@@ -405,7 +422,7 @@ function resolveCommentSuccessCallback(data){
         sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
     }
 }
-function resolveCommentFailureCallback(data){
+function resolveAllCommentsFailureCallback(data){
     console.log(data);
 }
 
@@ -561,6 +578,17 @@ function initSuccessCallback(data){
     allCanvasses = JSON.parse(data.allCanvasses);
     users = JSON.parse(data.users);
 
+    admins = JSON.parse(data.admins);
+
+    for (a in admins)
+        adminNames.push(admins[a].fields.username);
+
+        if (adminNames.indexOf(loggedInUser[0].fields.username) !== -1)
+            isAdmin = true;
+        else
+            isAdmin = false;
+
+
     if (loggedInUser.length === 0)
         isAuth = false;
     
@@ -653,6 +681,7 @@ function initSuccessCallback(data){
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
+            admin: isAdmin,
         }
     })
 
@@ -695,6 +724,7 @@ Vue.component('idea-list', {
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
+            admin: isAdmin,
         }
     },
 
@@ -719,7 +749,7 @@ Vue.component('idea-list', {
 *************************************************************************************************************/
  
 Vue.component('idea', {
-    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'is-auth'],
+    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'is-auth', 'is-admin'],
     delimiters: ['<%', '%>'],
     
     data: function(){
@@ -760,7 +790,7 @@ Vue.component('idea', {
                                 <button v-else id="comment-button" title="Sign up to use this feature" disabled> 
                                     <span>Comments</span> 
                                 </button> 
-                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" @close="displayMe(i)"> 
+                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" v-bind:isAdmin="isAdmin" @close="displayMe(i)"> 
                                 </comment> 
                             </div> 
                         </div> 
@@ -1036,7 +1066,7 @@ Vue.component('idea', {
 *************************************************************************************************************/
  
 Vue.component('comment', {
-    props: ['comment-list', 'show-comments', 'idea', 'i'],
+    props: ['comment-list', 'show-comments', 'idea', 'i', 'is-admin'],
     delimiters: ['<%', '%>'],
     
     data: function(){
@@ -1063,20 +1093,23 @@ Vue.component('comment', {
                                     <% comment.fields.text %> 
                                     </br> 
                                     <% commentAuthorString(comment) %>
-                                    <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
+                                    <div v-show="isAdmin">
+                                        <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
+                                        <button class="resolve-individual-comment" @click="resolveIndividualComment($event, comment, c)" title="delete">Resolve</button> 
+                                    </div>
                                 </div>
                                 <div class="comment-elem resolved" v-else>
                                     <% comment.fields.text %> <strong> <% " (RESOLVED)" %> </strong>
                                     </br> 
                                     <% commentAuthorString(comment) %>
-                                    <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
+                                    <button v-show="isAdmin" class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button>
                                 </div>
                             </li> 
                         </ul> 
                     </div> 
 
                     <div class='comment-footer' slot="footer">
-                        <button class="resolve-comments" @click="resolveComments(idea)">Resolve All Comments</button>
+                        <button v-show="isAdmin" class="resolve-comments" @click="resolveAllComments(idea)">Resolve All Comments</button>
                         <button class="modal-default-button" @click="$emit('close')">Close</button>
                     </div>
                 </modal>`
@@ -1135,9 +1168,18 @@ Vue.component('comment', {
             }));
         },
 
-        resolveComments(idea){
+        resolveIndividualComment(event, comment, c){
             commentSocket.send(JSON.stringify({
-                'function': 'resolveComments',
+                'function': 'resolveIndividualComment',
+                "comment_pk": comment.pk,
+                'i': this.selfIndex,
+                'c': c
+            }));
+        },
+
+        resolveAllComments(idea){
+            commentSocket.send(JSON.stringify({
+                'function': 'resolveAllComments',
                 "idea_pk": this.currentIdea.pk,
                 'i': this.selfIndex,
             }));
@@ -1400,8 +1442,12 @@ function initialiseSockets(){
                 deleteCommentSuccessCallback(data);
                 break;
             }
-            case "resolveComments": {
-                resolveCommentSuccessCallback(data);
+            case "resolveIndividualComment": {
+                resolveIndividualCommentSuccessCallback(data);
+                break;
+            }
+            case "resolveAllComments": {
+                resolveAllCommentsSuccessCallback(data);
                 break;
             }
         }

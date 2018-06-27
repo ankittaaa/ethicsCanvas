@@ -273,18 +273,36 @@ class CommentConsumer(AsyncWebsocketConsumer):
                 }
             )
 
+        if function == 'resolveIndividualComment':
+            i = text_data_json['i']
+            c = text_data_json['c']
+            comment_pk = text_data_json['comment_pk']
 
-        if function == 'resolveComments':
+            category = views.single_comment_resolve(logged_in_user, comment_pk)
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'resolve_individual_comment',
+                    'function': function,
+                    'category': category,
+                    'i': i,
+                    'c': c
+                }
+            )
+
+
+        if function == 'resolveAllComments':
             
             i = text_data_json['i']
             idea_pk = text_data_json['idea_pk']
 
-            category = views.comment_resolve(logged_in_user, idea_pk)
+            category = views.all_comment_resolve(logged_in_user, idea_pk)
             
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    'type': 'resolve_comments',
+                    'type': 'resolve_all_comments',
                     'function': function,
                     'i': i,
                     'category': category
@@ -317,8 +335,21 @@ class CommentConsumer(AsyncWebsocketConsumer):
             'i': i,
             'c': c
         }))
+        
+    async def resolve_individual_comment(self, event):
+        function = event['function']
+        i = event['i']
+        c = event['c']
+        category = event['category']
 
-    async def resolve_comments(self, event):
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'category': category,
+            'i': i,
+            'c': c
+        }))
+
+    async def resolve_all_comments(self, event):
         function = event['function']
         i = event['i']
         category = event['category']
@@ -585,7 +616,7 @@ class TagConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             tag_pk = text_data_json['tag_pk']
             canvas_pk = text_data_json['canvas_pk']
-            
+
             data = views.remove_tag(tag_pk, logged_in_user, canvas_pk)
 
             await self.channel_layer.group_send(

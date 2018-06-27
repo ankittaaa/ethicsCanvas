@@ -92,8 +92,9 @@ button.delete-comment{
 #idea-field {
 }
 
-#idea-buttons {
+.main-idea-buttons {
   margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 #comment-button{
