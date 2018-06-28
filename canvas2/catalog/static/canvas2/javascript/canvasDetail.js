@@ -227,6 +227,41 @@ function removeActiveUserCallback(data){
     if (i > -1)
         activeUsers.splice(i, 1);
 }
+
+
+function promoteUserSuccessCallback(data){
+    var tempAdmin = JSON.parse(data.admin);
+    admins.push(tempAdmin[0]);
+    adminNames.push(tempAdmin[0].fields.username);
+
+    if (loggedInUser[0].fields.username === tempAdmin[0].fields.username)
+    {
+        isAdmin = true;
+        ideaListComponent.admin = true;
+    }
+}
+
+function promoteUserFailureCallback(data){
+    // console.log(data.responseText);
+}
+
+function demoteAdminSuccessCallback(data){
+    var ai = JSON.parse(data.ai);
+    var victimName = adminNames[ai];
+    admins.splice(ai, 1);
+    adminNames.splice(ai, 1);
+
+    if (loggedInUser[0].fields.username === victimName)
+    {
+        isAdmin = false;
+        ideaListComponent.admin = false;
+    }
+}
+
+function demoteAdminFailureCallback(data){
+    console.log(data.responseText);
+}
+
 /*************************************************************************************************************
                                                 IDEA CALLBACKS
 *************************************************************************************************************/
@@ -681,9 +716,10 @@ function initSuccessCallback(data){
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
-            admin: isAdmin,
+            adminNameList: adminNames,
         }
     })
+
 
     if (isAuth === true){
         tagButtons = new Vue({
@@ -724,17 +760,13 @@ Vue.component('idea-list', {
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
-            admin: isAdmin,
+            adminNameList: adminNames,
         }
     },
 
     template:'#ideas',
-    
-    computed: {
-    },
 
     watch: {
-
     },
     
     methods: {
@@ -749,7 +781,7 @@ Vue.component('idea-list', {
 *************************************************************************************************************/
  
 Vue.component('idea', {
-    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'is-auth', 'is-admin'],
+    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'is-auth', 'admin-names'],
     delimiters: ['<%', '%>'],
     
     data: function(){
@@ -759,7 +791,7 @@ Vue.component('idea', {
             showCommentThread: new Array(this.ideas.length),
             isTypingBools: this.isTyping,
             typingUser: this.user,
-            categoryList: this.categories
+            categoryList: this.categories,
         }
     },
     
@@ -790,7 +822,7 @@ Vue.component('idea', {
                                 <button v-else id="comment-button" title="Sign up to use this feature" disabled> 
                                     <span>Comments</span> 
                                 </button> 
-                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" v-bind:isAdmin="isAdmin" @close="displayMe(i)"> 
+                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" v-bind:admins="adminNameList" @close="displayMe(i)"> 
                                 </comment> 
                             </div> 
                         </div> 
@@ -803,6 +835,9 @@ Vue.component('idea', {
     `,
          
     computed: {
+         adminNameList: function(){
+            return this.adminNames
+        },
 
         flexClass: function(){
             var i = this.index
@@ -1066,7 +1101,7 @@ Vue.component('idea', {
 *************************************************************************************************************/
  
 Vue.component('comment', {
-    props: ['comment-list', 'show-comments', 'idea', 'i', 'is-admin'],
+    props: ['comment-list', 'show-comments', 'idea', 'i', 'admins'],
     delimiters: ['<%', '%>'],
     
     data: function(){
@@ -1124,17 +1159,24 @@ Vue.component('comment', {
         },
         selfIndex: function(){
             return this.i
-        }
+        },
+        adminNames: function(){
+            return this.admins 
+        },
+        isAdmin: function(){
+            return (this.adminNames.includes(loggedInUser[0].fields.username))
+        },
     },
     
     watch: {
-        // commentList: function(){
-        //     // console.log(this.commentList)
-        // }
-
+        adminNames: function(){
+            console.log("hi")
+        }
     },   
 
     methods: {
+        
+
         commentAuthorString: function(comment){
 
             var str = "\n By " 
@@ -1212,9 +1254,9 @@ Vue.component('comment', {
     },
     created: function(){
         // // console.log(this.comments.length)
-        // for (c in this.comments) {
+        // for (a in this.admins) {
 
-        //     // console.log(this.comments[c].fields)
+        //     console.log(this.admins[a])
         // }
     }
 })
@@ -1485,14 +1527,14 @@ function initialiseSockets(){
         var f = data["function"];
 
         switch(f) {
-            // case "promoteUser": {
-            //     promoteUserSuccessCallback(data);
-            //     break;
-            // }
-            // case "demoteUser": {
-            //     demoteAdminSuccessCallback(data);
-            //     break;
-            // }
+            case "promoteUser": {
+                promoteUserSuccessCallback(data);
+                break;
+            }
+            case "demoteUser": {
+                demoteAdminSuccessCallback(data);
+                break;
+            }
             case "addUser": {
                 addUserSuccessCallback(data);
                 break;
