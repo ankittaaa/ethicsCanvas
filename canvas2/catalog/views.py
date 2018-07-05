@@ -895,6 +895,7 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
     try:
         idea = Idea.objects.get(pk=idea_pk)
         tag.idea_set.remove(idea)
+        idea.save()
     except:
         idea = None
     
@@ -906,7 +907,6 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
     
     tag.save()
     canvas.save()
-    idea.save()
 
     # delete any tags that aren't attached to a canvas: they are never useful
     CanvasTag.objects.filter(canvas_set=None).delete()
