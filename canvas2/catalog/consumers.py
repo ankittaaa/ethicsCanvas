@@ -68,7 +68,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             ADDITION OF IDEA
             '''
             category = text_data_json['category']
-            data = views.new_idea(logged_in_user, canvas_pk, category)
+            data = await database_sync_to_async(views.new_idea)(logged_in_user, canvas_pk, category)
             return_idea = data['return_idea']
             
             idea_pk = data['pk']
@@ -94,7 +94,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             
 
-            data = views.idea_detail(logged_in_user, idea_pk, input_text)
+            data = await database_sync_to_async(views.idea_detail)(logged_in_user, idea_pk, input_text)
             return_idea = data['return_idea']
             old_text = data['old_text']
 
@@ -117,7 +117,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             idea_pk = text_data_json['idea_pk']
             i = text_data_json['i']
 
-            category = views.delete_idea(logged_in_user, idea_pk)
+            category = await database_sync_to_async(views.delete_idea)(logged_in_user, idea_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -241,7 +241,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             text = text_data_json['input_text']
             idea_pk = text_data_json['idea_pk']
 
-            data = views.new_comment(text, idea_pk, logged_in_user)
+            data = await database_sync_to_async(views.new_comment)(text, idea_pk, logged_in_user)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -260,7 +260,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             c = text_data_json['c']
             comment_pk = text_data_json['comment_pk']
 
-            category = views.delete_comment(logged_in_user, comment_pk)
+            category = await database_sync_to_async(views.delete_comment)(logged_in_user, comment_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -278,7 +278,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             c = text_data_json['c']
             comment_pk = text_data_json['comment_pk']
 
-            category = views.single_comment_resolve(logged_in_user, comment_pk)
+            category = await database_sync_to_async(views.single_comment_resolve)(logged_in_user, comment_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -297,7 +297,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             i = text_data_json['i']
             idea_pk = text_data_json['idea_pk']
 
-            category = views.all_comment_resolve(logged_in_user, idea_pk)
+            category = await database_sync_to_async(views.all_comment_resolve)(logged_in_user, idea_pk)
             
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -397,7 +397,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
         if function == 'addUser':
 
             name = text_data_json['name']
-            user = views.add_user(logged_in_user, project_pk, name)
+            user = await database_sync_to_async(views.add_user)(logged_in_user, project_pk, name)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -412,7 +412,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
 
             user_pk = text_data_json['user_pk']
             ui = text_data_json['ui']
-            victim_is_admin = views.delete_user(logged_in_user, project_pk, user_pk)
+            victim_is_admin = await database_sync_to_async(views.delete_user)(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -427,7 +427,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
         elif function == 'promoteUser':
 
             user_pk = text_data_json['user_pk']
-            admin = views.promote_user(logged_in_user, project_pk, user_pk)
+            admin = await database_sync_to_async(views.promote_user)(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -442,7 +442,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
 
             user_pk = text_data_json['user_pk']
             ai = text_data_json['ai']
-            views.demote_user(logged_in_user, project_pk, user_pk)
+            await database_sync_to_async(views.demote_user)(logged_in_user, project_pk, user_pk)
 
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -492,7 +492,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
         elif function == 'togglePublic':
             project_pk = text_data_json['canvas_pk']
 
-            views.toggle_public(project_pk, logged_in_user)
+            await database_sync_to_async(views.toggle_public)(project_pk, logged_in_user)
 
 
     async def add_user(self, event):
@@ -601,14 +601,14 @@ class TagConsumer(AsyncWebsocketConsumer):
         data = []
             
         if function == 'addTag':
-            data = views.add_tag(canvas_pk, logged_in_user, label)
+            data = await database_sync_to_async(views.add_tag)(canvas_pk, logged_in_user, label)
         
         elif function == 'deleteTag':
-            data = views.delete_tag(canvas_pk, logged_in_user, label)
+            data = await database_sync_to_async(views.delete_tag)(canvas_pk, logged_in_user, label)
 
         elif function == 'removeTag':
             idea_pk = text_data_json['idea_pk']
-            data = views.remove_tag(canvas_pk, idea_pk, logged_in_user, label)            
+            data = await database_sync_to_async(views.remove_tag)(canvas_pk, idea_pk, logged_in_user, label)            
         
         await self.channel_layer.group_send(
             self.room_group_name,

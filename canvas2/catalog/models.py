@@ -47,7 +47,7 @@ class Canvas(models.Model):
     canvas_type = models.PositiveSmallIntegerField(default=0)
     tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
 
-    project = models.ForeignKey(Project, related_name='project', on_delete=models.CASCADE, default=0)
+    project = models.ForeignKey(Project, related_name='canvas_set', on_delete=models.CASCADE, default=0)
 
     def __str__(self):
         return self.title

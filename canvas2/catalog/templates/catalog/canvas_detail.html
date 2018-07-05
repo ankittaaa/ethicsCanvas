@@ -22,14 +22,16 @@
         v-if="auth"
         id="tag"
         v-for="(tag, index) in tagList"
-        v-bind:key="tag.pk"
+        v-bind:key="index"
         v-bind:index="index"
         v-bind:label="tag.fields.label"
+
     >
         
         <li 
             class="tag-elem" 
             v-show="this.label != null"
+
         >
             <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
                 <% label %>
@@ -38,8 +40,9 @@
 
             <tag-popup  
                 id="tag-popup"
-                v-bind:canvases="canvasList[index]"
                 v-bind:label="this.label"
+                v-bind:canvases="canvasList[index]"
+                v-bind:tag="tagList[index]"
                 v-bind:index="index"
                 v-bind:ideas="ideaList[index]"
                 v-show="show" 

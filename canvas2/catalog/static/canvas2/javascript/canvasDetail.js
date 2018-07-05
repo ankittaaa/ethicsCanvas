@@ -85,7 +85,6 @@ var activeUsers = [];
 var loggedInUser
 var isAuth;
 var isAdmin;
-var allCanvases
 var selection;
 var currentURL;
 
@@ -278,16 +277,6 @@ function deleteIdeaSuccessCallback(data){
         comments: []
     });
 
-    for (t in tags){
-        if (tempIdea.fields.text.contains(tags[t].fields.label)){
-            tagSocket.send(JSON.stringify({
-                'function': 'deleteTag',
-                'label': tags[t].fields.label,
-                'canvas_pk': canvasPK,
-            }));
-        }
-    }
-
 
     typingBools[tempCategory].splice(i, 1);
     typingUser[tempCategory].splice(i, 1);
@@ -343,10 +332,11 @@ function editIdeaSuccessCallback (data){
     var i = JSON.parse(data.i);
     var oldText = escapeHTMLChars(data.oldText);
     sortIdeas(inIdea, i, tempCategory, oldText);
-
+    var tempTag;
+    // check for adding new
     for (tag in allTags){
         // if the new idea string contains a tag declared in a different canvas
-        var tempTag = allTags[tag];
+        tempTag = allTags[tag];
 
         if (inIdea.fields.text.includes(tempTag.fields.label) && (oldText.includes(tempTag.fields.label) === false)){
             // add that tag to the current canvas's list IF IT DOES NOT EXIST
@@ -357,8 +347,12 @@ function editIdeaSuccessCallback (data){
                     "canvas_pk": canvasPK,
             }));
         }
+    }
+    // check for removing old
+    for (tag in tags){
+        tempTag = allTags[tag];
 
-        else if (oldText.includes(tempTag.fields.label) && (inIdea.fields.text.includes(tempTag.fields.label) === false)){
+        if (oldText.includes(tempTag.fields.label) && (inIdea.fields.text.includes(tempTag.fields.label) === false)){
             // TODO: CHECK THE OTHER IDEAS!!!
 
             // remove the tag and the tag's details entirely    
@@ -483,9 +477,21 @@ function newTagSuccessCallback(data){
         tempTaggedIdeas.push(JSON.parse(data.taggedIdeas[i]));
     }
 
-    console.log(tags);
-    console.log(taggedCanvases);
-    console.log(allTaggedIdeas);
+    // console.log(newTags.length);
+    // console.log(tempTaggedCanvases.length);
+    // console.log(tempTaggedIdeas.length);
+    // for (i in newTags){
+    //     for (j in tempTaggedCanvases){
+    //         console.log(tempTaggedCanvases[i][j]);
+    //         console.log(tempTaggedIdeas[i][j]);
+    //     }
+    // }
+    // for (i in newTags){
+    //     for (j in tempTaggedIdeas){
+    //         console.log("TAG: " + newTags[i].fields.label);
+    //         console.log(tempTaggedIdeas[i][j].pk);
+    //     }
+    // }
 
     for (i in newTags){
         var tagExists = false;
@@ -493,8 +499,6 @@ function newTagSuccessCallback(data){
         
         for (t in tags){
             if (tags[t].pk == newTags[i].pk){
-                console.log(tags[t].pk);
-                console.log(newTags[i].pk);
                 tagExists = true;
                 break;
             }
@@ -506,17 +510,16 @@ function newTagSuccessCallback(data){
             }
         }
 
-        for (j in tempTaggedCanvases[i]){
+
             // console.log("is in?" + (tempTaggedCanvases[i][j].pk == canvasPK));
             // if the tag doesn't exist, but the canvas is tagged by it, add it
             if (tagExists === false && canvasTagged === true){
                 if (tags[0].pk !== null){
-                    tags.unshift(newTags[i]);
-                    taggedCanvases.unshift(tempTaggedCanvases[i]);
-                    allTaggedIdeas.unshift(tempTaggedIdeas[i]);
+                    tags.push(newTags[i]);
+                    taggedCanvases.push(tempTaggedCanvases[i]);
+                    allTaggedIdeas.push(tempTaggedIdeas[i]);
                 }
                 else {
-                    console.log("REPLACING NULL");
                     tags.splice(0, 1, newTags[i]);
                     taggedCanvases.splice(0, 1, tempTaggedCanvases[i]);
                     allTaggedIdeas.splice(0, 1, tempTaggedIdeas[i]);
@@ -525,12 +528,14 @@ function newTagSuccessCallback(data){
             }
             // if the tag DOES exist and the canvas is tagged by it, update it
             else if (tagExists === true && canvasTagged === true){
+                console.log("UPDATING...");
+                // console.log(allTaggedIdeas);
+                // console.log(allTaggedIdeas[i]);
+                // console.log(tempTaggedIdeas[i]);
                 taggedCanvases.splice(i, 1, tempTaggedCanvases[i]);
                 allTaggedIdeas.splice(i, 1, tempTaggedIdeas[i]);
-                
-                break;
             }
-        }
+
         // otherwise do nothing
     }
 }
@@ -544,67 +549,63 @@ function removeTagSuccessCallback(data){
     // differs to deleteTag in that it is called when a tag's occurrences in a canvas are altered. 
     // the tag's presence may still be in that canvas and in other canvases, so it shouldn't be deleted.
     // instead the set of ideas is altered.
-    var newTags = JSON.parse(data.tags);
+    var victimTag = JSON.parse(data.tag)[0];
     var tempTaggedCanvases = [];
     var tempTaggedIdeas = [];
 
-    for (i in newTags){
-        tempTaggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
-        tempTaggedIdeas.push(JSON.parse(data.taggedIdeas[i]));
-    }
+    // for (i in newTags){
+    tempTaggedCanvases = (JSON.parse(data.taggedCanvases));
+    tempTaggedIdeas = (JSON.parse(data.taggedIdeas));
+    // }
 
-    for (i in newTags){
-        var tagExists = false;
-        var canvasTagged = false;
+    var tagExists = false;
+    var canvasTagged = false;
+    var tagIndex = -1;
 
-        for (t in tags){
-            if (tags[t].pk == newTags[i].pk){
-                tagExists = true;
-                break;
-            }
+    for (i in tags){
+        if (tags[i].pk == victimTag.pk){
+            tagExists = true;
+            tagIndex = i;
         }
-
-        for (j in tempTaggedCanvases[i]){
-            if (tempTaggedCanvases[i][j].pk == canvasPK){
-                console.log(tempTaggedCanvases[i][j].pk);
-                console.log(canvasPK);                
+        for (j in tempTaggedCanvases){
+            if (tempTaggedCanvases[j].pk == canvasPK){            
                 canvasTagged = true;
-                break;
             }
         }
-
-
-        for (j in tempTaggedCanvases[i]){
-            // if the tag does exist, but the canvas is not tagged by it, remove it
-            if (tagExists === true && canvasTagged === false){
-                if (tags.length > 0 && tags.length != 1){
-                    // simply remove the tag if there will be more remaining
-                    tags.splice(i, 1);
-                    taggedCanvases.splice(i, 1);
-                    allTaggedIdeas.splice(i, 1);
-                }
-                else {
-                    // if removing last tag, replace with null tag
-                    var tempTag = tags[i];
-                    tempTag.pk = null;
-                    tempTag.fields.date_created = null;
-                    tempTag.fields.date_modified = null;
-                    tempTag.fields.label = null;
-                    tags.splice(i, 1, tempTag);
-                    taggedCanvases.splice(0, 1);
-                    allTaggedIdeas.splice(0, 1);
-                }
-                break;
-            }
-            // if the tag does exist and the canvas is tagged by it, update it to reflect removal form other canvases
-            else if (tagExists === true && canvasTagged === true){
-                taggedCanvases.splice(i, 1, tempTaggedCanvases[i]);
-                allTaggedIdeas.splice(i, 1, tempTaggedIdeas[i]);
-                break;
-            }
-        }
-        // otherwise do nothing
     }
+
+
+
+    // if the tag does exist, but the canvas is not tagged by it, remove it
+    if (tagExists === true && canvasTagged === false){
+        if (tags.length > 0 && tags.length != 1){
+            // simply remove the tag if there will be more remaining
+            tags.splice(tagIndex, 1);
+            taggedCanvases.splice(tagIndex, 1);
+            allTaggedIdeas.splice(tagIndex, 1);
+        }
+        else {
+            // if removing last tag, replace with null tag
+            var tempTag = tags[i];
+            tempTag.pk = null;
+            tempTag.fields.date_created = null;
+            tempTag.fields.date_modified = null;
+            tempTag.fields.label = null;
+            tags.splice(i, 1, tempTag);
+            taggedCanvases.splice(0, 1);
+            allTaggedIdeas.splice(0, 1);
+        }
+        return;
+    }
+    // if the tag does exist and the canvas is tagged by it, update it to reflect removal form other canvases
+    else if (tagExists === true && canvasTagged === true){
+        taggedCanvases.splice(tagIndex, 1, tempTaggedCanvases);
+        allTaggedIdeas.splice(tagIndex, 1, tempTaggedIdeas);
+
+    }
+
+        // otherwise do nothing
+
 }
 
 
@@ -672,21 +673,10 @@ function initSuccessCallback(data){
     ideas = JSON.parse(data.ideas);
     
     allTags = JSON.parse(data.allTags);
-
-
-
-    for (i in data.allTaggedIdeas){
-        // console.log(data.allTaggedIdeas[i]);
-        allTaggedIdeas.push(JSON.parse(data.allTaggedIdeas[i]));
-    }
-
-
-
     loggedInUser = JSON.parse(data.loggedInUser);
-    canvasType = JSON.parse(data.canvasType);
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas)[0];
-    allCanvases = JSON.parse(data.allCanvases);
+    canvasType = thisCanvas.fields.canvas_type;
     users = JSON.parse(data.users);
 
     admins = JSON.parse(data.admins);
@@ -705,7 +695,6 @@ function initSuccessCallback(data){
     
     if (loggedInUser.length > 0) {
         isAuth = true;
-        // populateTagList();
         initialiseSockets();
     }
 
@@ -776,7 +765,9 @@ function initSuccessCallback(data){
             var idea = data['idea'];
             newIdeaSuccessCallback(idea);
         };
-}
+    }
+
+    console.log(allTaggedIdeas);
     if (canvasType === 0)
         theCategories = ethicsCategories;
     else if (canvasType === 1)
@@ -1063,6 +1054,19 @@ Vue.component('idea', {
 
         deleteIdea(event, idea, i){
             if (isAuth === true){
+                // CALL removeTag BEFORE DELETING - VIEW FUNCTION NEEDS THE IDEA TO EXIST
+                for (t in tags){
+                    if (idea.fields.text.includes(tags[t].fields.label)){
+                        tagSocket.send(JSON.stringify({
+                            'function': 'removeTag',
+                            "idea_pk": idea.pk,
+                            "label": tags[t].fields.label,
+                            "canvas_pk": canvasPK,
+                        }));
+                    }
+                    console.log(tags[t].fields.label + " removed.");
+                }
+
                 ideaSocket.send(JSON.stringify({
                     'function': 'deleteIdea',
                     'idea_pk': idea.pk,
@@ -1353,11 +1357,12 @@ Vue.component('tag', {
             show: false,
             showTag: true,
             canvasList: taggedCanvases,
-            tagList: [],
+            tagList: tags,
             auth: isAuth,
             ideaList: allTaggedIdeas,
         }
     },
+
 
 
     // watcher for when the showTag data is changed by the emission of deleteTag by the 
@@ -1386,11 +1391,14 @@ Vue.component('tag', {
 *************************************************************************************************************/
  
 Vue.component('tag-popup', {
-    props:['label', 'canvases', 'index', 'ideas'],
+    props:['tag', 'label', 'canvases', 'index', 'ideas'],
     delimiters: ['<%', '%>'],
     data: function(){
         return {
-            c: ''
+            c: '',
+            selfTag: this.tag,
+            ideaList: this.ideas,
+            canvasData: this.canvases,
         }
     },
 
@@ -1402,7 +1410,7 @@ Vue.component('tag-popup', {
                 <h4>Appears in: </h4>
                 </div>
                 <ul slot="body">
-                    <li v-for="c in this.canvasData" style="list-style-type:none;">
+                    <li v-for="c in this.canvases" style="list-style-type:none;">
                         <a v-bind:href="url(c)" target="_blank">
                             <% tagLink(c) %>
                         </a>
@@ -1420,13 +1428,27 @@ Vue.component('tag-popup', {
     ,
 
     computed: {
-        canvasData: function(){
-            return this.canvases
-        },
-        ideaList: function(){
-            return this.ideas
-        }
+        // canvasData: function(){
+        //     return this.canvases
+        // },
+        // ideaList: function(){
+        //     return this.ideas
+        // },
+        // selfTag: function(){
+        //     return this.tag
+        // }
 
+
+    },
+
+    watch: { 
+        ideaList: function(){
+            // console.log(this.tag.label)
+            for (i in this.ideaList){
+                    console.log(this.ideas[i].pk)
+            }
+            console.log("******")
+        }
     },
 
     methods:{
@@ -1440,31 +1462,25 @@ Vue.component('tag-popup', {
 
             for (i in this.ideaList){
                 if (this.ideaList[i].fields.canvas === c.pk){
-                    if (this.ideaList[i].fields.tags.includes(tags[this.index].pk)){
                         ideaString += this.ideaList[i].pk + ', '
-                    }
                 }
             }
             ideaString = ideaString.slice(0, ideaString.length - 2)
-            
-            // console.log(this.ideaList)
-            // console.log(ideaString)
+
             return c.fields.title + " " + ideaString
 
         },
         deleteTag: function(event){
             tagSocket.send(JSON.stringify({
                 'function': 'deleteTag',
-                'label': this.label,
+                'label': this.tag.fields.label,
                 'canvas_pk': canvasPK,
             }));
         }
     },
     created: function(){
-        // console.log(this.canvases)
-        // console.log(this.ideas)
-        // console.log(this.label)
-        // console.log(this.index)
+        console.log(this.selfTag.pk)
+        console.log(this.label)
     }
 
 })
@@ -1482,38 +1498,6 @@ Vue.component('modal', {
                                             MISCELLANEOUS
 **************************************************************************************************************   
 **************************************************************************************************************/
-function populateTagList(){
-/*
-    This function's purpose is to populate a 2D array of canvases. Each 'i' element represents a tag,
-    while the 'j' element represents the list of canvases attached to that tag. 
-*/
-    tempCanvases = [];
-    tempIdeas = [];
-
-    for (var i = 0; i < tags.length; i++){
-
-        // get a list of all public canvases containing the current tag
-        for (var j = 0; j < allCanvases.length; j++){
-            if (allCanvases[j].fields.tags.includes(tags[i].pk)){
-                tempCanvases.push(allCanvases[j]);
-            }
-        }
-
-        // for (var j = 0; j < allTaggedIdeas.length; j++){
-
-        //     if (allTaggedIdeas[j].fields.tags.includes(tags[i].pk)){
-        //         console.log(allTaggedIdeas[j].fields.text);
-        //         tempIdeas.push(allTaggedIdeas[j]);
-        //     }
-        // }
-        taggedCanvases.splice(i, 1, tempCanvases);
-        // taggedIdeas.splice(i, 1, tempIdeas);
-        tempCanvases = [];
-        // tempIdeas = [];
-    }
-
-}
-
 
 function initialiseSockets(){
 

@@ -182,8 +182,6 @@ class ProjectDetailView(generic.DetailView):
             admins = project.admins.all()
             current = [logged_in_user]
 
-            update_canvas_session_variables(self, logged_in_user, project)
-
             json_admins = serialize(
                 'json',
                 admins,
@@ -242,6 +240,7 @@ class CanvasDetailView(generic.DetailView):
             return HttpResponse('Unauthorized', status = 401)
 
         if request.is_ajax():
+            # initialise every json_object as the empty string
             json_comments = '""'
             json_ideas = '""'
             json_tags = '""'
@@ -250,24 +249,27 @@ class CanvasDetailView(generic.DetailView):
             json_admins = '""'
 
             if (logged_in_user.is_authenticated):
-                update_canvas_session_variables(self, logged_in_user, project)
-
                 current = [logged_in_user]
-                all_canvases = request.session['all_canvases']
             
             else:
                 current = project.users.none()
                 comments = "''"
-                all_canvases = "''"
 
 
             ideas = Idea.objects.filter(canvas=canvas)
+            # every tag attached to an idea in this current canvas
             tags = CanvasTag.objects.filter(idea_set__in=ideas).distinct()
+            # every tag in the entire project
             all_tags = CanvasTag.objects.filter(canvas_set__in=Canvas.objects.filter(project=project)).distinct()
+            
+            # initialise these as empty lists - they will become lists of lists as each tag may have several tagged ideas and canvases
             tagged_ideas_json = []
             tagged_canvases_json = []
 
             for t in tags:
+                '''
+                Only need the tagged ideas and canvasses for the tags that will actually be rendered ie the tags in the current canvas
+                '''
                 tagged_ideas_json.append(
                     serialize(
                         'json',
@@ -284,13 +286,11 @@ class CanvasDetailView(generic.DetailView):
                     )
                 )
 
-
             comments = IdeaComment.objects.filter(idea__in=ideas)
             # need the users list for the comment authors, when the comment is parsed the PK of the user is what's used for the user FK, not the user object itself
             users = project.users.all()
             # also need the admins for enabling or disabling certain buttons
             admins = project.admins.all()
-            
 
             if tags:
                 json_tags = serialize(
@@ -300,8 +300,8 @@ class CanvasDetailView(generic.DetailView):
                 )
 
             else: 
+                # a null tag is used for conditionally rendering the tag Vue element
                 tag = CanvasTag(label=None)
-                # tag.save()
                 json_tags = serialize(
                     'json', 
                     [tag], 
@@ -316,6 +316,7 @@ class CanvasDetailView(generic.DetailView):
                 )
 
             else: 
+                # a null tag is used for conditionally rendering the tag Vue element
                 tag = CanvasTag(label=None)
                 json_all_tags = serialize(
                     'json', 
@@ -372,9 +373,7 @@ class CanvasDetailView(generic.DetailView):
                 'loggedInUser': json_self,
                 'allTaggedIdeas': tagged_ideas_json,
                 'taggedCanvases': tagged_canvases_json,
-                'allCanvases': all_canvases,
                 'thisCanvas': json_canvas,
-                'canvasType': canvas.canvas_type,
                 'projectPK': project.pk,
                 'users': json_users,
                 'admins': json_admins
@@ -383,6 +382,10 @@ class CanvasDetailView(generic.DetailView):
 
             return JsonResponse(data, safe = False)
         else:
+            '''
+            This 'else' is for the initial page load. document.onload currently triggers the AJAX GET request which gets all 
+            the relevant canvas information as JSON objects
+            '''
             return render(
                 request, 
                 'catalog/canvas_detail.html', 
@@ -440,7 +443,9 @@ def delete_idea(logged_in_user, idea_pk):
     '''
     Deletion of an idea 
     '''
+
     idea = Idea.objects.get(pk=idea_pk)
+    print("deleting" + idea.text)
     # tags = idea.tags.all()
 
     # for tag in tags:
@@ -455,16 +460,8 @@ def delete_idea(logged_in_user, idea_pk):
         return HttpResponse('Unauthorized', status = 401)
 
     category = idea.category
-    tags = CanvasTag.objects.filter(idea_set=idea)
-
-    for tag in tags:
-        canvas.tags.remove(tag)
-    
 
     idea.delete()
-
-
-
     return category
 
 
@@ -564,7 +561,7 @@ def delete_comment(logged_in_user, comment_pk):
 
 def single_comment_resolve(logged_in_user, comment_pk):
     '''
-    Deletion of a comment
+    Resolution of a single comment
     '''
     comment = IdeaComment.objects.get(pk = comment_pk)
     canvas = comment.idea.canvas
@@ -824,21 +821,38 @@ def add_tag(canvas_pk, logged_in_user, label):
         tag.canvas_set.add(canvas)
     
     tag.save()
+    canvas.save()
 
-    data = get_canvases_accessible_by_user(logged_in_user, project)
+
+
 
     # check every canvas for presence of new tag's label in those canvases on creation of new tag
-    for c in serializers.deserialize("json", data['all_canvases']):
-        search_canvas_for_tag(tag, c.object)
+    for canvas in project.canvas_set.all():
+        ideas = Idea.objects.filter(canvas=canvas)
+
+        for idea in ideas:
+
+            if tag.label in idea.text:            
+
+                if idea not in tag.idea_set.all():
+                    tag.idea_set.add(idea)
+
+                    # skip the below step if the above is false
+                    if canvas not in tag.canvas_set.all():
+                        canvas.save()
+                        tag.canvas_set.add(canvas)
+                    
+                    # save tag if modifications made
+                    tag.save()
+                    canvas.save()
+                    idea.save()
+
 
     tags = CanvasTag.objects.filter(canvas_set__project=project).distinct()
     json_tagged_canvases = []
     json_tagged_ideas = []
 
     for t in tags:
-        # tagged_canvases.append()
-        # tagged_ideas.append()
-
         json_tagged_canvases.append(
             serialize(
                 'json', 
@@ -846,6 +860,7 @@ def add_tag(canvas_pk, logged_in_user, label):
                 cls=CanvasEncoder
             )
         )
+
 
         json_tagged_ideas.append(
             serialize(
@@ -876,56 +891,55 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
     canvas = Canvas.objects.get(pk=canvas_pk)
     project = canvas.project
     tag = CanvasTag.objects.get(label=label)
-    idea = Idea.objects.get(pk=idea_pk)
-    tag.idea_set.remove(idea)
+    
+    try:
+        idea = Idea.objects.get(pk=idea_pk)
+        tag.idea_set.remove(idea)
+    except:
+        idea = None
     
     ideas = tag.idea_set.filter(canvas=canvas)
     
     if not ideas:
         canvas.tags.remove(tag)
         tag.canvas_set.remove(canvas)
-        tag.save()
-        canvas.save()
+    
+    tag.save()
+    canvas.save()
+    idea.save()
 
     # delete any tags that aren't attached to a canvas: they are never useful
     CanvasTag.objects.filter(canvas_set=None).delete()
 
-    tags = CanvasTag.objects.filter(canvas_set__project=project).distinct()
-    json_tagged_canvases = []
-    json_tagged_ideas = []
-
-    for t in tags:
-        # tagged_canvases.append()
-        # tagged_ideas.append()
-
-        json_tagged_canvases.append(
-            serialize(
-                'json', 
-                t.canvas_set.all(),
-                cls=CanvasEncoder
-            )
+    # for t in tags:
+    json_tagged_canvases=(
+        serialize(
+            'json', 
+            tag.canvas_set.all(),
+            cls=CanvasEncoder
         )
+    )
 
-        json_tagged_ideas.append(
-            serialize(
-                'json',
-                t.idea_set.all(),
-                cls=IdeaEncoder
-            )
+    json_tagged_ideas=(
+        serialize(
+            'json',
+            tag.idea_set.all(),
+            cls=IdeaEncoder
         )
+    )
 
-    json_tags = serialize(
+    json_tag = serialize(
         'json', 
-        tags, 
+        [tag], 
         cls = CanvasTagEncoder
     )
 
     return_data = {
         'taggedCanvases': json_tagged_canvases,
         'taggedIdeas': json_tagged_ideas,
-        'tags': json_tags,
+        'tag': json_tag,
     }
-
+    print("returning")
 
     return return_data
 
@@ -967,29 +981,23 @@ def delete_tag(canvas_pk, logged_in_user, label):
 
 
 
-def get_canvases_accessible_by_user(logged_in_user, project):
-    '''
-    function to get every canvas accessible to the currently logged-in user
-    '''
-    all_canvases = Canvas.objects.filter(project=project)
+# def get_canvases_accessible_by_user(logged_in_user, project):
+#     '''
+#     function to get every canvas accessible to the currently logged-in user
+#     '''
+#     all_canvases = Canvas.objects.filter(project=project)
     
-    json_all_canvases = serialize(
-        'json', 
-        all_canvases,
-        cls=CanvasEncoder
-    )   
+#     json_all_canvases = serialize(
+#         'json', 
+#         all_canvases,
+#         cls=CanvasEncoder
+#     )   
 
-    data = {
-        'all_canvases': json_all_canvases
-    }
+#     data = {
+#         'all_canvases': json_all_canvases
+#     }
 
-    return data
-
-def update_canvas_session_variables(self, logged_in_user, project):
-    data = get_canvases_accessible_by_user(logged_in_user, project)
-    self.request.session['all_canvases'] = data['all_canvases']
-
-    # NOTE END: BAND-AID FOR UPDATING SESSION DATA ON LOAD
+#     return data
 
 def search_canvas_for_tag(tag, canvas):
     '''
@@ -1011,6 +1019,8 @@ def search_canvas_for_tag(tag, canvas):
                 
                 # save tag if modifications made
                 tag.save()
+
+    # print(tag.idea_set.all())
 
 
 
