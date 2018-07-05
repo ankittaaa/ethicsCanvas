@@ -83,6 +83,8 @@ class Idea(models.Model):
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
 
     canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
+    # M2M RELATION WITH IDEAS - A TAG CAN EXIST IN MANY IDEAS AND AN IDEA MAY CONTAIN MANY TAGS
+    tags = models.ManyToManyField('CanvasTag', related_name='idea_set', blank=True)
 
     def __str__(self):
         return self.title
@@ -111,7 +113,7 @@ class CanvasTag(models.Model):
     # including date_created and date_modified to help with ordering them
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
-    
+
     def __str__(self):
         return self.label
 

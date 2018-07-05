@@ -85,7 +85,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'modifyIdea':
+        elif function == 'modifyIdea':
             '''
             MODIFICATION OF IDEA
             '''
@@ -110,7 +110,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             )
 
 
-        if function == 'deleteIdea':
+        elif function == 'deleteIdea':
             '''
             DELETION OF IDEA
             '''
@@ -130,7 +130,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             )
 
 
-        if function == 'typing' or function == 'done_typing':
+        elif function == 'typing' or function == 'done_typing':
             '''
             USER BEGINS TYPING
             '''
@@ -255,7 +255,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             )
 
 
-        if function == 'deleteComment':
+        elif function == 'deleteComment':
             i = text_data_json['i']
             c = text_data_json['c']
             comment_pk = text_data_json['comment_pk']
@@ -273,7 +273,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'resolveIndividualComment':
+        elif function == 'resolveIndividualComment':
             i = text_data_json['i']
             c = text_data_json['c']
             comment_pk = text_data_json['comment_pk']
@@ -292,7 +292,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             )
 
 
-        if function == 'resolveAllComments':
+        elif function == 'resolveAllComments':
             
             i = text_data_json['i']
             idea_pk = text_data_json['idea_pk']
@@ -335,7 +335,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
             'i': i,
             'c': c
         }))
-        
+
     async def resolve_individual_comment(self, event):
         function = event['function']
         i = event['i']
@@ -408,7 +408,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'deleteUser':
+        elif function == 'deleteUser':
 
             user_pk = text_data_json['user_pk']
             ui = text_data_json['ui']
@@ -424,7 +424,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'promoteUser':
+        elif function == 'promoteUser':
 
             user_pk = text_data_json['user_pk']
             admin = views.promote_user(logged_in_user, project_pk, user_pk)
@@ -438,7 +438,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'demoteUser':
+        elif function == 'demoteUser':
 
             user_pk = text_data_json['user_pk']
             ai = text_data_json['ai']
@@ -453,7 +453,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'newActiveUser':
+        elif function == 'newActiveUser':
             user = text_data_json['user']
 
             await self.channel_layer.group_send(
@@ -465,7 +465,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'removeActiveUser':
+        elif function == 'removeActiveUser':
             user = text_data_json['user']
 
             await self.channel_layer.group_send(
@@ -477,7 +477,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'sendWholeList':
+        elif function == 'sendWholeList':
             users = text_data_json['users']
 
             await self.channel_layer.group_send(
@@ -489,7 +489,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-        if function == 'togglePublic':
+        elif function == 'togglePublic':
             project_pk = text_data_json['canvas_pk']
 
             views.toggle_public(project_pk, logged_in_user)
@@ -592,92 +592,39 @@ class TagConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         logged_in_user = self.scope['user']
         project_pk = self.scope['url_route']['kwargs']['pk']
-        
+
         text_data_json = json.loads(text_data)
+
         function = text_data_json['function']
-
-        
+        label = text_data_json['label']
+        canvas_pk = text_data_json['canvas_pk']
+        data = []
+            
         if function == 'addTag':
-            label = text_data_json['label']
-            canvas_pk = text_data_json['canvas_pk']
-            
             data = views.add_tag(canvas_pk, logged_in_user, label)
-            
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'add_tag',
-                    'function': function,
-                    'data': data,
-                }
-            )
-
-        if function == 'removeTag':
-            i = text_data_json['i']
-            tag_pk = text_data_json['tag_pk']
-            canvas_pk = text_data_json['canvas_pk']
-
-            data = views.remove_tag(tag_pk, logged_in_user, canvas_pk)
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'remove_tag',
-                    'function': function,
-                    'data': data,
-                    'i': i,
-                }
-            )
-
-        if function == 'deleteTag':
-            i = text_data_json['i']
-            tag_pk = text_data_json['tag_pk']
-
-            tag = views.delete_tag(tag_pk)
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'delete_tag',
-                    'function': function,
-                    'tag': tag,
-                    'i': i
-                }
-            )
-
-
-    async def add_tag(self, event):
-        function = event['function']
-        data = event['data']
-        print(data['tag'])
-
-        await self.send(text_data=json.dumps({
-            'function': function,
-            'tag': data['tag'],
-            'taggedCanvasses': data['taggedCanvasses'],
-        }))
-
-    async def remove_tag(self, event):
-        function = event['function']
-        i = event['i']
-        data = event['data']
         
-        await self.send(text_data=json.dumps({
-            'function': function,
-            'tag': data['tag'],
-            'taggedCanvasses': data['taggedCanvasses'],
-            'i': i
-        }))
+        elif function == 'deleteTag':
+            data = views.delete_tag(canvas_pk, logged_in_user, label)
 
-    async def delete_tag(self, event):
+        elif function == 'removeTag':
+            idea_pk = text_data_json['idea_pk']
+            data = views.remove_tag(canvas_pk, idea_pk, logged_in_user, label)            
+        
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'tag_return',
+                'function': function,
+                'data': data,
+            }
+        )
+
+
+    async def tag_return(self, event):
         function = event['function']
-        i = event['i']
-        tag = event['tag']
+        data = event['data']
 
         await self.send(text_data=json.dumps({
             'function': function,
-            'tag': tag,
-            'i': i
+            'data': data
         }))
-
-
