@@ -32,6 +32,153 @@ collabSocket = new WebSocket(
     '/ws/project/' + projectPK + '/collab/'
 );
 
+SOCKET SUCCESS CALLBACKS
+
+data.data as each package returned from consumers has the data payload as data, and the function header as function, all automatically wrapped up *by* consumer as data 
+
+payload returned in the format 
+
+data {
+    function: String,
+    data: data {
+        ...
+        ...
+        ...
+    }
+}
+
+EXAMPLE CALLBACKS
+
+NOTE THAT CHECKING THE DATA FOR HTTP RESPONSES (FOR FAILURES SUCH AS 401 UNAUTHORIZED) IS NOT CURRENTLY IMPLEMENTED, BUT THEY ARE RETURNED BY THE CONSUMERS UNDER DATA
+
+/********************************************************************
+*********************************************************************
+                            CALLBACKS
+*********************************************************************                            
+*********************************************************************/
+    
+    /***********************************
+                IDEA SOCKET
+    ************************************/
+    ideaSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data["function"];
+        
+        if (f.includes("typing")) {
+            typingCallback(data.data, f);
+            return;
+        }
+        switch(f) {
+            case "modifyIdea": {
+                editIdeaSuccessCallback(data.data);
+                break;
+            }
+            case "addIdea": {
+                var idea = data.data['idea'];
+                newIdeaSuccessCallback(idea);
+                break;
+            }
+            case "deleteIdea": {
+                deleteIdeaSuccessCallback(data.data);
+                break;
+            }
+        }
+    };
+
+    /***********************************
+                COMMENT SOCKET
+    ************************************/
+    commentSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data["function"];
+
+        switch(f) {
+            case "addComment": {
+                addCommentSuccessCallback(data.data);
+                break;
+            }
+            case "deleteComment": {
+                deleteCommentSuccessCallback(data.data);
+                break;
+            }
+            case "resolveIndividualComment": {
+                resolveIndividualCommentSuccessCallback(data.data);
+                break;
+            }
+            case "resolveAllComments": {
+                resolveAllCommentsSuccessCallback(data.data);
+                break;
+            }
+        }
+    };
+
+    /***********************************
+                TAG SOCKET
+    ************************************/
+    tagSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data["function"];
+        // console.log(e.data);
+        // console.log(data);
+
+        switch(f) {
+            case "addTag": {
+                newTagSuccessCallback(data.data);
+                break;
+            }
+            case "removeTag": {
+                removeTagSuccessCallback(data.data);
+                break;
+            }
+            case "deleteTag": {
+                deleteTagSuccessCallback(data.data);
+                break;
+            }
+        }
+    };
+
+
+    /***********************************
+                COLLAB SOCKET
+    ************************************/
+    collabSocket.onmessage = function(e){
+        var data = JSON.parse(e.data);
+        var f = data["function"];
+
+        switch(f) {
+            case "promoteUser": {
+                promoteUserSuccessCallback(data.data);
+                break;
+            }
+            case "demoteUser": {
+                demoteAdminSuccessCallback(data.data);
+                break;
+            }
+            case "addUser": {
+                addUserSuccessCallback(data.data);
+                break;
+            }
+            case "deleteUser": {
+                deleteUserSuccessCallback(data.data);
+                break;
+            }
+            case "newActiveUser": {
+                newActiveUserCallback(data.data);
+                break;
+            }
+
+            case "removeActiveUser": {
+                removeActiveUserCallback(data.data);
+                break;
+            }
+
+            case "sendWholeList": {
+                wholeListCallback(data.data);
+                break;
+            }
+        }
+    };
+
 
 DATABASE MODELS AND THEIR FIELDS:
 
