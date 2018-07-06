@@ -399,33 +399,33 @@ function initCollabSocket(){
 
         switch(f) {
             case "promoteUser": {
-                promoteUserSuccessCallback(data);
+                promoteUserSuccessCallback(data.data);
                 break;
             }
             case "demoteUser": {
-                demoteAdminSuccessCallback(data);
+                demoteAdminSuccessCallback(data.data);
                 break;
             }
             case "addUser": {
-                addUserSuccessCallback(data);
+                addUserSuccessCallback(data.data);
                 break;
             }
             case "deleteUser": {
-                deleteUserSuccessCallback(data);
+                deleteUserSuccessCallback(data.data);
                 break;
             }
             case "newActiveUser": {
-                newActiveUserCallback(data);
+                newActiveUserCallback(data.data);
                 break;
             }
 
             case "removeActiveUser": {
-                removeActiveUserCallback(data);
+                removeActiveUserCallback(data.data);
                 break;
             }
 
             case "sendWholeList": {
-                wholeListCallback(data);
+                wholeListCallback(data.data);
                 break;
             }
         }

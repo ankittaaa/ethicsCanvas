@@ -1511,21 +1511,21 @@ function initialiseSockets(){
         var f = data["function"];
         
         if (f.includes("typing")) {
-            typingCallback(data, f);
+            typingCallback(data.data, f);
             return;
         }
         switch(f) {
             case "modifyIdea": {
-                editIdeaSuccessCallback(data);
+                editIdeaSuccessCallback(data.data);
                 break;
             }
             case "addIdea": {
-                var idea = data['idea'];
+                var idea = data.data['idea'];
                 newIdeaSuccessCallback(idea);
                 break;
             }
             case "deleteIdea": {
-                deleteIdeaSuccessCallback(data);
+                deleteIdeaSuccessCallback(data.data);
                 break;
             }
         }
@@ -1540,19 +1540,19 @@ function initialiseSockets(){
 
         switch(f) {
             case "addComment": {
-                addCommentSuccessCallback(data);
+                addCommentSuccessCallback(data.data);
                 break;
             }
             case "deleteComment": {
-                deleteCommentSuccessCallback(data);
+                deleteCommentSuccessCallback(data.data);
                 break;
             }
             case "resolveIndividualComment": {
-                resolveIndividualCommentSuccessCallback(data);
+                resolveIndividualCommentSuccessCallback(data.data);
                 break;
             }
             case "resolveAllComments": {
-                resolveAllCommentsSuccessCallback(data);
+                resolveAllCommentsSuccessCallback(data.data);
                 break;
             }
         }
@@ -1593,33 +1593,33 @@ function initialiseSockets(){
 
         switch(f) {
             case "promoteUser": {
-                promoteUserSuccessCallback(data);
+                promoteUserSuccessCallback(data.data);
                 break;
             }
             case "demoteUser": {
-                demoteAdminSuccessCallback(data);
+                demoteAdminSuccessCallback(data.data);
                 break;
             }
             case "addUser": {
-                addUserSuccessCallback(data);
+                addUserSuccessCallback(data.data);
                 break;
             }
             case "deleteUser": {
-                deleteUserSuccessCallback(data);
+                deleteUserSuccessCallback(data.data);
                 break;
             }
             case "newActiveUser": {
-                newActiveUserCallback(data);
+                newActiveUserCallback(data.data);
                 break;
             }
 
             case "removeActiveUser": {
-                removeActiveUserCallback(data);
+                removeActiveUserCallback(data.data);
                 break;
             }
 
             case "sendWholeList": {
-                wholeListCallback(data);
+                wholeListCallback(data.data);
                 break;
             }
         }

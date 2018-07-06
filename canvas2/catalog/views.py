@@ -431,12 +431,8 @@ def new_idea(logged_in_user, canvas_pk, category):
         cls=IdeaEncoder
     )
 
-    data = {
-        'return_idea': return_idea,
-        'pk': idea.pk
-    }
 
-    return data
+    return return_idea
 
 
 def delete_idea(logged_in_user, idea_pk):
@@ -466,7 +462,7 @@ def delete_idea(logged_in_user, idea_pk):
 
 
 
-def idea_detail(logged_in_user, idea_pk, input_text):
+def edit_idea(logged_in_user, idea_pk, input_text):
     '''
     Update of an idea
     '''
@@ -589,6 +585,7 @@ def all_comment_resolve(logged_in_user, idea_pk):
         return HttpResponse('Forbidden', status = 403)
     
     IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
+    
 
     return idea.category
         
@@ -669,7 +666,7 @@ def add_user(logged_in_user, project_pk, name):
             [user],
             cls = UserModelEncoder
         )
-        
+       
         return json_user
 
 def delete_user(logged_in_user, project_pk, user_pk):
@@ -880,12 +877,12 @@ def add_tag(canvas_pk, logged_in_user, label):
         cls = CanvasTagEncoder
     )
 
-    return_data = {
+    data = {
         'taggedCanvases': json_tagged_canvases,
         'taggedIdeas': json_tagged_ideas,
         'tag': json_tag,
     }
-    return return_data
+    return data
 
 
 def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
@@ -942,13 +939,13 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
         cls = CanvasTagEncoder
     )
 
-    return_data = {
+    data = {
         'taggedCanvases': json_tagged_canvases,
         'taggedIdeas': json_tagged_ideas,
         'tag': json_tag,
     }
 
-    return return_data
+    return data
 
 
 
@@ -975,11 +972,11 @@ def delete_tag(canvas_pk, logged_in_user, label):
         cls = CanvasTagEncoder
     )
 
-    return_data = {
+    data = {
         'tag': json_tag,
     }
 
-    return return_data
+    return data
 
 
 ##################################################################################################################################
