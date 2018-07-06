@@ -1,0 +1,584 @@
+Canvas Detail
+
+SOCKET ROUTING:
+
+url(r'ws/canvas/(?P<pk>\d+)/trial-idea/$', TrialIdeaConsumer),
+url(r'ws/canvas/(?P<pk>\d+)/idea/$', IdeaConsumer),
+url(r'ws/canvas/(?P<pk>\d+)/comment/$', CommentConsumer),
+url(r'ws/project/(?P<pk>\d+)/collab/$', CollabConsumer),
+url(r'ws/project/(?P<pk>\d+)/tag/$', TagConsumer),
+
+SOCKET DECLARATIONS:
+
+ideaSocket = new WebSocket(
+    'ws://' + window.location.host + 
+    '/ws/canvas/' + canvasPK + '/idea/'
+);
+
+commentSocket = new WebSocket(
+    'ws://' + window.location.host + 
+    '/ws/canvas/' + canvasPK + '/comment/'
+);
+
+
+tagSocket = new WebSocket(
+    'ws://' + window.location.host + 
+    '/ws/project/' + projectPK + '/tag/'
+);
+
+
+collabSocket = new WebSocket(
+    'ws://' + window.location.host + 
+    '/ws/project/' + projectPK + '/collab/'
+);
+
+
+DATABASE MODELS AND THEIR FIELDS:
+
+Project:
+    title = models.CharField(max_length=25, db_index=True)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+    is_public = models.BooleanField(default=False, db_index=True)
+
+    admins = models.ManyToManyField(User, related_name='admins')
+    users = models.ManyToManyField(User, related_name='users')
+    # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
+    owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
+
+Canvas:
+    title = models.CharField(max_length=25, db_index=True)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+
+    # 0 for Ethics, 1 for Business, 2 for Privacy (TBD)
+    canvas_type = models.PositiveSmallIntegerField(default=0)
+    tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
+
+    project = models.ForeignKey(Project, related_name='canvas_set', on_delete=models.CASCADE, default=0)
+
+Idea:
+    title = models.CharField(max_length=50)
+    text = models.CharField(max_length=255)
+    # Default = 9 for uncategorised
+    category = models.PositiveSmallIntegerField(default=9, db_index=True);
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+    canvas = models.ForeignKey('Canvas', on_delete=models.CASCADE)
+
+    # M2M RELATION WITH IDEAS - A TAG CAN EXIST IN MANY IDEAS AND AN IDEA MAY CONTAIN MANY TAGS
+    tags = models.ManyToManyField('CanvasTag', related_name='idea_set', blank=True)
+
+
+CanvasTag:
+    label = models.CharField(max_length=25)
+    date_created = models.DateTimeField(auto_now_add=True, db_index=True)
+    date_modified = models.DateTimeField(auto_now=True, db_index=True)
+
+
+IdeaComment:
+    text = models.CharField(max_length=255, help_text="Type a comment")
+    resolved = models.BooleanField(default=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    idea = models.ForeignKey(
+        'Idea', null = False,
+        on_delete=models.CASCADE, 
+        related_name='comments',
+        db_index=True
+    )
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+
+
+
+FUNCTIONS
+    
+
+Add Idea
+
+    TRIAL USER:
+        trialIdeaSocket.send(JSON.stringify({
+            'category': the idea's category - index of the idea component in the list of components,
+        }));
+
+        if successful
+
+            returns {
+                idea: Idea model
+            }
+
+
+    LOGGED-IN USER:
+        ideaSocket.send(JSON.stringify({
+            'function': 'addIdea',
+            'category': the idea's category - index of the idea component in the list of components,
+        }));
+
+        if successful
+
+            returns {
+                'function': 'addIdea'
+                'idea': Idea model
+            }
+
+        if unsuccessful
+            returns HttpResponse('Unauthorized', status = 401)
+
+
+}
+
+Everything below is for logged-in users only. Edit and delete ideas for trial users should just modify the element in the list, or remove it respectively. Websocket only required for add-idea in order to get a JSON of the Idea model.
+
+Edit Idea
+    
+    ideaSocket.send(JSON.stringify({
+        'function': 'modifyIdea',
+        'input_text': text,
+        'idea_pk': idea primary key,
+        'category': the idea's category,
+        'i': index of the idea in the idea component's list
+    }));
+
+    if successful
+
+        returns {
+            'function': 'modifyIdea',
+            'idea': Idea Model,
+            'old_text': former text of idea - required to check if a tag was added or removed on the idea (newly present or newly removed),
+            'i': index of the idea in the idea component's list
+        }
+
+    if unsuccessful
+
+        returns {
+            HttpResponse('Unauthorized', status = 401)
+        }        
+}
+
+Delete Idea{
+    if (tags in idea){
+        tagSocket.send(JSON.stringify({
+            'function': 'removeTag',
+            "idea_pk": idea.pk,
+            "label": tags[t].fields.label,
+            "canvas_pk": canvasPK,
+        }));
+
+        refer to tags description at bottom
+    }
+
+    ideaSocket.send(JSON.stringify({
+        'function': 'deleteIdea',
+        'idea_pk': idea primary key,
+        'i': index of the idea in the idea component's list
+    }));
+
+    if successful
+
+        return {
+            'function': 'deleteIdea',
+            'i': index of the idea in the idea component's list,
+            'category': the idea's category,
+        }
+
+    if unsuccessful 
+        
+        returns {
+            HttpResponse('Unauthorized', status = 401)
+        }   
+
+}
+
+
+this exists for other users to see which user is currently typing on what idea
+
+Typing
+
+    ideaSocket.send(JSON.stringify({
+        'function': 'typing',
+        'category': category of idea where typing is happening
+        'username': the user who is typing
+        'i': index of the idea in the idea component's list
+    }))
+    
+    return {
+        'function': 'typing',
+        'category': category of idea where typing is happening
+        'username': the user who is typing
+        'i': index of the idea in the idea component's list
+    }
+}
+
+Done Typing
+    ideaSocket.send(JSON.stringify({
+        'function': 'done_typing',
+        'category': category of idea where typing is happening
+        'username': the user who is typing
+        'i': index of the idea in the idea component's list
+    }));
+
+    returns the same as Typing
+
+
+Add Comment
+
+    commentSocket.send(JSON.stringify({
+        'function': 'addComment',
+        'input_text': comment's inputted text,
+        'i': index of the idea the comment is attached to in the idea component's list
+        'idea_pk': primary key of the idea the comment is attached to 
+    }));
+
+    if successful
+
+    return {
+        'function': 'addComment',
+        'i': index of the idea the comment is attached to in the idea component's list
+        'comment': Comment Model,
+        'category': category of idea the comment is attached to,
+    }
+
+    if unsuccessful
+
+    returns {
+        HttpResponse('Unauthorized', status = 401)
+    }
+}
+
+Delete Comment
+    commentSocket.send(JSON.stringify({
+        'function': 'deleteComment',
+        "comment_pk": primary key of the victim comment
+        'i': index of the idea the comment is attached to in the idea component's list
+        'c': index of the comment in the comment component's list of comments
+    }));
+    
+    if successful
+    returns {
+        'function': 'deleteComment',
+        'category': category of idea where typing is happening
+        'i': index of the idea the comment is attached to in the idea component's list
+        'c': index of the comment in the comment component's list of comments
+    }
+
+    if unsuccessful
+        returns HttpResponse('Forbidden', status = 403)
+}
+
+
+Resolve One Comment
+    commentSocket.send(JSON.stringify({
+        'function': 'resolveIndividualComment',
+        "comment_pk": primary key of the victim comment
+        'i': index of the idea the comment is attached to in the idea component's list
+        'c': index of the comment in the comment component's list of comments
+    }));
+            
+
+    if successful    
+        return {
+            'function': 'resolveIndividualComment',
+            'category': category of idea where the comment is attached
+            'i': index of the idea the comment is attached to in the idea component's list
+            'c': index of the comment in the comment component's list of comments
+        }
+
+    if unsuccessful
+        returns HttpResponse('Forbidden', status = 403)
+}
+
+Resolve All Comments
+    commentSocket.send(JSON.stringify({
+        'function': 'resolveAllComments',
+        "idea_pk": primary key of the idea where all comments are to be resolved
+        'i': index of the idea the comment is attached to in the idea component's list
+    }));
+
+    if successful
+        return {
+            'function': 'resolveAllComments',
+            'i': index of the idea the comments are attached to in the idea component's list
+            'category': category of idea where the comment is attached
+        }
+
+USER FUNCTIONALITY - ONLY MODIFIABLE IN PROJECT DETAIL VIEW (projectDetail.js)
+EACH CALLBACK, AND THE ADD/REMOVE ACTIVE USER SHOULD BE PRESENT IN CANVAS DETAIL VIEW (canvasDetail.js).
+THIS IS BECAUSE OTHER MODELS REQUIRE THE CURRENT STATE OF USERS AND ADMINS LISTS
+
+Add User to Project
+
+collabSocket.send(JSON.stringify({
+                'function': 'addUser',
+                'name': User's name 
+            }));
+
+    if successful {
+        returns {
+            'function': 'addUser',
+            'user': User Model - newly added user
+        }
+    }
+
+    if unsuccessful {
+        return HttpResponse('Unauthorized', status = 401) (not permitted action)
+        or  {
+            if (user not found)
+                reply = 'Error: ' + name + ' does not exist. Please try a different username.' 
+
+            elif (username is your own)
+                reply = 'Error: you\'re already a collaborator, you can\'t add yourself!' 
+            
+            elif (user already a collaborator)
+                reply = 'Error: ' + name + ' is already a collaborator!' 
+
+            return HttpResponse(reply, status = 500)
+        }
+    }
+
+
+Delete User from Project
+
+collabSocket.send(JSON.stringify({
+                'function': 'deleteUser',
+                'user_pk': u.pk,
+                'ui': index of the user in the userList
+            }));
+
+    if successful {
+        returns {
+            'function': 'deleteUser',
+            'victim_is_admin': boolean signifying if the victim user is an admin - should be removed from the admin list as well ,
+            'ui': index of the user in the userList
+        }
+    }
+
+
+    if unsuccessful {
+        if (user isn't an admin):
+            return HttpResponse('Forbidden', status = 403)
+
+        elif (victim user doesn't exist)
+            reply = 'Error: ' + name + ' is not a collaborator'
+
+        elif (self is only admin and trying to remove self)
+            reply = 'Error: You are the only admin, you may not delete yourself!'
+        
+        return HttpResponse(reply, status = 500)
+    }
+    
+
+
+Promote User to Admin Status
+
+    collabSocket.send(JSON.stringify({
+        'function': 'promoteUser',
+        'user_pk': primary key of user
+    }));   
+
+    if successful {
+        returns {
+            'function': 'promoteUser',
+            'admin': User Model - new admin
+        }
+    }
+
+    if unsuccessful{
+        returns {
+            if (user not an admin):
+                return HttpResponse('Forbidden', status = 403)
+
+            elif (current user is the same as admin candidate user)
+                name_str = 'you are'
+
+            elif (admin candidate is an admin already: 
+                name_str = admin_name + ' is '
+
+            reply = 'Error: ' + name_str + ' already an admin!'
+            
+            return HttpResponse(reply, status = 500)
+        }
+    }
+
+
+Demote User from Admin Status
+
+    collabSocket.send(JSON.stringify({
+        'function': 'demoteUser',
+        'user_pk': the admin's primary key 
+        'ai': index of admin in adminList
+    }));
+
+    if successful {
+        returns {
+            'function': 'demoteUser',
+            'ai': index of admin in adminList
+        }
+    }
+
+    if unsuccessful {
+        returns {
+            if (current user isn't an admin)):
+                return HttpResponse('Forbidden', status = 403)
+
+            elif (victim isn't an admin):
+                    reply = 'Error: ' + name + ' is not an admin'
+
+            elif (admin list contains a single admin - implicitly the current user):
+                reply = 'Error: You are the only admin, you may not demote yourself!'
+            
+            return HttpResponse(reply, status = 500)            
+        }
+    }
+
+
+Add Active User
+
+    collabSocket.onopen = function(e){
+        collabSocket.send(JSON.stringify({
+            "function": "newActiveUser",
+            "user": currently logged-in user,
+        }));
+    };
+
+    if successful {
+        returns {
+            'function': 'newActiveUser',
+            'user': User Model - the current user,
+        }
+
+        Callback performs the sendWholeList request. The new user who just added themselves to the active users needs to gain knowledge of all the other users who are active on the project. 
+        It is from these other users that the current user gets this knowledge, as their newActiveUserCallback triggers sendWholeList with their lists, and every user's sendWholeListCallback
+        appends the unique users to their own list
+
+        List of all users - called 
+
+        collabSocket.send(JSON.stringify({
+            'function': 'sendWholeList',
+            'users': every active user,
+        }));
+
+        if successful {
+            returns {
+                'function': function,
+                'users': List of User Models - every user the current instance knows about,
+            }
+             if unsuccessful {
+                doesn't return anything
+            }
+        }
+    }
+
+    if unsuccessful {
+        doesn't return anything
+    }
+
+
+
+
+Remove Active User 
+
+    window.onbeforeunload = function(e){
+        collabSocket.send(JSON.stringify({
+            "function": "removeActiveUser",
+            "user": the currently logged-in user,
+        }));
+        collabSocket.close();
+    };
+
+    if successful {
+        returns {
+            'function': 'removeActiveUser',
+            'user': User Model - the current user,
+        }
+    }
+
+    if unsuccessful {
+        doesn't return anything
+    }
+
+
+Toggle Public Project
+
+    collabSocket.send(JSON.stringify({
+            'function': 'togglePublic',
+            'project_pk': primary key of the project
+        }))
+    };
+
+    if successful {
+        doesn't return anything
+    }
+
+    if unsuccessful {
+        returns {
+            if (current user isn't an admin):
+                return HttpResponse('Forbidden', status = 403)   
+        }
+    }
+
+
+
+
+
+addTag(str function, str label, int canvas_pk){
+
+    if successful {
+        returns {
+            'function': 'addTag'
+            
+            'data'{
+                'taggedCanvases': Canvas Model List - all canvasses tagged by the current tag,
+                'taggedIdeas': Idea Model List - all ideas tagged by the current tag,
+                'tag': CanvasTag Model - the tag added,
+            }
+        }
+    }
+
+    if unsuccessful {
+        returns {
+            if (user isn't a user of the canvas):
+                return HttpResponse('Unauthorized', status = 401)
+        }
+    }
+}
+
+removeTag(str function, int i,int tag_pk,int canvas_pk){
+    
+    if successful {
+        returns {
+            'function': 'removeTag'
+            'data' {
+                'taggedCanvases': Canvas Model List - all canvasses tagged by the current tag,
+                'taggedIdeas': Idea Model List - all ideas tagged by the current tag,
+                'tag': CanvasTag Model - the tag removed,
+            }
+        }
+    }
+
+    if unsuccessful {
+        returns {
+            if (user isn't a user of the canvas):
+                return HttpResponse('Unauthorized', status = 401)
+        }
+    }
+}
+   
+
+deleteTag(str function, int i, int tag_pk){
+
+    if successful {
+        returns {
+            'function': 'deleteTag'
+            data: {
+                'tag': CanvasTag Model - the tag to be deleted,
+            }
+        }
+    }
+
+    if unsuccessful {
+        returns {
+            if (user isn't a user of the canvas):
+                return HttpResponse('Unauthorized', status = 401)
+        }
+    }
+}

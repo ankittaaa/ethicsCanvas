@@ -643,7 +643,7 @@ def add_user(logged_in_user, project_pk, name):
     
 
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Unauthorized', status = 401)
+        return HttpResponse('Forbidden', status = 403)
 
     else:
         user = User.objects.get(username = name)
@@ -802,7 +802,7 @@ def add_tag(canvas_pk, logged_in_user, label):
     project = canvas.project
 
     if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
-        return HttpResponse('Forbidden', status = 403)
+        return HttpResponse('Unauthorized', status = 401)
 
     # check existence of tag within project - avoid duplicating tags
     if CanvasTag.objects.filter(label=label, canvas_set__project=project).exists():
@@ -894,6 +894,10 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
     '''
     canvas = Canvas.objects.get(pk=canvas_pk)
     project = canvas.project
+
+    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+        return HttpResponse('Unauthorized', status = 401)
+    
     tag = CanvasTag.objects.get(label=label)
     
     try:
@@ -943,7 +947,6 @@ def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
         'taggedIdeas': json_tagged_ideas,
         'tag': json_tag,
     }
-    print("returning")
 
     return return_data
 
@@ -957,7 +960,7 @@ def delete_tag(canvas_pk, logged_in_user, label):
     project = canvas.project
 
     if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
-        return HttpResponse('Forbidden', status = 403)
+        return HttpResponse('Unauthorized', status = 401)
 
     tag = CanvasTag.objects.get(label=label, canvas_set=canvas)
 

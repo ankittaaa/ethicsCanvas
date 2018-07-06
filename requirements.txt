@@ -3,7 +3,7 @@ django 2.0.3
 channels 2.1.1
 channels_redis
 Twisted[tls,http2] 
-docker - note to self: use docker run -p 6379:6379 -d redis:2.8
+docker - note: use docker run -p 6379:6379 -d redis:2.8 before python3 manage.py runserver in order to enable channels to work
 selenium-3.12.0
 py.test
 

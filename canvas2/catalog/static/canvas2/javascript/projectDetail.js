@@ -445,6 +445,5 @@ window.onbeforeunload = function(e){
             "function": "removeActiveUser",
             "user": loggedInUser,
     }));
-
     collabSocket.close();
 };

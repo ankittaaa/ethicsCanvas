@@ -1025,7 +1025,6 @@ Vue.component('idea', {
             }
             else {
                 trialIdeaSocket.send(JSON.stringify({
-                    // 'function': 'addIdeaTrial',
                     'category': this.index,
                 }));
             }
@@ -1070,7 +1069,6 @@ Vue.component('idea', {
                     'idea_pk': idea.pk,
                     'category': this.index,
                     'i': i
-
                 }));
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
                 event.target.value = text
