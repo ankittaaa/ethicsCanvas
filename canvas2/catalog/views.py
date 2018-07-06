@@ -836,50 +836,54 @@ def add_tag(canvas_pk, logged_in_user, label):
 
                 if idea not in tag.idea_set.all():
                     tag.idea_set.add(idea)
+                    idea.save()
 
                     # skip the below step if the above is false
                     if canvas not in tag.canvas_set.all():
                         canvas.save()
                         tag.canvas_set.add(canvas)
+                        canvas.save()
                     
                     # save tag if modifications made
                     tag.save()
-                    canvas.save()
-                    idea.save()
 
 
     tags = CanvasTag.objects.filter(canvas_set__project=project).distinct()
     json_tagged_canvases = []
     json_tagged_ideas = []
 
-    for t in tags:
-        json_tagged_canvases.append(
-            serialize(
-                'json', 
-                t.canvas_set.all(),
-                cls=CanvasEncoder
-            )
+
+    # print(tag.idea_set.all().order_by('canvas'))
+    # print(tag.canvas_set.all().order_by('-id'))
+
+    # for t in tags:
+    json_tagged_canvases.append(
+        serialize(
+            'json', 
+            tag.canvas_set.all().order_by('-id'),
+            cls=CanvasEncoder
         )
+    )
 
 
-        json_tagged_ideas.append(
-            serialize(
-                'json',
-                t.idea_set.all(),
-                cls=IdeaEncoder
-            )
+    json_tagged_ideas.append(
+        serialize(
+            'json',
+            tag.idea_set.all().order_by('canvas'),
+            cls=IdeaEncoder
         )
+    )
 
-    json_tags = serialize(
+    json_tag = serialize(
         'json', 
-        tags, 
+        [tag], 
         cls = CanvasTagEncoder
     )
 
     return_data = {
         'taggedCanvases': json_tagged_canvases,
         'taggedIdeas': json_tagged_ideas,
-        'tags': json_tags,
+        'tag': json_tag,
     }
     return return_data
 

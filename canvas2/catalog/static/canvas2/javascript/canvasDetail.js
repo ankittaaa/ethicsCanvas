@@ -468,76 +468,55 @@ function resolveAllCommentsFailureCallback(data){
 
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
-    var newTags = JSON.parse(data.tags);
-    var tempTaggedCanvases = [];
-    var tempTaggedIdeas = [];
+    var newTag = JSON.parse(data.tag)[0];
+    var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
+    var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
-    for (i in newTags){
-        tempTaggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
-        tempTaggedIdeas.push(JSON.parse(data.taggedIdeas[i]));
-    }
-
-    // console.log(newTags.length);
-    // console.log(tempTaggedCanvases.length);
-    // console.log(tempTaggedIdeas.length);
     // for (i in newTags){
-    //     for (j in tempTaggedCanvases){
-    //         console.log(tempTaggedCanvases[i][j]);
-    //         console.log(tempTaggedIdeas[i][j]);
-    //     }
+    //     tempTaggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
+    //     tempTaggedIdeas.push(JSON.parse(data.taggedIdeas[i]));
     // }
-    // for (i in newTags){
-    //     for (j in tempTaggedIdeas){
-    //         console.log("TAG: " + newTags[i].fields.label);
-    //         console.log(tempTaggedIdeas[i][j].pk);
-    //     }
-    // }
+    // console.log(newTag.fields.label);
+    var i = -1;
 
-    for (i in newTags){
-        var tagExists = false;
-        var canvasTagged = false;
+
+    var canvasTagged = false;
         
-        for (t in tags){
-            if (tags[t].pk == newTags[i].pk){
-                tagExists = true;
-                break;
-            }
+    for (t in tags){
+        if (tags[t].pk == newTag.pk){
+            i = t;
+            break;
         }
-        for (j in tempTaggedCanvases[i]){
-            if (tempTaggedCanvases[i][j].pk == canvasPK){
-                canvasTagged = true;
-                break;
-            }
-        }
-
-
-            // console.log("is in?" + (tempTaggedCanvases[i][j].pk == canvasPK));
-            // if the tag doesn't exist, but the canvas is tagged by it, add it
-            if (tagExists === false && canvasTagged === true){
-                if (tags[0].pk !== null){
-                    tags.push(newTags[i]);
-                    taggedCanvases.push(tempTaggedCanvases[i]);
-                    allTaggedIdeas.push(tempTaggedIdeas[i]);
-                }
-                else {
-                    tags.splice(0, 1, newTags[i]);
-                    taggedCanvases.splice(0, 1, tempTaggedCanvases[i]);
-                    allTaggedIdeas.splice(0, 1, tempTaggedIdeas[i]);
-                }
-                break;
-            }
-            // if the tag DOES exist and the canvas is tagged by it, update it
-            else if (tagExists === true && canvasTagged === true){
-                console.log("UPDATING...");
-                // console.log(allTaggedIdeas);
-                // console.log(allTaggedIdeas[i]);
-                // console.log(tempTaggedIdeas[i]);
-                taggedCanvases.splice(i, 1, tempTaggedCanvases[i]);
-                allTaggedIdeas.splice(i, 1, tempTaggedIdeas[i]);
-            }
-
-        // otherwise do nothing
     }
+
+    for (tc in tempTaggedCanvases){
+        if (tempTaggedCanvases[tc].pk == canvasPK){
+            canvasTagged = true;
+            break;
+        }
+    }
+
+    // if the tag doesn't exist (index === -1), but the canvas is tagged by it, add it
+    if (canvasTagged === true){
+        if (i === -1){
+            if (tags[0].pk !== null){
+                tags.push(newTag);
+                taggedCanvases.push(tempTaggedCanvases);
+                allTaggedIdeas.push(tempTaggedIdeas);
+            }
+            else {
+                tags.splice(0, 1, newTag);
+                taggedCanvases.splice(0, 1, tempTaggedCanvases);
+                allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
+            }
+        }
+        // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
+        else {
+            taggedCanvases.splice(i, 1, tempTaggedCanvases);
+            allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
+        }
+    }
+    // otherwise do nothing
 }
 
 function newTagFailureCallback(data){
@@ -1397,8 +1376,6 @@ Vue.component('tag-popup', {
         return {
             c: '',
             selfTag: this.tag,
-            ideaList: this.ideas,
-            canvasData: this.canvases,
         }
     },
 
@@ -1442,12 +1419,10 @@ Vue.component('tag-popup', {
     },
 
     watch: { 
-        ideaList: function(){
-            // console.log(this.tag.label)
-            for (i in this.ideaList){
-                    console.log(this.ideas[i].pk)
-            }
-            console.log("******")
+        ideas: function(){
+             
+        },
+        canvases: function(){
         }
     },
 
@@ -1460,9 +1435,9 @@ Vue.component('tag-popup', {
         tagLink: function(c){
             var ideaString = 'Ideas: '
 
-            for (i in this.ideaList){
-                if (this.ideaList[i].fields.canvas === c.pk){
-                        ideaString += this.ideaList[i].pk + ', '
+            for (i in this.ideas){
+                if (this.ideas[i].fields.canvas === c.pk){
+                    ideaString += this.ideas[i].pk + ', '
                 }
             }
             ideaString = ideaString.slice(0, ideaString.length - 2)
@@ -1478,10 +1453,6 @@ Vue.component('tag-popup', {
             }));
         }
     },
-    created: function(){
-        console.log(this.selfTag.pk)
-        console.log(this.label)
-    }
 
 })
 
