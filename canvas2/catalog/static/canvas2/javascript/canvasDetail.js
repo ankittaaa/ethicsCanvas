@@ -163,7 +163,7 @@ function addUserSuccessCallback(data){
 }
 
 function addUserFailureCallback(data){
-    console.log(data.responseText);
+    // console.log(data.responseText);
 }
 
 function deleteUserSuccessCallback(data){
@@ -187,7 +187,7 @@ function deleteUserSuccessCallback(data){
 }
 
 function deleteUserFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
@@ -241,7 +241,7 @@ function promoteUserSuccessCallback(data){
 }
 
 function promoteUserFailureCallback(data){
-    // console.log(data.responseText);
+    // console.log(data);
 }
 
 function demoteAdminSuccessCallback(data){
@@ -258,7 +258,7 @@ function demoteAdminSuccessCallback(data){
 }
 
 function demoteAdminFailureCallback(data){
-    console.log(data.responseText);
+    // console.log(data);
 }
 
 /*************************************************************************************************************
@@ -267,19 +267,25 @@ function demoteAdminFailureCallback(data){
 
 
 function deleteIdeaSuccessCallback(data){
-    var i = JSON.parse(data.i);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
     var tempCategory = JSON.parse(data.category);
-    var tempIdea = sortedIdeas[tempCategory][i].idea;
+    var tempIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
 
     // remove the victim {idea, [comments]} from the sorted ideas list
-    sortedIdeas[tempCategory].splice(i, 1, {
-        idea: null,
-        comments: []
-    });
+    if (sortedIdeas[tempCategory].length === 1){
+        sortedIdeas[tempCategory].splice(ideaListIndex, 1, {
+            idea: null,
+            comments: []
+        });
+    }
+    else {
+        sortedIdeas[tempCategory].splice(ideaListIndex, 1);
+    }
 
 
-    typingBools[tempCategory].splice(i, 1);
-    typingUser[tempCategory].splice(i, 1);
+
+    typingBools[tempCategory].splice(ideaListIndex, 1);
+    typingUser[tempCategory].splice(ideaListIndex, 1);
 }
 
 function deleteIdeaFailureCallback(data){
@@ -303,10 +309,7 @@ function newIdeaSuccessCallback(idea){
     // and an empty array for the comments, as a brand-new idea has no comments yet    
     if (sortedIdeas[tempCategory][0].idea === null)
     {
-        // console.log(newIdea);
-        // console.log(sortedIdeas[tempCategory][0]);
         sortedIdeas[tempCategory].splice(0, 1, newIdea);
-        // console.log(sortedIdeas[tempCategory][0]);
     }
     else
     {
@@ -329,9 +332,9 @@ function editIdeaSuccessCallback (data){
     var inIdea = (JSON.parse(data.idea))[0];
     var tempCategory = inIdea.fields.category;
 
-    var i = JSON.parse(data.i);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
     var oldText = escapeHTMLChars(data.oldText);
-    sortIdeas(inIdea, i, tempCategory, oldText);
+    sortIdeas(inIdea, ideaListIndex, tempCategory, oldText);
     var tempTag;
     // check for adding new
     for (tag in allTags){
@@ -372,27 +375,21 @@ function editIdeaFailureCallback(data){
 
 
 function typingCallback(data, f){
-    // // console.log(f);
+
     var tempCategory = data['category'];
     var tempName = data['username'];
-    var i = data['i']
-    // // console.log("category: " + tempCategory);
-    // // console.log("idea: " + i);
+    var ideaListIndex = data['ideaListIndex']
     // do nothing, the logged in user knows when they're typing
     if (tempName == loggedInUser[0].fields.username)
         return;
 
     if (f === "typing"){
-        // // console.log(typingBools[tempCategory]);
-        typingUser[tempCategory].splice(i, 1, tempName);
-        typingBools[tempCategory].splice(i, 1, true);
-        // // console.log(typingBools[tempCategory]);
+        typingUser[tempCategory].splice(ideaListIndex, 1, tempName);
+        typingBools[tempCategory].splice(ideaListIndex, 1, true);
     }
     else {
-        // // console.log(typingBools[tempCategory]);
-        typingUser[tempCategory].splice(i, 1, '');
-        typingBools[tempCategory].splice(i, 1, false);
-        // // console.log(typingBools[tempCategory]);
+        typingUser[tempCategory].splice(ideaListIndex, 1, '');
+        typingBools[tempCategory].splice(ideaListIndex, 1, false);
     }
 
 
@@ -404,62 +401,62 @@ function typingCallback(data, f){
 
 
 function addCommentSuccessCallback(data){
-    var i = JSON.parse(data.i);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
     var returnComment = JSON.parse(data.comment);
     var tempCategory = JSON.parse(data.category);
-    sortedIdeas[tempCategory][i].comments.unshift(returnComment[0]);
+    sortedIdeas[tempCategory][ideaListIndex].comments.unshift(returnComment[0]);
 }
 
 function addCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 
 function deleteCommentSuccessCallback(data){
     // var parsedData = JSON.parse(data);
-    var i = JSON.parse(data.i);
-    var c = JSON.parse(data.c);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
+    var commentListIndex = JSON.parse(data.commentListIndex);
     var tempCategory = JSON.parse(data.category);
 
-    sortedIdeas[tempCategory][i].comments.splice(c, 1);
+    sortedIdeas[tempCategory][ideaListIndex].comments.splice(commentListIndex, 1);
 }
 
 function deleteCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 function resolveIndividualCommentSuccessCallback(data){
-    var i = JSON.parse(data.i);
-    var c = JSON.parse(data.c);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
+    var commentListIndex = JSON.parse(data.commentListIndex);
     var tempCategory = JSON.parse(data.category);
 
-    var tempComment = sortedIdeas[tempCategory][i].comments[c];
+    var tempComment = sortedIdeas[tempCategory][ideaListIndex].comments[commentListIndex];
 
     tempComment.fields.resolved = true;
-    sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
+    sortedIdeas[tempCategory][ideaListIndex].comments.splice(commentListIndex, 1, tempComment);
 }
 
 function resolveIndividualCommentFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 function resolveAllCommentsSuccessCallback(data){
     var tempCategory = JSON.parse(data.category);
-    var i = JSON.parse(data.i);
+    var ideaListIndex = JSON.parse(data.ideaListIndex);
 
     // empty the comments for the idea
-    var length = sortedIdeas[tempCategory][i].comments.length;
+    var length = sortedIdeas[tempCategory][ideaListIndex].comments.length;
     var tempComment;
 
     for (var c = 0; c < length; c++)
     {
-        tempComment = sortedIdeas[tempCategory][i].comments[c];
+        tempComment = sortedIdeas[tempCategory][ideaListIndex].comments[c];
         tempComment.fields.resolved = true;
-        sortedIdeas[tempCategory][i].comments.splice(c, 1, tempComment);
+        sortedIdeas[tempCategory][ideaListIndex].comments.splice(c, 1, tempComment);
     }
 }
 function resolveAllCommentsFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 /*************************************************************************************************************
@@ -472,11 +469,6 @@ function newTagSuccessCallback(data){
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
-    // for (i in newTags){
-    //     tempTaggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
-    //     tempTaggedIdeas.push(JSON.parse(data.taggedIdeas[i]));
-    // }
-    // console.log(newTag.fields.label);
     var i = -1;
 
 
@@ -520,7 +512,7 @@ function newTagSuccessCallback(data){
 }
 
 function newTagFailureCallback(data){
-    console.log(data.responseText);
+    // console.log(data.responseText);
 }
 
 
@@ -553,8 +545,6 @@ function removeTagSuccessCallback(data){
         }
     }
 
-
-
     // if the tag does exist, but the canvas is not tagged by it, remove it
     if (tagExists === true && canvasTagged === false){
         if (tags.length > 0 && tags.length != 1){
@@ -565,12 +555,12 @@ function removeTagSuccessCallback(data){
         }
         else {
             // if removing last tag, replace with null tag
-            var tempTag = tags[i];
+            var tempTag = tags[0];
             tempTag.pk = null;
             tempTag.fields.date_created = null;
             tempTag.fields.date_modified = null;
             tempTag.fields.label = null;
-            tags.splice(i, 1, tempTag);
+            tags.splice(0, 1, tempTag);
             taggedCanvases.splice(0, 1);
             allTaggedIdeas.splice(0, 1);
         }
@@ -589,11 +579,8 @@ function removeTagSuccessCallback(data){
 
 
 function deleteTagSuccessCallback(data){
-    console.log("hello");
 
     var tag = JSON.parse(data.tag)[0];
-    console.log(tag);
-    console.log(tags);
     var i; 
 
     for (t in tags){
@@ -739,14 +726,12 @@ function initSuccessCallback(data){
         );
 
         trialIdeaSocket.onmessage = function(e){
-            // // console.log("Received");
             var data = JSON.parse(e.data);
             var idea = data['idea'];
             newIdeaSuccessCallback(idea);
         };
     }
 
-    console.log(allTaggedIdeas);
     if (canvasType === 0)
         theCategories = ethicsCategories;
     else if (canvasType === 1)
@@ -847,30 +832,30 @@ Vue.component('idea', {
                     <h3><% title() %></h3> 
                      
                     <div class="idea-container" v-if="escapedIdeas[0]" > 
-                        <div v-for="(idea, i) in escapedIdeas"> 
+                        <div v-for="(idea, ideaListIndex) in escapedIdeas"> 
                              
-                            <div v-bind:id=textID(i)> 
+                            <div v-bind:id=textID(ideaListIndex)> 
                                 <textarea class="idea-input"  
                                     type="text" :value="idea.fields.text" 
-                                    @blur="changed($event, idea, i)" 
-                                    @keydown="keydownCallback($event, idea, i)"  
-                                    @keypress="setTyping($event, idea, i)" 
-                                    @paste="setTyping($event, idea, i)" 
+                                    @blur="changed($event, idea, ideaListIndex)" 
+                                    @keydown="keydownCallback($event, idea, ideaListIndex)"  
+                                    @keypress="setTyping($event, idea, ideaListIndex)" 
+                                    @paste="setTyping($event, idea, ideaListIndex)" 
                                     placeholder="Enter an idea"/> 
-                                    <p id="user-typing" v-show="isTypingBools[i] == true">
-                                        <%typingUser[i]%> is typing...
+                                    <p id="user-typing" v-show="isTypingBools[ideaListIndex] == true">
+                                        <%typingUser[ideaListIndex]%> is typing...
                                     </p> 
                             </div> 
                             
                             <div class='idea-buttons'> 
-                                <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, i)" title="delete">X</button> 
-                                <button v-if="isAuth" id="comment-button" v-on:click="displayMe(i)"> 
-                                    <span>Comments (<% commentList[i].length %>)</span> 
+                                <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, ideaListIndex)" title="delete">X</button> 
+                                <button v-if="isAuth" id="comment-button" v-on:click="displayMe(ideaListIndex)"> 
+                                    <span>Comments (<% commentList[ideaListIndex].length %>)</span> 
                                 </button> 
                                 <button v-else id="comment-button" title="Sign up to use this feature" disabled> 
                                     <span>Comments</span> 
                                 </button> 
-                                <comment v-show=showCommentThread[i] v-bind:commentList="commentList[i]" v-bind:idea="idea" v-bind:i="i" v-bind:admins="adminNameList" @close="displayMe(i)"> 
+                                <comment v-show=showCommentThread[ideaListIndex] v-bind:commentList="commentList[ideaListIndex]" v-bind:idea="idea" v-bind:ideaListIndex="ideaListIndex" v-bind:admins="adminNameList" @close="displayMe(ideaListIndex)"> 
                                 </comment> 
                             </div> 
                         </div> 
@@ -898,7 +883,6 @@ Vue.component('idea', {
 
         ideaList: {
             get: function(){
-                // // console.log(this.ideas[0])
                 var list = []
 
                 
@@ -957,16 +941,16 @@ Vue.component('idea', {
 
     methods: {
 
-        textID: function(i){
-            return "category-"+this.index+"-idea-"+i
+        textID: function(ideaListIndex){
+            return "category-"+this.index+"-idea-"+ideaListIndex
         },   
 
-        displayMe(i){
+        displayMe(ideaListIndex){
         /*
             For setting an individual truth value to display a single modal component's comment thread, or to close it.
             This method is required as Vue doesn't detect array changes normally. 
         */
-            Vue.set(this.showCommentThread, i, !this.showCommentThread[i])
+            Vue.set(this.showCommentThread, ideaListIndex, !this.showCommentThread[ideaListIndex])
         },
 
         currentIdeaComments(idea, comments){
@@ -988,7 +972,6 @@ Vue.component('idea', {
         },
 
         displayComments: function(event, idea){
-            // // console.log(idea)
         },
 
         title: function(){
@@ -1030,7 +1013,7 @@ Vue.component('idea', {
             }
         },
 
-        deleteIdea(event, idea, i){
+        deleteIdea(event, idea, ideaListIndex){
             if (isAuth === true){
                 // CALL removeTag BEFORE DELETING - VIEW FUNCTION NEEDS THE IDEA TO EXIST
                 for (t in tags){
@@ -1042,20 +1025,19 @@ Vue.component('idea', {
                             "canvas_pk": canvasPK,
                         }));
                     }
-                    console.log(tags[t].fields.label + " removed.");
                 }
 
                 ideaSocket.send(JSON.stringify({
                     'function': 'deleteIdea',
                     'idea_pk': idea.pk,
-                    'i': i
+                    'idea_list_index': ideaListIndex
                 }));
             }
             else
-                sortedIdeas[this.index].splice(i, 1)
+                sortedIdeas[this.index].splice(ideaListIndex, 1)
         },
 
-        changed(event, idea, i){
+        changed(event, idea, ideaListIndex){
             var text = escapeChars(event.target.value)
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
@@ -1068,26 +1050,26 @@ Vue.component('idea', {
                     'input_text': text,
                     'idea_pk': idea.pk,
                     'category': this.index,
-                    'i': i
+                    'idea_list_index': ideaListIndex
                 }));
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
                 event.target.value = text
                 idea.fields.text = text
                 event.target.blur()
                 typingTimer = window.setInterval(
-                    setFalse.bind({isTyping: this.isTypingBools, vm: this, i: i, index: this.index})
+                    setFalse.bind({isTyping: this.isTypingBools, vm: this, ideaListIndex: ideaListIndex, index: this.index})
                     , 0
                 )
             }
             else {
-                currIdea = sortedIdeas[this.index][i].idea
+                currIdea = sortedIdeas[this.index][ideaListIndex].idea
                 currIdea.fields.text = text
 
                 if (sortedIdeas[this.index].length > 1){
-                    sortIdeas(currIdea, i, this.index, "")
+                    sortIdeas(currIdea, ideaListIndex, this.index, "")
                 }
                 else{
-                    sortedIdeas[this.index].splice(i, 1, {
+                    sortedIdeas[this.index].splice(ideaListIndex, 1, {
                         idea: currIdea,
                         comments: []
                     })
@@ -1097,17 +1079,17 @@ Vue.component('idea', {
 
         },
 
-        keydownCallback(event, idea, i){
+        keydownCallback(event, idea, ideaListIndex){
             key = event.key
             
             if (key == "Enter")
                 event.target.blur()
 
             if (key == "Escape")
-                this.ideaList[i].fields.text = this.ideaList[i].fields.text
+                this.ideaList[ideaListIndex].fields.text = this.ideaList[ideaListIndex].fields.text
         },
 
-        setTyping(event, idea, i){
+        setTyping(event, idea, ideaListIndex){
             if (isAuth === true){
 
                 window.clearTimeout(typingTimer)
@@ -1118,7 +1100,7 @@ Vue.component('idea', {
                         'function': 'typing',
                         'category': this.index,
                         'username': loggedInUser[0].fields.username,
-                        'i': i
+                        'idea_list_index': ideaListIndex
                     }))
                 }
 
@@ -1126,7 +1108,7 @@ Vue.component('idea', {
 
                 // timeout function for clearing the <user> is typing message on other windows - waits 2s 
                 typingTimer = window.setInterval(
-                    setFalse.bind({isTyping: this.isTypingBools, vm: this, i: i, index: this.index})
+                    setFalse.bind({isTyping: this.isTypingBools, vm: this, ideaListIndex: ideaListIndex, index: this.index})
                     , 2000
                 )
             }
@@ -1160,7 +1142,7 @@ Vue.component('idea', {
 *************************************************************************************************************/
  
 Vue.component('comment', {
-    props: ['comment-list', 'show-comments', 'idea', 'i', 'admins'],
+    props: ['comment-list', 'show-comments', 'idea', 'ideaListIndex', 'admins'],
     delimiters: ['<%', '%>'],
     
     data: function(){
@@ -1182,21 +1164,21 @@ Vue.component('comment', {
                  
                     <div slot="body"> 
                         <ul> 
-                            <li v-for="(comment, c) in commentList"> 
+                            <li v-for="(comment, commentListIndex) in commentList"> 
                                 <div class="comment-elem" v-if="comment.fields.resolved == false">
                                     <% comment.fields.text %> 
                                     </br> 
                                     <% commentAuthorString(comment) %>
                                     <div v-show="isAdmin">
-                                        <button class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button> 
-                                        <button class="resolve-individual-comment" @click="resolveIndividualComment($event, comment, c)" title="delete">Resolve</button> 
+                                        <button class="delete-comment" @click="deleteComment($event, comment, commentListIndex)" title="delete">Delete</button> 
+                                        <button class="resolve-individual-comment" @click="resolveIndividualComment($event, comment, commentListIndex)" title="delete">Resolve</button> 
                                     </div>
                                 </div>
                                 <div class="comment-elem resolved" v-else>
                                     <% comment.fields.text %> <strong> <% " (RESOLVED)" %> </strong>
                                     </br> 
                                     <% commentAuthorString(comment) %>
-                                    <button v-show="isAdmin" class="delete-comment" @click="deleteComment($event, comment, c)" title="delete">Delete</button>
+                                    <button v-show="isAdmin" class="delete-comment" @click="deleteComment($event, comment, commentListIndex)" title="delete">Delete</button>
                                 </div>
                             </li> 
                         </ul> 
@@ -1217,7 +1199,7 @@ Vue.component('comment', {
             return this.showComments
         },
         selfIndex: function(){
-            return this.i
+            return this.ideaListIndex
         },
         adminNames: function(){
             return this.admins 
@@ -1228,9 +1210,6 @@ Vue.component('comment', {
     },
     
     watch: {
-        adminNames: function(){
-            console.log("hi")
-        }
     },   
 
     methods: {
@@ -1255,26 +1234,26 @@ Vue.component('comment', {
             commentSocket.send(JSON.stringify({
                 'function': 'addComment',
                 'input_text': text,
-                'i': this.selfIndex,
+                'idea_list_index': this.selfIndex,
                 'idea_pk': this.currentIdea.pk
             }));
         },
 
-        deleteComment(event, comment, c){
+        deleteComment(event, comment, commentListIndex){
             commentSocket.send(JSON.stringify({
                 'function': 'deleteComment',
                 "comment_pk": comment.pk,
-                'i': this.selfIndex,
-                'c': c
+                'idea_list_index': this.selfIndex,
+                'comment_list_index': commentListIndex
             }));
         },
 
-        resolveIndividualComment(event, comment, c){
+        resolveIndividualComment(event, comment, commentListIndex){
             commentSocket.send(JSON.stringify({
                 'function': 'resolveIndividualComment',
                 "comment_pk": comment.pk,
-                'i': this.selfIndex,
-                'c': c
+                'idea_list_index': this.selfIndex,
+                'comment_list_index': commentListIndex
             }));
         },
 
@@ -1282,7 +1261,7 @@ Vue.component('comment', {
             commentSocket.send(JSON.stringify({
                 'function': 'resolveAllComments',
                 "idea_pk": this.currentIdea.pk,
-                'i': this.selfIndex,
+                'idea_list_index': this.selfIndex,
             }));
         },
 
@@ -1312,11 +1291,6 @@ Vue.component('comment', {
         }
     },
     created: function(){
-        // // console.log(this.comments.length)
-        // for (a in this.admins) {
-
-        //     console.log(this.admins[a])
-        // }
     }
 })
 
@@ -1350,7 +1324,6 @@ Vue.component('tag', {
             tags.splice(this.index, 1)
         },
         canvasList: function(){
-            // // console.log(this.canvasList)
         }
     },
 
@@ -1358,7 +1331,6 @@ Vue.component('tag', {
         tagInfo: function(event, index){
         },  
         exitTagInfo: function(event){
-            // // console.log('')
         }
     }
 })
@@ -1372,7 +1344,7 @@ Vue.component('tag-popup', {
     delimiters: ['<%', '%>'],
     data: function(){
         return {
-            c: '',
+            canvas: '',
             selfTag: this.tag,
         }
     },
@@ -1385,9 +1357,9 @@ Vue.component('tag-popup', {
                 <h4>Appears in: </h4>
                 </div>
                 <ul slot="body">
-                    <li v-for="c in this.canvases" style="list-style-type:none;">
-                        <a v-bind:href="url(c)" target="_blank">
-                            <% tagLink(c) %>
+                    <li v-for="canvas in this.canvases" style="list-style-type:none;">
+                        <a v-bind:href="url(canvas)" target="_blank">
+                            <% tagLink(canvas) %>
                         </a>
                     </li>
                 </ul>
@@ -1425,22 +1397,22 @@ Vue.component('tag-popup', {
     },
 
     methods:{
-        url: function(c){
+        url: function(canvas){
 
-            return "/catalog/canvas/" + c.pk
+            return "/catalog/canvas/" + canvas.pk
         },
 
-        tagLink: function(c){
+        tagLink: function(canvas){
             var ideaString = 'Ideas: '
 
             for (i in this.ideas){
-                if (this.ideas[i].fields.canvas === c.pk){
+                if (this.ideas[i].fields.canvas === canvas.pk){
                     ideaString += this.ideas[i].pk + ', '
                 }
             }
             ideaString = ideaString.slice(0, ideaString.length - 2)
 
-            return c.fields.title + " " + ideaString
+            return canvas.fields.title + " " + ideaString
 
         },
         deleteTag: function(event){
@@ -1564,8 +1536,6 @@ function initialiseSockets(){
     tagSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data["function"];
-        // console.log(e.data);
-        // console.log(data);
 
         switch(f) {
             case "addTag": {
@@ -1649,7 +1619,7 @@ function setFalse(){
         'function': 'done_typing',
         'category': this.index,
         'username': loggedInUser[0].fields.username,
-        'i': this.i
+        'idea_list_index': this.ideaListIndex
 
     }))
     window.clearTimeout(typingTimer)
@@ -1657,14 +1627,14 @@ function setFalse(){
 }   
 
 
-function sortIdeas(inIdea, i, tempCategory, oldText){
+function sortIdeas(inIdea, ideaListIndex, tempCategory, oldText){
     /*
         Function called when an idea has been modified, to move the idea and its attached comments to the top of the list,
         where it would be if the page was refreshed. Also checks if any tag occurrences have been removed by checking if the substring
         equal to any tag label existed in the previous idea text field and now no longer occurs
     */
     var prevIdea = inIdea;
-    var currentIdea = sortedIdeas[tempCategory][i].idea;
+    var currentIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
     
     if (isAuth === true){
         for (t in tags){
@@ -1672,16 +1642,15 @@ function sortIdeas(inIdea, i, tempCategory, oldText){
             var tempIdeaText = currentIdea.fields.text;
 
             if ((oldText.includes(tags[t].fields.label) === true) && (tempIdeaText.includes(tags[t].fields.label) === false)) {
-                // console.log("KILLING THE TAG " + tags[t].fields.label);
                 // decrement the tag if it occured in the old idea and no longer occurs in the new idea
             }
         }
     }   
 
-    var prevComments = sortedIdeas[tempCategory][i].comments;
+    var prevComments = sortedIdeas[tempCategory][ideaListIndex].comments;
     var currentComments;
 
-    for (var x = 0; x <= i; x++){
+    for (var x = 0; x <= ideaListIndex; x++){
     /*
         Iterate through the list, shifting all elements to the right by one, until the
         position of the modified idea is reached - this should not be shifted as everything 

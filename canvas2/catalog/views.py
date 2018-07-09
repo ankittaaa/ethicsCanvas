@@ -441,7 +441,7 @@ def delete_idea(logged_in_user, idea_pk):
     '''
 
     idea = Idea.objects.get(pk=idea_pk)
-    print("deleting" + idea.text)
+
     # tags = idea.tags.all()
 
     # for tag in tags:
@@ -850,9 +850,6 @@ def add_tag(canvas_pk, logged_in_user, label):
     json_tagged_ideas = []
 
 
-    # print(tag.idea_set.all().order_by('canvas'))
-    # print(tag.canvas_set.all().order_by('-id'))
-
     # for t in tags:
     json_tagged_canvases.append(
         serialize(
@@ -1024,7 +1021,6 @@ def search_canvas_for_tag(tag, canvas):
                 # save tag if modifications made
                 tag.save()
 
-    # print(tag.idea_set.all())
 
 
 

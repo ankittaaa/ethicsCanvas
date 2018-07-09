@@ -83,7 +83,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             input_text = text_data_json['input_text']
             idea_pk = text_data_json['idea_pk']
-            i = text_data_json['i']
+            idea_list_index = text_data_json['idea_list_index']
             
 
             returned = views.edit_idea(logged_in_user, idea_pk, input_text)
@@ -91,7 +91,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             data = {
                 'idea': returned['return_idea'],
                 'oldText': returned['old_text'],
-                'i': i,
+                'ideaListIndex': idea_list_index,
             }
 
 
@@ -100,12 +100,12 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             DELETION OF IDEA
             '''
             idea_pk = text_data_json['idea_pk']
-            i = text_data_json['i']
+            idea_list_index = text_data_json['idea_list_index']
             category = views.delete_idea(logged_in_user, idea_pk),
             
             data =  {
                 'category': category,
-                'i': i
+                'ideaListIndex': idea_list_index
             }
 
 
@@ -113,12 +113,12 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             USER BEGINS TYPING
             '''
-            i = text_data_json['i']
+            idea_list_index = text_data_json['idea_list_index']
             category = text_data_json['category']
             username = text_data_json['username']
 
             data = {
-                'i': i,
+                'ideaListIndex': idea_list_index,
                 'category': category,
                 'username': username
             }
@@ -180,7 +180,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
         function = text_data_json['function']
 
         if function == 'addComment':
-            i = text_data_json['i']
+            idea_list_index = text_data_json['idea_list_index']
             text = text_data_json['input_text']
             idea_pk = text_data_json['idea_pk']
 
@@ -189,47 +189,46 @@ class CommentConsumer(AsyncWebsocketConsumer):
             data = {
                 'comment': data['comment'],
                 'category': data['category'],
-                'i': i
+                'ideaListIndex': idea_list_index
             }
 
 
         elif function == 'deleteComment':
-            i = text_data_json['i']
-            c = text_data_json['c']
+            idea_list_index = text_data_json['idea_list_index']
+            comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
             category = views.delete_comment(logged_in_user, comment_pk)
 
             data = {
                 'category': category,
-                'i': i,
-                'c': c
+                'ideaListIndex': idea_list_index,
+                'commentListIndex': comment_list_index
             }
 
         elif function == 'resolveIndividualComment':
-            i = text_data_json['i']
-            c = text_data_json['c']
+            idea_list_index = text_data_json['idea_list_index']
+            comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
             category = views.single_comment_resolve(logged_in_user, comment_pk)
 
             data = {
                 'category': category,
-                'i': i,
-                'c': c
+                'ideaListIndex': idea_list_index,
+                'commentListIndex': comment_list_index
             }
 
 
         elif function == 'resolveAllComments':
-            
-            i = text_data_json['i']
+            idea_list_index = text_data_json['idea_list_index']
             idea_pk = text_data_json['idea_pk']
 
             category = views.all_comment_resolve(logged_in_user, idea_pk)
 
             data = {
                 'category': category,
-                'i': i,
+                'ideaListIndex': idea_list_index
             }
 
             

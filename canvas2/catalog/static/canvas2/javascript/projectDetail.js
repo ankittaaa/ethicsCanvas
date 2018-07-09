@@ -38,14 +38,11 @@ $j(document).ready(function(data){
 
 function addUserSuccessCallback(data){
     var tempUser = (JSON.parse(data.user));
-    // console.log(users);
     users.push(tempUser[0]);
-    // console.log(users);
-    // // console.log("pushed " + tempUser)
 }
 
 function addUserFailureCallback(data){
-    // console.log(data.responseText);
+    // console.log(data);
 }
 
 function deleteUserSuccessCallback(data){
@@ -61,15 +58,15 @@ function deleteUserSuccessCallback(data){
             }, 
             100);
     }
-    // console.log(users);
+
     users.splice(ui, 1);
-    // console.log(users);
+
 
     if (victimIsAdmin === true){
         isAdmin = false;
         adminNames.splice(ui, 1);
         admins.splice(ui, 1);
-        // console.log(admins);
+
     }
 }
 
@@ -89,7 +86,7 @@ function promoteUserSuccessCallback(data){
 }
 
 function promoteUserFailureCallback(data){
-    // console.log(data.responseText);
+    // console.log(data);
 }
 
 function demoteAdminSuccessCallback(data){
@@ -105,7 +102,7 @@ function demoteAdminSuccessCallback(data){
 }
 
 function demoteAdminFailureCallback(data){
-    console.log(data.responseText);
+    // console.log(data);
 }
 
 function newActiveUserCallback(data){
@@ -206,7 +203,7 @@ function initSuccessCallback(data){
 }
 
 function initFailureCallback(data){
-    console.log(data);
+    // console.log(data);
 }
 
 /*************************************************************************************************************
@@ -233,7 +230,6 @@ Vue.component('collabs', {
 
     methods: {
         togglePublic: function(){
-            // console.log("beep")
             collabSocket.send(JSON.stringify({
                 'function': 'togglePublic',
                 'project_pk': projectPK
@@ -338,7 +334,6 @@ Vue.component('collab-popup', {
 
     methods: {
         addUser: function(event, name, isAdmin){
-            // // console.log(isAdmin);
             collabSocket.send(JSON.stringify({
                 'function': 'addUser',
                 'name': name
