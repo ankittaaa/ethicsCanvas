@@ -20,8 +20,8 @@ class TrialIdeaConsumer(WebsocketConsumer):
         
         text_data_json = json.loads(text_data)
 
-        category = text_data_json['category']
-        data = views.new_trial_idea(logged_in_user, canvas_pk, category)
+        idea_category = text_data_json['idea_category']
+        data = views.new_trial_idea(logged_in_user, canvas_pk, idea_category)
         return_idea = data['return_idea']
         idea_pk = data['pk']
         views.delete_trial_idea(idea_pk)
@@ -67,9 +67,9 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             ADDITION OF IDEA
             '''
-            category = text_data_json['category']
+            idea_category = text_data_json['idea_category']
             canvas_pk = text_data_json['canvas_pk']
-            idea = views.new_idea(logged_in_user, canvas_pk, category)
+            idea = views.new_idea(logged_in_user, canvas_pk, idea_category)
 
             data = {
                 'idea': idea,
@@ -105,7 +105,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             
             data = {
                 'ideaListIndex': idea_list_index,
-                'category': returned_data['category'],
+                'ideaCategory': returned_data['category'],
                 'returnTagData': returned_data['return_tag_data'],
                 'idea': returned_data['idea']
             }
@@ -115,13 +115,13 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             USER BEGINS TYPING
             '''
             idea_list_index = text_data_json['idea_list_index']
-            category = text_data_json['category']
+            idea_category = text_data_json['idea_category']
             username = text_data_json['username']
             canvas_pk = text_data_json['canvas_pk']
 
             data = {
                 'ideaListIndex': idea_list_index,
-                'category': category,
+                'ideaCategory': idea_category,
                 'username': username,
                 'canvasPK': canvas_pk
             }
@@ -191,7 +191,7 @@ class CommentConsumer(AsyncWebsocketConsumer):
 
             data = {
                 'comment': data['comment'],
-                'category': data['category'],
+                'ideaCategory': data['category'],
                 'ideaListIndex': idea_list_index
             }
 
@@ -201,10 +201,10 @@ class CommentConsumer(AsyncWebsocketConsumer):
             comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
-            category = views.delete_comment(logged_in_user, comment_pk)
+            idea_category = views.delete_comment(logged_in_user, comment_pk)
 
             data = {
-                'category': category,
+                'ideaCategory': idea_category,
                 'ideaListIndex': idea_list_index,
                 'commentListIndex': comment_list_index
             }
@@ -214,10 +214,10 @@ class CommentConsumer(AsyncWebsocketConsumer):
             comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
-            category = views.single_comment_resolve(logged_in_user, comment_pk)
+            idea_category = views.single_comment_resolve(logged_in_user, comment_pk)
 
             data = {
-                'category': category,
+                'ideaCategory': idea_category,
                 'ideaListIndex': idea_list_index,
                 'commentListIndex': comment_list_index
             }
@@ -227,10 +227,10 @@ class CommentConsumer(AsyncWebsocketConsumer):
             idea_list_index = text_data_json['idea_list_index']
             idea_pk = text_data_json['idea_pk']
 
-            category = views.all_comment_resolve(logged_in_user, idea_pk)
+            idea_category = views.all_comment_resolve(logged_in_user, idea_pk)
 
             data = {
-                'category': category,
+                'ideaCategory': idea_category,
                 'ideaListIndex': idea_list_index
             }
 

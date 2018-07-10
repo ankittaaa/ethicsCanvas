@@ -289,7 +289,7 @@ function deleteIdeaSuccessCallback(data){
     if (tempIdea.fields.canvas == canvasPK){
         // remove the victim {idea, [comments]} from the sorted ideas list
         var ideaListIndex = JSON.parse(data.ideaListIndex);
-        var tempCategory = JSON.parse(data.category);
+        var tempCategory = JSON.parse(data.ideaCategory);
 
         var tempIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
 
@@ -398,7 +398,7 @@ function typingCallback(data, f){
     if (canvas != canvasPK)
         return;
 
-    var tempCategory = data['category'];
+    var tempCategory = data['ideaCategory'];
     var tempName = data['username'];
     var ideaListIndex = data['ideaListIndex']
 
@@ -426,7 +426,7 @@ function typingCallback(data, f){
 function addCommentSuccessCallback(data){
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var returnComment = JSON.parse(data.comment);
-    var tempCategory = JSON.parse(data.category);
+    var tempCategory = JSON.parse(data.ideaCategory);
     sortedIdeas[tempCategory][ideaListIndex].comments.unshift(returnComment[0]);
 }
 
@@ -439,7 +439,7 @@ function deleteCommentSuccessCallback(data){
     // var parsedData = JSON.parse(data);
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var commentListIndex = JSON.parse(data.commentListIndex);
-    var tempCategory = JSON.parse(data.category);
+    var tempCategory = JSON.parse(data.ideaCategory);
 
     sortedIdeas[tempCategory][ideaListIndex].comments.splice(commentListIndex, 1);
 }
@@ -451,7 +451,7 @@ function deleteCommentFailureCallback(data){
 function resolveIndividualCommentSuccessCallback(data){
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var commentListIndex = JSON.parse(data.commentListIndex);
-    var tempCategory = JSON.parse(data.category);
+    var tempCategory = JSON.parse(data.ideaCategory);
 
     var tempComment = sortedIdeas[tempCategory][ideaListIndex].comments[commentListIndex];
 
@@ -464,7 +464,7 @@ function resolveIndividualCommentFailureCallback(data){
 }
 
 function resolveAllCommentsSuccessCallback(data){
-    var tempCategory = JSON.parse(data.category);
+    var tempCategory = JSON.parse(data.ideaCategory);
     var ideaListIndex = JSON.parse(data.ideaListIndex);
 
     // empty the comments for the idea
@@ -893,7 +893,7 @@ Vue.component('idea', {
                                     <comment v-show=showCommentThread[ideaListIndex] v-bind:commentList="commentList[ideaListIndex]" v-bind:idea="idea" v-bind:ideaListIndex="ideaListIndex" v-bind:admins="adminNameList" @close="displayMe(ideaListIndex)"> 
                                     </comment> 
                                 </div>
-                                
+
                                 <div v-else>
                                     <button id="comment-button" title="Sign up to use this feature" disabled> 
                                         <span>Comments</span> 
@@ -919,7 +919,7 @@ Vue.component('idea', {
             return "idea-flex-container-" + i
         },
 
-        category: function(){
+        ideaCategory: function(){
             return ethicsCategories[this.index]
         },
 
@@ -984,7 +984,7 @@ Vue.component('idea', {
     methods: {
 
         textID: function(ideaListIndex){
-            return "category-"+this.index+"-idea-"+ideaListIndex
+            return "idea-category-"+this.index+"-idea-"+ideaListIndex
         },   
 
         displayMe(ideaListIndex){
@@ -1045,13 +1045,13 @@ Vue.component('idea', {
             {
                 ideaSocket.send(JSON.stringify({
                     'function': 'addIdea',
-                    'category': this.index,
+                    'idea_category': this.index,
                     'canvas_pk': canvasPK
                 }));
             }
             else {
                 trialIdeaSocket.send(JSON.stringify({
-                    'category': this.index,
+                    'idea_category': this.index,
                 }));
             }
         },
@@ -1081,7 +1081,7 @@ Vue.component('idea', {
                     'function': 'modifyIdea',
                     'input_text': text,
                     'idea_pk': idea.pk,
-                    'category': this.index,
+                    'idea_category': this.index,
                     'idea_list_index': ideaListIndex,
                 }));
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
@@ -1130,7 +1130,7 @@ Vue.component('idea', {
                 if (typingEntered == false){        
                     ideaSocket.send(JSON.stringify({
                         'function': 'typing',
-                        'category': this.index,
+                        'idea_category': this.index,
                         'username': loggedInUser[0].fields.username,
                         'idea_list_index': ideaListIndex,
                         'canvas_pk': canvasPK
@@ -1646,7 +1646,7 @@ function setFalse(){
 
     ideaSocket.send(JSON.stringify({
         'function': 'done_typing',
-        'category': this.index,
+        'idea_category': this.index,
         'username': loggedInUser[0].fields.username,
         'idea_list_index': this.ideaListIndex,
         'canvas_pk': canvasPK
