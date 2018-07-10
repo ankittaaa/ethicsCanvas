@@ -17,8 +17,8 @@ class Project(models.Model):
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     is_public = models.BooleanField(default=False, db_index=True)
 
-    admins = models.ManyToManyField(User, related_name='admins', null=True, blank=True)
-    users = models.ManyToManyField(User, related_name='users', null=True, blank=True)
+    admins = models.ManyToManyField(User, related_name='admins', blank=True)
+    users = models.ManyToManyField(User, related_name='users', blank=True)
     # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
     owner = models.ForeignKey(User, related_name = 'owner', on_delete=models.CASCADE, null=True, blank=True)
 
