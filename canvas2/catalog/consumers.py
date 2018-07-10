@@ -21,17 +21,18 @@ class TrialIdeaConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
 
         category = text_data_json['category']
-        data = views.new_idea(logged_in_user, canvas_pk, category)
+        data = views.new_trial_idea(logged_in_user, canvas_pk, category)
         return_idea = data['return_idea']
-
         idea_pk = data['pk']
-        views.delete_idea(logged_in_user, idea_pk)
+        views.delete_trial_idea(idea_pk)
         # 'Trial' will occur in the function field of newIdea calls made by a trial user. The idea must immediately be deleted, we only want a JSON 
         # model of an idea and not actual idea addition
 
         self.send(text_data=json.dumps({
             'idea': return_idea
         }))
+
+        print("sent")
 
 
 
@@ -100,7 +101,6 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             DELETION OF IDEA
             '''
-            print("Deleting time")
             idea_pk = text_data_json['idea_pk']
             idea_list_index = text_data_json['idea_list_index']
             returned_data = views.delete_idea(logged_in_user, idea_pk)

@@ -34,12 +34,13 @@ import django.utils.timezone
 def new_canvas(request, canvas_type):
     creator = request.user
 
-    split_url = request.META.get('HTTP_REFERER').split('/')
-    project_pk = split_url[len(split_url) - 2]
-    project = Project.objects.get(pk=project_pk)
 
 
     if creator.is_authenticated:
+        
+        split_url = request.META.get('HTTP_REFERER').split('/')
+        project_pk = split_url[len(split_url) - 2]
+        project = Project.objects.get(pk=project_pk)
 
         # canvas_type integer: 0 for Ethics, 1 for Business, 2 for Privacy
         canvas = Canvas(canvas_type=canvas_type, project=project)
@@ -51,32 +52,41 @@ def new_canvas(request, canvas_type):
     
     else:
         # check that a blank canvas exists - this will be used to render a blank canvas for the anonymous user to interact with
-        if canvas_type == 0:
-            if Canvas.objects.filter(title='blank-ethics').exists():
-                return redirect(Canvas.objects.get(title='blank-ethics').get_absolute_url()) 
-            else :
-            # if there is no blank canvas, create one. set public to false so that it remains blank
-                canvas = Canvas(title='blank-ethics', canvas_type=canvas_type)
-                canvas.save()
-                return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
-        
-        elif canvas_type == 1: 
-            if Canvas.objects.filter(title='blank-business').exists():
-                return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
-            else :
-            # if there is no blank canvas, create one. set public to false so that it remains blank
-                canvas = Canvas(title='blank-business', canvas_type=canvas_type)
-                canvas.save()
-                return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
 
-        elif canvas_type == 2:
-            if Canvas.objects.filter(title='blank-privacy').exists():
-                return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
-            else :
-            # if there is no blank canvas, create one. set public to false so that it remains blank
-                canvas = Canvas(title='blank-privacy', canvas_type=canvas_type)
-                canvas.save()
-                return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
+        if Project.objects.filter(title='blank-project').exists() == False:
+            project = Project(title='blank-project')
+            project.save()
+
+        else:
+            project = Project.objects.get(title='blank-project')
+
+            if canvas_type == 0:
+                if Canvas.objects.filter(title='blank-ethics').exists():
+                    return redirect(Canvas.objects.get(title='blank-ethics').get_absolute_url()) 
+                else :
+                # if there is no blank canvas, create one. set public to false so that it remains blank
+                    canvas = Canvas(title='blank-ethics', canvas_type=canvas_type, project=project)
+                    canvas.save()
+                    return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
+            
+            elif canvas_type == 1: 
+                if Canvas.objects.filter(title='blank-business').exists():
+                    return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
+                else :
+                # if there is no blank canvas, create one. set public to false so that it remains blank
+                    canvas = Canvas(title='blank-business', canvas_type=canvas_type, project=project)
+                    canvas.save()
+                    return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
+
+            elif canvas_type == 2:
+                if Canvas.objects.filter(title='blank-privacy').exists():
+                    return redirect(Canvas.objects.get(title='blank-business').get_absolute_url()) 
+                else :
+                # if there is no blank canvas, create one. set public to false so that it remains blank
+                    canvas = Canvas(title='blank-privacy', canvas_type=canvas_type, project=project)
+                    canvas.save()
+                    return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas  
+
 
 def new_project(request):
     creator = request.user
@@ -106,7 +116,7 @@ def delete_canvas(request, pk):
         tag.idea_set.remove(idea__canvas__pk=canvas)
         tag.save()
 
-    if (not admin_permission(user, canvas.project) or ('blank-' in canvas.title)):
+    if (not admin_permission(user, canvas.project) or (project.title == 'blank-project')):
         return HttpResponse('Forbidden', status = 403)
     
     canvas.delete()
@@ -119,7 +129,7 @@ def delete_project(request, pk):
     user = request.user
     project = Project.objects.get(pk = pk)
 
-    if (not admin_permission(user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(user, project) or (project.title == 'blank-project')):
         return HttpResponse('Forbidden', status = 403)
         
     canvas.delete()
@@ -270,8 +280,6 @@ class CanvasDetailView(generic.DetailView):
                 '''
                 Only need the tagged ideas and canvasses for the tags that will actually be rendered ie the tags in the current canvas
                 '''
-                print(t)
-                
                 tagged_ideas_json.append(
                     serialize(
                         'json',
@@ -280,8 +288,6 @@ class CanvasDetailView(generic.DetailView):
                     )
                 )
 
-                print(t.idea_set.all())
-
                 tagged_canvases_json.append(
                     serialize(
                         'json', 
@@ -289,8 +295,6 @@ class CanvasDetailView(generic.DetailView):
                         cls=CanvasEncoder
                     )
                 )
-
-                print(t.canvas_set.all())
 
             comments = IdeaComment.objects.filter(idea__in=ideas)
             # need the users list for the comment authors, when the comment is parsed the PK of the user is what's used for the user FK, not the user object itself
@@ -406,6 +410,44 @@ class CanvasDetailView(generic.DetailView):
 #                                                         IDEA VIEWS                                                             #
 ################################################################################################################################## 
 
+def new_trial_idea(logged_in_user, canvas_pk, category):
+    try:
+        canvas = Canvas.objects.get(pk = canvas_pk)
+    except Canvas.DoesNotExist:
+        return error
+
+    project = canvas.project
+    # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
+    if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
+        return HttpResponse('Unauthorized', status = 401)
+        
+    idea = Idea(
+        canvas = canvas, 
+        category = category, 
+        text = ''
+    )
+    idea.save()
+    # This is so I can click on it in the django admin - should probably delete later
+    idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
+    idea.save()
+
+    return_idea = serialize(
+        'json', 
+        [idea], 
+        cls=IdeaEncoder
+    )
+
+    data = {
+        'return_idea': return_idea,
+        'pk': idea.pk
+    }
+
+    return data
+
+def delete_trial_idea(idea_pk):
+
+    Idea.objects.get(pk=idea_pk).delete()
+
 
 def new_idea(logged_in_user, canvas_pk, category):
     '''
@@ -439,6 +481,11 @@ def new_idea(logged_in_user, canvas_pk, category):
 
 
     return return_idea
+
+
+
+
+
 
 
 def delete_idea(logged_in_user, idea_pk):
@@ -480,8 +527,6 @@ def delete_idea(logged_in_user, idea_pk):
             canvas.save()
 
         removed_tags.append(tag)
-    
-    print(removed_tags)
     
 
     return_tag_data = []
@@ -550,7 +595,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     canvas = idea.canvas
     project = canvas.project
 
-    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Unauthorized', status = 401)
 
     input_text = strip_tags(input_text)
@@ -688,7 +733,7 @@ def new_comment(input_text, idea_pk, logged_in_user):
     canvas = idea.canvas
     project = canvas.project
 
-    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Unauthorized', status = 401)
 
     text = input_text
@@ -723,7 +768,7 @@ def delete_comment(logged_in_user, comment_pk):
     canvas = comment.idea.canvas
     project = canvas.project
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Forbidden', status = 403)
   
     category = comment.idea.category
@@ -739,7 +784,7 @@ def single_comment_resolve(logged_in_user, comment_pk):
     canvas = comment.idea.canvas
     project = canvas.project
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Forbidden', status = 403)
   
     category = comment.idea.category
@@ -757,7 +802,7 @@ def all_comment_resolve(logged_in_user, idea_pk):
     canvas = idea.canvas
     project = canvas.project
 
-    if (not admin_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Forbidden', status = 403)
     
     IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
@@ -974,7 +1019,7 @@ def add_tag(canvas_pk, logged_in_user, label):
     # idea = Idea.objects.get(pk=idea_pk)
     project = canvas.project
 
-    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Unauthorized', status = 401)
 
     # check existence of tag within project - avoid duplicating tags
@@ -1065,7 +1110,7 @@ def delete_tag(canvas_pk, logged_in_user, label):
     canvas = Canvas.objects.get(pk=canvas_pk)
     project = canvas.project
 
-    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
+    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
         return HttpResponse('Unauthorized', status = 401)
 
     tag = CanvasTag.objects.get(label=label, canvas_set=canvas)

@@ -319,10 +319,7 @@ function newIdeaSuccessCallback(idea){
 */
 
     var tempIdea = JSON.parse(idea)[0];
-    console.log(tempIdea);
-    // do nothing if it's not the right canvas
-    console.log(tempIdea.canvas);
-    console.log(canvasPK);
+
     if (tempIdea.fields.canvas != canvasPK)
         return;
 
@@ -688,15 +685,6 @@ function initSuccessCallback(data){
 
     admins = JSON.parse(data.admins);
 
-    for (a in admins)
-        adminNames.push(admins[a].fields.username);
-
-        if (adminNames.indexOf(loggedInUser[0].fields.username) !== -1)
-            isAdmin = true;
-        else
-            isAdmin = false;
-
-
     if (loggedInUser.length === 0)
         isAuth = false;
     
@@ -705,7 +693,7 @@ function initSuccessCallback(data){
         initialiseSockets();
     }
 
-    // initialise each category as empty
+        // initialise each category as empty
 
 
     if (ideas.length > 0){
@@ -738,9 +726,16 @@ function initSuccessCallback(data){
     }
 
 
-
-
     if (isAuth === true){
+
+        for (a in admins)
+        adminNames.push(admins[a].fields.username);
+
+        if (adminNames.indexOf(loggedInUser[0].fields.username) !== -1)
+            isAdmin = true;
+        else
+            isAdmin = false;
+
         $j('#canvas-title').html(thisCanvas.fields.title);
         newTags = JSON.parse(data.tags);
 
@@ -890,14 +885,20 @@ Vue.component('idea', {
                             
                             <div class='idea-buttons'> 
                                 <button id="delete-idea" class="delete" @click="deleteIdea($event, idea, ideaListIndex)" title="delete">X</button> 
-                                <button v-if="isAuth" id="comment-button" v-on:click="displayMe(ideaListIndex)"> 
-                                    <span>Comments (<% commentList[ideaListIndex].length %>)</span> 
-                                </button> 
-                                <button v-else id="comment-button" title="Sign up to use this feature" disabled> 
-                                    <span>Comments</span> 
-                                </button> 
-                                <comment v-show=showCommentThread[ideaListIndex] v-bind:commentList="commentList[ideaListIndex]" v-bind:idea="idea" v-bind:ideaListIndex="ideaListIndex" v-bind:admins="adminNameList" @close="displayMe(ideaListIndex)"> 
-                                </comment> 
+                                
+                                <div v-if="isAuth">
+                                    <button id="comment-button" v-on:click="displayMe(ideaListIndex)"> 
+                                        <span>Comments (<% commentList[ideaListIndex].length %>)</span> 
+                                    </button> 
+                                    <comment v-show=showCommentThread[ideaListIndex] v-bind:commentList="commentList[ideaListIndex]" v-bind:idea="idea" v-bind:ideaListIndex="ideaListIndex" v-bind:admins="adminNameList" @close="displayMe(ideaListIndex)"> 
+                                    </comment> 
+                                </div>
+                                
+                                <div v-else>
+                                    <button id="comment-button" title="Sign up to use this feature" disabled> 
+                                        <span>Comments</span> 
+                                    </button> 
+                                </div>
                             </div> 
                         </div> 
                     </div> 
@@ -1707,13 +1708,20 @@ function initCollabSocket(){
 
 
 window.onbeforeunload = function(e){
-    ideaSocket.close();
-    tagSocket.close();
-    commentSocket.close();
-    collabSocket.send(JSON.stringify({
-            "function": "removeActiveUser",
-            "user": loggedInUser,
-    }));
 
-    collabSocket.close();
+    if (isAuth){
+        ideaSocket.close();
+        tagSocket.close();
+        commentSocket.close();
+        collabSocket.send(JSON.stringify({
+                "function": "removeActiveUser",
+                "user": loggedInUser,
+        }));
+
+
+        collabSocket.close();
+    }
+    else {
+        trialIdeaSocket.close();
+    }
 };

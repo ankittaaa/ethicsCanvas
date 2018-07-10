@@ -20,7 +20,7 @@ class Project(models.Model):
     admins = models.ManyToManyField(User, related_name='admins')
     users = models.ManyToManyField(User, related_name='users')
     # Owner (creator) for canvas - owner promotes / demotes admins and can delete the canvas
-    owner = models.ForeignKey(User, related_name = 'owner', on_delete = models.CASCADE)
+    owner = models.ForeignKey(User, related_name = 'owner', on_delete=models.CASCADE, null=True)
 
     def get_absolute_url(self):
         return reverse('project-detail', args=[self.pk])
@@ -33,7 +33,7 @@ def ensure_project_has_atleast_one_admin(sender, instance, **kwargs):
         ''' The above line is to ensure that it doesn't break when creating a brand new project. It throws an error when the project is new; the project has no pk before it is saved, so 
             an error is thrown when the m2m field is referenced below 
         '''
-        if instance.admins.count == 0:
+        if instance.admins.count == 0 and title != 'blank-project':
             raise Exception('Project should have at least one admin.')
 
 
