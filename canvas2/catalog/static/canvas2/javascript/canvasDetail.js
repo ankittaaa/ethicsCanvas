@@ -167,10 +167,10 @@ function addUserFailureCallback(data){
 }
 
 function deleteUserSuccessCallback(data){
-    var ui = JSON.parse(data.ui);
+    var userListIndex = JSON.parse(data.userListIndex);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
 
-    if (users[ui].fields.username === loggedInUser[0].fields.username){
+    if (users[userListIndex].fields.username === loggedInUser[0].fields.username){
         alert("You've been removed from the project");
         // go back to project view after 2s 
         setInterval(
@@ -179,7 +179,7 @@ function deleteUserSuccessCallback(data){
             }, 
             100);
     }
-    users.splice(ui, 1);
+    users.splice(userListIndex, 1);
     /*
         Unlike the callback in projectDetail, we don't care if it's an admin as there are no
         admin-permission-required component operations in canvasDetail.
@@ -245,10 +245,10 @@ function promoteUserFailureCallback(data){
 }
 
 function demoteAdminSuccessCallback(data){
-    var ai = JSON.parse(data.ai);
-    var victimName = adminNames[ai];
-    admins.splice(ai, 1);
-    adminNames.splice(ai, 1);
+    var adminListIndex = JSON.parse(data.adminListIndex);
+    var victimName = adminNames[adminListIndex];
+    admins.splice(adminListIndex, 1);
+    adminNames.splice(adminListIndex, 1);
 
     if (loggedInUser[0].fields.username === victimName)
     {

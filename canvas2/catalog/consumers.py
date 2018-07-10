@@ -309,12 +309,12 @@ class CollabConsumer(AsyncWebsocketConsumer):
         elif function == 'deleteUser':
 
             user_pk = text_data_json['user_pk']
-            ui = text_data_json['ui']
+            user_list_index = text_data_json['user_list_index']
             victim_is_admin = views.delete_user(logged_in_user, project_pk, user_pk)
 
             data = {
                 'victimIsAdmin': victim_is_admin,
-                'ui': ui
+                'userListIndex': user_list_index
             }
 
 
@@ -330,11 +330,11 @@ class CollabConsumer(AsyncWebsocketConsumer):
         elif function == 'demoteUser':
 
             user_pk = text_data_json['user_pk']
-            ai = text_data_json['ai']
+            admin_list_index = text_data_json['admin_list_index']
             views.demote_user(logged_in_user, project_pk, user_pk)
 
             data = {
-                'ai': ai
+                'adminListIndex': admin_list_index
             }
 
         elif function == 'newActiveUser':

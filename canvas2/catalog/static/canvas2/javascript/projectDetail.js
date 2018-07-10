@@ -46,10 +46,10 @@ function addUserFailureCallback(data){
 }
 
 function deleteUserSuccessCallback(data){
-    var ui = JSON.parse(data.ui);
+    var userListIndex = JSON.parse(data.userListIndex);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
 
-    if (users[ui].fields.username === loggedInUser[0].fields.username){
+    if (users[userListIndex].fields.username === loggedInUser[0].fields.username){
         alert("You've been removed from the project");
         // go back to project view after 2s 
         setInterval(
@@ -59,13 +59,13 @@ function deleteUserSuccessCallback(data){
             100);
     }
 
-    users.splice(ui, 1);
+    users.splice(userListIndex, 1);
 
 
     if (victimIsAdmin === true){
         isAdmin = false;
-        adminNames.splice(ui, 1);
-        admins.splice(ui, 1);
+        adminNames.splice(userListIndex, 1);
+        admins.splice(userListIndex, 1);
 
     }
 }
@@ -90,10 +90,10 @@ function promoteUserFailureCallback(data){
 }
 
 function demoteAdminSuccessCallback(data){
-    var ai = JSON.parse(data.ai);
-    var victimName = adminNames[ai];
-    admins.splice(ai, 1);
-    adminNames.splice(ai, 1);
+    var adminListIndex = JSON.parse(data.adminListIndex);
+    var victimName = adminNames[adminListIndex];
+    admins.splice(adminListIndex, 1);
+    adminNames.splice(adminListIndex, 1);
 
     if (loggedInUser[0].fields.username === victimName)
     {
@@ -250,7 +250,7 @@ Vue.component('collab-popup', {
         return {
             currentUser: this.loggedInUser,
             name: '',
-            a: '',
+            admin: '',
             c: '',
             activeList: this.active,
         }
@@ -280,46 +280,46 @@ Vue.component('collab-popup', {
                 <div slot="body"> 
                     <h3>Admins</h3> 
                         <ul> 
-                        <li v-for="(a, ai) in adminList" style="list-style-type:none;"> 
+                        <li v-for="(admin, adminListIndex) in adminList" style="list-style-type:none;"> 
                             <span> 
-                                <% a.fields.username 
-                                + ( loggedInUser[0].fields.username === a.fields.username ? " (you)" : activeList.includes(a.fields.username) ? " (active)" : "" ) %> 
+                                <% admin.fields.username 
+                                + ( loggedInUser[0].fields.username === admin.fields.username ? " (you)" : activeList.includes(admin.fields.username) ? " (active)" : "" ) %> 
                             </span> 
 
                             <div  
 
                                 id="admin-buttons" 
-                                v-if="loggedInUser[0].fields.username !== a.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
+                                v-if="loggedInUser[0].fields.username !== admin.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
                             > 
-                                <button class="delete-admin" @click="deleteUser($event, a, ai)">Delete</button> 
-                                <button class="demote-admin" @click="demoteAdmin($event, a, ai)">Demote</button> 
+                                <button class="delete-admin" @click="deleteUser($event, admin, adminListIndex)">Delete</button> 
+                                <button class="demote-admin" @click="demoteAdmin($event, admin, adminListIndex)">Demote</button> 
                             </div> 
                         </li> 
                     </ul> 
                      
                     <h3>Users</h3> 
                     <ul> 
-                        <li v-for="(u, ui) in this.users" style="list-style-type:none;"> 
+                        <li v-for="(user, userListIndex) in this.users" style="list-style-type:none;"> 
                             <span> 
-                                <% u.fields.username   
-                                + ( loggedInUser[0].fields.username === u.fields.username ? " (you)" : activeList.includes(u.fields.username) ? " (active)" : "" ) %> 
+                                <% user.fields.username   
+                                + ( loggedInUser[0].fields.username === user.fields.username ? " (you)" : activeList.includes(user.fields.username) ? " (active)" : "" ) %> 
 
                             </span> 
                             <div  
                                 id="user-buttons" 
-                                v-if="loggedInUser[0].fields.username !== u.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
+                                v-if="loggedInUser[0].fields.username !== user.fields.username && adminNameList.includes(loggedInUser[0].fields.username)" 
                             > 
-                                <button class="delete-user" @click="deleteUser($event, u, ui)">Delete</button> 
+                                <button class="delete-user" @click="deleteUser($event, user, userListIndex)">Delete</button> 
                                 <button  
-                                    v-if="adminNameList.indexOf(u.fields.username) === -1" 
-                                    class="promote-user" @click="promoteUser($event, u)" 
+                                    v-if="adminNameList.indexOf(user.fields.username) === -1" 
+                                    class="promote-user" @click="promoteUser($event, user)" 
                                 >Promote</button> 
                             </div> 
                         </li> 
                     </ul> 
                     <div v-if="adminNameList.includes(loggedInUser[0].fields.username)"> 
                         <h3>Add User</h3> 
-                        <input v-model="name" placeholder="Enter a username"> 
+                        <input v-model="name" placeholder="Enter admin username"> 
                         <button @click="addUser($event, name, this.isAdmin)">Add User</button> 
                     </div> 
                 </div> 
@@ -341,26 +341,26 @@ Vue.component('collab-popup', {
             this.name = ""
         },
 
-        deleteUser: function(event, u, ui){
+        deleteUser: function(event, user, userListIndex){
             collabSocket.send(JSON.stringify({
                 'function': 'deleteUser',
-                'user_pk': u.pk,
-                'ui': ui
+                'user_pk': user.pk,
+                'user_list_index': userListIndex
             }));
         },
 
-        promoteUser: function(event, u){
+        promoteUser: function(event, user){
             collabSocket.send(JSON.stringify({
                 'function': 'promoteUser',
-                'user_pk': u.pk,
+                'user_pk': user.pk,
             }));            
         },
 
-        demoteAdmin: function(event, a, ai){
+        demoteAdmin: function(event, admin, adminListIndex){
             collabSocket.send(JSON.stringify({
                 'function': 'demoteUser',
-                'user_pk': a.pk,
-                'ai': ai
+                'user_pk': admin.pk,
+                'admin_list_index': adminListIndex
             }));
         },
 
