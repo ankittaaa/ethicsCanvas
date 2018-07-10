@@ -267,25 +267,45 @@ function demoteAdminFailureCallback(data){
 
 
 function deleteIdeaSuccessCallback(data){
-    var ideaListIndex = JSON.parse(data.ideaListIndex);
-    var tempCategory = JSON.parse(data.category);
-    var tempIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
 
-    // remove the victim {idea, [comments]} from the sorted ideas list
-    if (sortedIdeas[tempCategory].length === 1){
-        sortedIdeas[tempCategory].splice(ideaListIndex, 1, {
-            idea: null,
-            comments: []
-        });
+
+
+
+    for (d in data.returnTagData){
+
+        var dataForTagRemoveSuccess = {
+            'taggedCanvases': (data.returnTagData[d].taggedCanvases),
+            'taggedIdeas': (data.returnTagData[d].taggedIdeas),
+            'tag': (data.returnTagData[d].tags)
+        };
+
+        removeTag(dataForTagRemoveSuccess);
     }
-    else {
-        sortedIdeas[tempCategory].splice(ideaListIndex, 1);
+
+    var tempIdea = JSON.parse(data.idea)[0];
+
+    // do nothing if it's not the right canvas
+
+    if (tempIdea.fields.canvas == canvasPK){
+        // remove the victim {idea, [comments]} from the sorted ideas list
+        var ideaListIndex = JSON.parse(data.ideaListIndex);
+        var tempCategory = JSON.parse(data.category);
+
+        var tempIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
+
+        if (sortedIdeas[tempCategory].length === 1){
+            sortedIdeas[tempCategory].splice(ideaListIndex, 1, {
+                idea: null,
+                comments: []
+            });
+        }
+        else {
+            sortedIdeas[tempCategory].splice(ideaListIndex, 1);
+        }
+
+        typingBools[tempCategory].splice(ideaListIndex, 1);
+        typingUser[tempCategory].splice(ideaListIndex, 1);
     }
-
-
-
-    typingBools[tempCategory].splice(ideaListIndex, 1);
-    typingUser[tempCategory].splice(ideaListIndex, 1);
 }
 
 function deleteIdeaFailureCallback(data){
@@ -298,10 +318,17 @@ function newIdeaSuccessCallback(idea){
     upon addition of new or deletion of current idea
 */
 
-    var tempIdea = JSON.parse(idea);
-    var tempCategory = tempIdea[0].fields.category;
+    var tempIdea = JSON.parse(idea)[0];
+    console.log(tempIdea);
+    // do nothing if it's not the right canvas
+    console.log(tempIdea.canvas);
+    console.log(canvasPK);
+    if (tempIdea.fields.canvas != canvasPK)
+        return;
+
+    var tempCategory = tempIdea.fields.category;
     var newIdea = {
-        idea: tempIdea[0],
+        idea: tempIdea,
         comments: []
     };
 
@@ -329,43 +356,36 @@ function newIdeaFailureCallback(data){
 
 
 function editIdeaSuccessCallback (data){
+
     var inIdea = (JSON.parse(data.idea))[0];
-    var tempCategory = inIdea.fields.category;
 
-    var ideaListIndex = JSON.parse(data.ideaListIndex);
-    var oldText = escapeHTMLChars(data.oldText);
-    sortIdeas(inIdea, ideaListIndex, tempCategory, oldText);
-    var tempTag;
-    // check for adding new
-    for (tag in allTags){
-        // if the new idea string contains a tag declared in a different canvas
-        tempTag = allTags[tag];
-
-        if (inIdea.fields.text.includes(tempTag.fields.label) && (oldText.includes(tempTag.fields.label) === false)){
-            // add that tag to the current canvas's list IF IT DOES NOT EXIST
-
-            tagSocket.send(JSON.stringify({
-                    'function': 'addTag',
-                    "label": tempTag.fields.label,
-                    "canvas_pk": canvasPK,
-            }));
-        }
+    // update the idea iff it's the right idea
+    if (inIdea.fields.canvas == canvasPK){
+        var tempCategory = inIdea.fields.category;
+        var ideaListIndex = JSON.parse(data.ideaListIndex);
+        var oldText = escapeHTMLChars(data.oldText);
+        sortIdeas(inIdea, ideaListIndex, tempCategory, oldText);
     }
-    // check for removing old
-    for (tag in tags){
-        tempTag = allTags[tag];
 
-        if (oldText.includes(tempTag.fields.label) && (inIdea.fields.text.includes(tempTag.fields.label) === false)){
-            // TODO: CHECK THE OTHER IDEAS!!!
 
-            // remove the tag and the tag's details entirely    
-            tagSocket.send(JSON.stringify({
-                    'function': 'removeTag',
-                    "idea_pk": inIdea.pk,
-                    "label": tempTag.fields.label,
-                    "canvas_pk": canvasPK,
-            }));
-        }
+
+    for (d in data.newReturnTagData){
+
+        var dataForTagAddition = {
+            'taggedCanvases': (data.newReturnTagData[d].newTaggedCanvases),
+            'taggedIdeas': (data.newReturnTagData[d].newTaggedIdeas),
+            'tag': (data.newReturnTagData[d].newTag)
+        };
+        newTagSuccessCallback(dataForTagAddition);
+    }
+
+    for (d in data.removedReturnTagData){
+        var dataForTagRemoval = {
+            'taggedCanvases': (data.removedReturnTagData[d].removedTaggedCanvases),
+            'taggedIdeas': (data.removedReturnTagData[d].removedTaggedIdeas),
+            'tag': (data.removedReturnTagData[d].removedTag)
+        };
+        removeTag(dataForTagRemoval);
     }
 }
 
@@ -376,9 +396,15 @@ function editIdeaFailureCallback(data){
 
 function typingCallback(data, f){
 
+    var canvas = data['canvasPK']
+
+    if (canvas != canvasPK)
+        return;
+
     var tempCategory = data['category'];
     var tempName = data['username'];
     var ideaListIndex = data['ideaListIndex']
+
     // do nothing, the logged in user knows when they're typing
     if (tempName == loggedInUser[0].fields.username)
         return;
@@ -469,12 +495,19 @@ function newTagSuccessCallback(data){
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
+
+    console.log("TAG: " + newTag);
+    
+    for (t in tempTaggedCanvases){
+        console.log("CANVAS: " + tempTaggedCanvases[t].pk + " IDEA: " + tempTaggedIdeas[t].pk);
+    }
+
     var i = -1;
-
-
     var canvasTagged = false;
+
         
     for (t in tags){
+        console.log(newTag.pk + "  " + tags[t].pk);
         if (tags[t].pk == newTag.pk){
             i = t;
             break;
@@ -482,12 +515,15 @@ function newTagSuccessCallback(data){
     }
 
     for (tc in tempTaggedCanvases){
+        console.log(tempTaggedCanvases[tc].pk + " == " + canvasPK + "?");
         if (tempTaggedCanvases[tc].pk == canvasPK){
             canvasTagged = true;
             break;
         }
     }
 
+    console.log(canvasTagged);
+    console.log(i);
     // if the tag doesn't exist (index === -1), but the canvas is tagged by it, add it
     if (canvasTagged === true){
         if (i === -1){
@@ -502,12 +538,14 @@ function newTagSuccessCallback(data){
                 allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
             }
         }
+
         // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
-        else {
+        else{
             taggedCanvases.splice(i, 1, tempTaggedCanvases);
             allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
         }
     }
+    
     // otherwise do nothing
 }
 
@@ -516,22 +554,25 @@ function newTagFailureCallback(data){
 }
 
 
-function removeTagSuccessCallback(data){
+function removeTag(data){
     // differs to deleteTag in that it is called when a tag's occurrences in a canvas are altered. 
     // the tag's presence may still be in that canvas and in other canvases, so it shouldn't be deleted.
     // instead the set of ideas is altered.
-    var victimTag = JSON.parse(data.tag)[0];
-    var tempTaggedCanvases = [];
-    var tempTaggedIdeas = [];
 
-    // for (i in newTags){
-    tempTaggedCanvases = (JSON.parse(data.taggedCanvases));
-    tempTaggedIdeas = (JSON.parse(data.taggedIdeas));
-    // }
+    var victimTag = JSON.parse(data.tag)[0];
+    var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
+    var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
+
+    for (t in tempTaggedCanvases){
+        console.log("CANVAS: " + tempTaggedCanvases[t].pk + " IDEA: " + tempTaggedIdeas[t].pk);
+    }
+
 
     var tagExists = false;
     var canvasTagged = false;
     var tagIndex = -1;
+
+    
 
     for (i in tags){
         if (tags[i].pk == victimTag.pk){
@@ -1004,6 +1045,7 @@ Vue.component('idea', {
                 ideaSocket.send(JSON.stringify({
                     'function': 'addIdea',
                     'category': this.index,
+                    'canvas_pk': canvasPK
                 }));
             }
             else {
@@ -1015,18 +1057,7 @@ Vue.component('idea', {
 
         deleteIdea(event, idea, ideaListIndex){
             if (isAuth === true){
-                // CALL removeTag BEFORE DELETING - VIEW FUNCTION NEEDS THE IDEA TO EXIST
-                for (t in tags){
-                    if (idea.fields.text.includes(tags[t].fields.label)){
-                        tagSocket.send(JSON.stringify({
-                            'function': 'removeTag',
-                            "idea_pk": idea.pk,
-                            "label": tags[t].fields.label,
-                            "canvas_pk": canvasPK,
-                        }));
-                    }
-                }
-
+               
                 ideaSocket.send(JSON.stringify({
                     'function': 'deleteIdea',
                     'idea_pk': idea.pk,
@@ -1050,7 +1081,7 @@ Vue.component('idea', {
                     'input_text': text,
                     'idea_pk': idea.pk,
                     'category': this.index,
-                    'idea_list_index': ideaListIndex
+                    'idea_list_index': ideaListIndex,
                 }));
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
                 event.target.value = text
@@ -1100,7 +1131,8 @@ Vue.component('idea', {
                         'function': 'typing',
                         'category': this.index,
                         'username': loggedInUser[0].fields.username,
-                        'idea_list_index': ideaListIndex
+                        'idea_list_index': ideaListIndex,
+                        'canvas_pk': canvasPK
                     }))
                 }
 
@@ -1450,7 +1482,7 @@ function initialiseSockets(){
 
     ideaSocket = new WebSocket(
         'ws://' + window.location.host + 
-        '/ws/canvas/' + canvasPK + '/idea/'
+        '/ws/project/' + projectPK + '/idea/'
     );
 
     commentSocket = new WebSocket(
@@ -1542,10 +1574,6 @@ function initialiseSockets(){
                 newTagSuccessCallback(data.data);
                 break;
             }
-            case "removeTag": {
-                removeTagSuccessCallback(data.data);
-                break;
-            }
             case "deleteTag": {
                 deleteTagSuccessCallback(data.data);
                 break;
@@ -1619,7 +1647,8 @@ function setFalse(){
         'function': 'done_typing',
         'category': this.index,
         'username': loggedInUser[0].fields.username,
-        'idea_list_index': this.ideaListIndex
+        'idea_list_index': this.ideaListIndex,
+        'canvas_pk': canvasPK
 
     }))
     window.clearTimeout(typingTimer)

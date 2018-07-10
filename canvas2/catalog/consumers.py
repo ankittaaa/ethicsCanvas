@@ -40,9 +40,8 @@ class IdeaConsumer(AsyncWebsocketConsumer):
     Consumer for websockets which are for modification of the Idea model
     '''
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['pk'] + "_idea"
-        self.room_group_name = 'canvas_%s' %self.room_name
-
+        self.room_name = self.scope['url_route']['kwargs']['pk'] + "_tag"
+        self.room_group_name = 'project_%s' %self.room_name
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -59,7 +58,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         logged_in_user = self.scope['user']
-        canvas_pk = self.scope['url_route']['kwargs']['pk']
+        
         
         text_data_json = json.loads(text_data)
         function = text_data_json['function']
@@ -70,6 +69,7 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             ADDITION OF IDEA
             '''
             category = text_data_json['category']
+            canvas_pk = text_data_json['canvas_pk']
             idea = views.new_idea(logged_in_user, canvas_pk, category)
 
             data = {
@@ -84,14 +84,15 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             input_text = text_data_json['input_text']
             idea_pk = text_data_json['idea_pk']
             idea_list_index = text_data_json['idea_list_index']
-            
 
-            returned = views.edit_idea(logged_in_user, idea_pk, input_text)
+            returned_data = views.edit_idea(logged_in_user, idea_pk, input_text)
 
             data = {
-                'idea': returned['return_idea'],
-                'oldText': returned['old_text'],
-                'ideaListIndex': idea_list_index,
+                'removedReturnTagData': returned_data['removed_return_tag_data'],
+                'newReturnTagData': returned_data['new_return_tag_data'],
+                'idea': returned_data['return_idea'],
+                'oldText': returned_data['old_text'],
+                'ideaListIndex': idea_list_index
             }
 
 
@@ -99,15 +100,17 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             DELETION OF IDEA
             '''
+            print("Deleting time")
             idea_pk = text_data_json['idea_pk']
             idea_list_index = text_data_json['idea_list_index']
-            category = views.delete_idea(logged_in_user, idea_pk),
+            returned_data = views.delete_idea(logged_in_user, idea_pk)
             
-            data =  {
-                'category': category,
-                'ideaListIndex': idea_list_index
+            data = {
+                'ideaListIndex': idea_list_index,
+                'category': returned_data['category'],
+                'returnTagData': returned_data['return_tag_data'],
+                'idea': returned_data['idea']
             }
-
 
         elif function == 'typing' or function == 'done_typing':
             '''
@@ -116,11 +119,13 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             idea_list_index = text_data_json['idea_list_index']
             category = text_data_json['category']
             username = text_data_json['username']
+            canvas_pk = text_data_json['canvas_pk']
 
             data = {
                 'ideaListIndex': idea_list_index,
                 'category': category,
-                'username': username
+                'username': username,
+                'canvasPK': canvas_pk
             }
             
         await self.channel_layer.group_send(
@@ -412,10 +417,6 @@ class TagConsumer(AsyncWebsocketConsumer):
         elif function == 'deleteTag':
             data = views.delete_tag(canvas_pk, logged_in_user, label)
 
-        elif function == 'removeTag':
-            idea_pk = text_data_json['idea_pk']
-            data = views.remove_tag(canvas_pk, idea_pk, logged_in_user, label)            
-        
         await self.channel_layer.group_send(
             self.room_group_name,
             {

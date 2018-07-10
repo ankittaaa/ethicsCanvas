@@ -270,6 +270,8 @@ class CanvasDetailView(generic.DetailView):
                 '''
                 Only need the tagged ideas and canvasses for the tags that will actually be rendered ie the tags in the current canvas
                 '''
+                print(t)
+                
                 tagged_ideas_json.append(
                     serialize(
                         'json',
@@ -278,6 +280,8 @@ class CanvasDetailView(generic.DetailView):
                     )
                 )
 
+                print(t.idea_set.all())
+
                 tagged_canvases_json.append(
                     serialize(
                         'json', 
@@ -285,6 +289,8 @@ class CanvasDetailView(generic.DetailView):
                         cls=CanvasEncoder
                     )
                 )
+
+                print(t.canvas_set.all())
 
             comments = IdeaComment.objects.filter(idea__in=ideas)
             # need the users list for the comment authors, when the comment is parsed the PK of the user is what's used for the user FK, not the user object itself
@@ -442,12 +448,6 @@ def delete_idea(logged_in_user, idea_pk):
 
     idea = Idea.objects.get(pk=idea_pk)
 
-    # tags = idea.tags.all()
-
-    # for tag in tags:
-    #     tag.idea_set.remove(idea)
-    #     tag.save()
-
     canvas = idea.canvas
     project = canvas.project
 
@@ -457,8 +457,85 @@ def delete_idea(logged_in_user, idea_pk):
 
     category = idea.category
 
+    # get every tag associated with the idea
+    tags = idea.tags.all()
+    removed_tags = []
+
+    json_tagged_canvases = []
+    json_tagged_ideas = []
+    json_tags = []
+
+    # iterate through the tags, removing the idea from each 
+    for tag in tags: 
+        tag.idea_set.remove(idea)
+        tag.save()
+
+        # check if any ideas remain
+        updated_ideas = tag.idea_set.filter(canvas=canvas).distinct()
+    
+        # if no idaes remain, remove the canvas from the tag's canvas set as well
+        if not updated_ideas:
+            tag.canvas_set.remove(canvas)
+            tag.save()
+            canvas.save()
+
+        removed_tags.append(tag)
+    
+    print(removed_tags)
+    
+
+    return_tag_data = []
+    
+    for tag in removed_tags:
+
+        json_tagged_canvases=(
+            serialize(
+                'json', 
+                tag.canvas_set.all(),
+                cls=CanvasEncoder
+            )
+        )
+
+        json_tagged_ideas=(
+            serialize(
+                'json',
+                tag.idea_set.all(),
+                cls=IdeaEncoder
+            )
+        )
+
+        json_tags=(
+            serialize(
+                'json', 
+                [tag], 
+                cls = CanvasTagEncoder
+            )
+        )
+
+        tag_data = {
+            'taggedCanvases': json_tagged_canvases,
+            'taggedIdeas': json_tagged_ideas,
+            'tags': json_tags,
+        }
+
+        return_tag_data.append(tag_data)
+  
+    return_idea = serialize(
+        'json', 
+        [idea], 
+        cls=IdeaEncoder
+    )
+
+    data = {
+        'return_tag_data': return_tag_data,
+        'idea': return_idea,
+        'category': category
+    }
+
     idea.delete()
-    return category
+
+
+    return data
 
 
 
@@ -467,6 +544,8 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     Update of an idea
     '''
     idea = Idea.objects.get(pk = idea_pk)
+    current_tags_in_idea = idea.tags.all()
+
     old_text = idea.text
     canvas = idea.canvas
     project = canvas.project
@@ -476,17 +555,40 @@ def edit_idea(logged_in_user, idea_pk, input_text):
 
     input_text = strip_tags(input_text)
 
-    tags_in_idea = []
+    updated_tags_in_idea = []
+
+    new_tags = []
+    new_tags_canvas_set = []
+    new_tags_idea_set = []
+
+    removed_tags = []
+    removed_tags_canvas_set = []
+    removed_tags_idea_set = []
 
     # check if any of the tags are implicitly removed or inserted by their labels no longer occurring in the idea or newly occurring in the idea respectively
-    for tag in canvas.tags.all():
-        if tag.label in input_text:
-            tags_in_idea.append(tag)
+    for temp_canvas in project.canvas_set.all():
+        for tag in temp_canvas.tags.all():
 
-    # update the tags field
-    idea.tags.set(tags_in_idea)
+            # if the tag is in the input_text, add it. RHS of and operation is to keep the list elements unique
+            if tag.label in input_text and tag not in updated_tags_in_idea:
+                updated_tags_in_idea.append(tag)
+
+            # if it was in the old text and no longer occurs, remove it
+            elif tag.label in old_text and tag.label not in input_text:
+                removed_tags.append(tag)
+
+
+    # update the tags field in canvas by setting them - implicitly remove the removed tags
+    canvas.tags.set(updated_tags_in_idea)
+    canvas.save()
+
+    # the same for idea's tags field
+    idea.tags.set(updated_tags_in_idea)
     idea.text = input_text
     idea.save()
+
+    new_return_tag_data = []
+    removed_return_tag_data = []
 
     return_idea = serialize(
         'json', 
@@ -494,7 +596,81 @@ def edit_idea(logged_in_user, idea_pk, input_text):
         cls=IdeaEncoder
     )
 
+
+
+    for tag in updated_tags_in_idea:
+
+        new_tags=(
+            serialize(
+                'json', 
+                [tag], 
+                cls = CanvasTagEncoder
+            )
+        )
+
+        new_tags_canvas_set=(
+            serialize(
+                'json', 
+                tag.canvas_set.all(),
+                cls=CanvasEncoder
+            )
+        )
+
+        new_tags_idea_set=(
+            serialize(
+                'json',
+                tag.idea_set.all(),
+                cls=IdeaEncoder
+            )
+        )
+
+
+        tag_data = {
+            'newTag': new_tags,
+            'newTaggedCanvases': new_tags_canvas_set,
+            'newTaggedIdeas': new_tags_idea_set,
+        }
+
+        new_return_tag_data.append(tag_data)
+
+    for tag in removed_tags:
+
+        removed_tags=(
+            serialize(
+                'json', 
+                [tag], 
+                cls = CanvasTagEncoder
+            )
+        )
+
+        removed_tags_canvas_set=(
+            serialize(
+                'json', 
+                tag.canvas_set.all(),
+                cls=CanvasEncoder
+            )
+        )
+
+        removed_tags_idea_set=(
+            serialize(
+                'json',
+                tag.idea_set.all(),
+                cls=IdeaEncoder
+            )
+        )
+
+        tag_data = {
+            'removedTag': removed_tags,
+            'removedTaggedCanvases': removed_tags_canvas_set,
+            'removedTaggedIdeas': removed_tags_idea_set,
+        }
+
+        removed_return_tag_data.append(tag_data)
+
+
     return {
+        'removed_return_tag_data': removed_return_tag_data,
+        'new_return_tag_data': new_return_tag_data,
         'return_idea': return_idea,
         'old_text': old_text
     }
@@ -880,70 +1056,6 @@ def add_tag(canvas_pk, logged_in_user, label):
         'tag': json_tag,
     }
     return data
-
-
-def remove_tag(canvas_pk, idea_pk, logged_in_user, label):
-    '''
-    REMOVAL OF TAG - triggered by idea edits causing the tag to no longer appear in the canvas
-    '''
-    canvas = Canvas.objects.get(pk=canvas_pk)
-    project = canvas.project
-
-    if (not user_permission(logged_in_user, project) or ('blank-' in canvas.title)):
-        return HttpResponse('Unauthorized', status = 401)
-    
-    tag = CanvasTag.objects.get(label=label)
-    
-    try:
-        idea = Idea.objects.get(pk=idea_pk)
-        tag.idea_set.remove(idea)
-        idea.save()
-    except:
-        idea = None
-    
-    ideas = tag.idea_set.filter(canvas=canvas)
-    
-    if not ideas:
-        canvas.tags.remove(tag)
-        tag.canvas_set.remove(canvas)
-    
-    tag.save()
-    canvas.save()
-
-    # delete any tags that aren't attached to a canvas: they are never useful
-    CanvasTag.objects.filter(canvas_set=None).delete()
-
-    # for t in tags:
-    json_tagged_canvases=(
-        serialize(
-            'json', 
-            tag.canvas_set.all(),
-            cls=CanvasEncoder
-        )
-    )
-
-    json_tagged_ideas=(
-        serialize(
-            'json',
-            tag.idea_set.all(),
-            cls=IdeaEncoder
-        )
-    )
-
-    json_tag = serialize(
-        'json', 
-        [tag], 
-        cls = CanvasTagEncoder
-    )
-
-    data = {
-        'taggedCanvases': json_tagged_canvases,
-        'taggedIdeas': json_tagged_ideas,
-        'tag': json_tag,
-    }
-
-    return data
-
 
 
 def delete_tag(canvas_pk, logged_in_user, label):
