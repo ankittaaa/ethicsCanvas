@@ -58,7 +58,7 @@ def new_canvas(request, canvas_type):
             project.save()
 
         else:
-            project = Project.objects.get(title='blank-project')
+            project = Project.objects.get(title='blank-project', is_public=False)
 
             if canvas_type == 0:
                 if Canvas.objects.filter(title='blank-ethics').exists():
@@ -1185,7 +1185,7 @@ def user_permission(logged_in_user, project):
     return ((logged_in_user in project.users.all()) or (project.is_public == True))
 
 def admin_permission(logged_in_user, project):
-    return (logged_in_user in project.admins.all())
+    return ((logged_in_user in project.admins.all()) or (project.is_public == True))
 
 class IdeaEncoder(DjangoJSONEncoder):
     def default(self, obj):

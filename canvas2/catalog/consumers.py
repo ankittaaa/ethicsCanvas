@@ -32,8 +32,6 @@ class TrialIdeaConsumer(WebsocketConsumer):
             'idea': return_idea
         }))
 
-        print("sent")
-
 
 
 class IdeaConsumer(AsyncWebsocketConsumer):
