@@ -44,6 +44,7 @@ class Canvas(models.Model):
     date_created = models.DateTimeField(auto_now_add=True, db_index=True)
     date_modified = models.DateTimeField(auto_now=True, db_index=True)
     # 0 for Ethics, 1 for Business, 2 for Privacy (TBD)
+    # TODO: change canvas_type to strings, update URL parameters to reflect this in routing, views.py, and in the html templates...
     canvas_type = models.PositiveSmallIntegerField(default=0)
     tags = models.ManyToManyField('CanvasTag', related_name='canvas_set', blank=True)
 

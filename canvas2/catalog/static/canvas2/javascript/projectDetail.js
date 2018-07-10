@@ -4,7 +4,6 @@ var users;
 var activeUsers = [];
 var loggedInUser
 var isAdmin;
-var allCanvasses
 var collabComponent;
 var collabSocket;
 
@@ -266,7 +265,7 @@ Vue.component('collab-popup', {
         adminNameList: function(){
             return this.adminNames
         },
-        admin: function(){
+        userIsadmin: function(){
             return this.isAdmin
         }
     },
