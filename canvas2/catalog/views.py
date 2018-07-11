@@ -117,7 +117,10 @@ def delete_canvas(request, pk):
         tag.save()
 
     if (not admin_permission(user, canvas.project) or (project.title == 'blank-project')):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
     
     canvas.delete()
     return redirect(request.META.get('HTTP_REFERER'))
@@ -130,7 +133,10 @@ def delete_project(request, pk):
     project = Project.objects.get(pk = pk)
 
     if (not admin_permission(user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
         
     canvas.delete()
     return redirect(request.META.get('HTTP_REFERER'))
@@ -182,7 +188,10 @@ class ProjectDetailView(generic.DetailView):
         project = Project.objects.get(pk=pk)
 
         if (not user_permission(logged_in_user, project)):
-            return HttpResponse('Unauthorized', status = 401)
+            return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
         if request.is_ajax():
             json_users = '""'
@@ -209,6 +218,8 @@ class ProjectDetailView(generic.DetailView):
                 current,
                 cls=UserModelEncoder
             )
+            # single user - remove enclosing square brackets
+            json_self = json_self[1:-1]
 
             data = {
                 'admins': json_admins,
@@ -247,7 +258,10 @@ class CanvasDetailView(generic.DetailView):
 
         # no user permission and the canvas isn't the blank one
         if (not user_permission(logged_in_user, project) and 'blank-' not in canvas.title):
-            return HttpResponse('Unauthorized', status = 401)
+            return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
         if request.is_ajax():
             # initialise every json_object as the empty string
@@ -317,6 +331,8 @@ class CanvasDetailView(generic.DetailView):
                     [tag], 
                     cls = CanvasTagEncoder
                 )
+                # singular tag, remove enclosing square brackets
+                json_tags = json_tags[1:-1]
 
             if all_tags:
                 json_all_tags = serialize(
@@ -333,6 +349,8 @@ class CanvasDetailView(generic.DetailView):
                     [tag], 
                     cls = CanvasTagEncoder
                 )
+                # singular tag, remove enclosing square brackets
+                json_tags = json_tags[1:-1]
 
             if comments:
                 json_comments = serialize(
@@ -348,11 +366,18 @@ class CanvasDetailView(generic.DetailView):
                 cls=UserModelEncoder
             )
 
+            if logged_in_user.is_authenticated:
+                # singular user, remove enclosing square brackets
+                json_self = json_self[1:-1]
+
             json_canvas=serialize(
                 'json',
                 [canvas],
                 cls=CanvasEncoder
             )
+
+            # singular canvas, remove enclosing square brackets
+            json_canvas = json_canvas[1:-1]
 
             json_users=serialize(
                 'json',
@@ -386,8 +411,7 @@ class CanvasDetailView(generic.DetailView):
                 'thisCanvas': json_canvas,
                 'projectPK': project.pk,
                 'users': json_users,
-                'admins': json_admins
-
+                'admins': json_admins,
             }
 
             return JsonResponse(data, safe = False)
@@ -419,7 +443,10 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
     project = canvas.project
     # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
     if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
         
     idea = Idea(
         canvas = canvas, 
@@ -436,6 +463,9 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
         [idea], 
         cls=IdeaEncoder
     )
+
+    # singular idea, remove enclosing square brackets        
+    return_idea = return_idea[1:-1]
 
     data = {
         'return_idea': return_idea,
@@ -445,8 +475,8 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
     return data
 
 def delete_trial_idea(idea_pk):
-
     Idea.objects.get(pk=idea_pk).delete()
+
 
 
 def new_idea(logged_in_user, canvas_pk, category):
@@ -455,13 +485,24 @@ def new_idea(logged_in_user, canvas_pk, category):
     '''
     try:
         canvas = Canvas.objects.get(pk = canvas_pk)
-    except Canvas.DoesNotExist:
-        return error
+        project = canvas.project
+    except:
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
 
-    project = canvas.project
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
+
     # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
     if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
         
     idea = Idea(
         canvas = canvas, 
@@ -478,9 +519,13 @@ def new_idea(logged_in_user, canvas_pk, category):
         [idea], 
         cls=IdeaEncoder
     )
+    # singular idea, remove enclosing square brackets
+    return_idea = return_idea[1:-1]
 
-
-    return return_idea
+    return {
+        'return_idea': return_idea,
+        'error': None
+    }
 
 
 
@@ -492,15 +537,33 @@ def delete_idea(logged_in_user, idea_pk):
     '''
     Deletion of an idea 
     '''
+    try:
+        idea = Idea.objects.get(pk=idea_pk)
+        canvas = idea.canvas
+        project = canvas.project
 
-    idea = Idea.objects.get(pk=idea_pk)
+    except:
+        Idea.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
 
-    canvas = idea.canvas
-    project = canvas.project
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
 
     # can't remove ideas if the canvas is unavailable or if the blank canvas is being edited by an authenticated user
     if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
     category = idea.category
 
@@ -570,17 +633,19 @@ def delete_idea(logged_in_user, idea_pk):
         [idea], 
         cls=IdeaEncoder
     )
+    # singular idea, remove enclosing square brackets
+    return_idea = return_idea[1:-1]
 
-    data = {
-        'return_tag_data': return_tag_data,
-        'idea': return_idea,
-        'category': category
-    }
 
     idea.delete()
 
 
-    return data
+    return{
+        'return_tag_data': return_tag_data,
+        'idea': return_idea,
+        'category': category,
+        'error': None
+    }
 
 
 
@@ -588,15 +653,35 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     '''
     Update of an idea
     '''
-    idea = Idea.objects.get(pk = idea_pk)
+    try:
+        idea = Idea.objects.get(pk = idea_pk)
+        canvas = idea.canvas
+        project = canvas.project
+    
+    except:
+        Idea.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
+
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
     current_tags_in_idea = idea.tags.all()
 
     old_text = idea.text
-    canvas = idea.canvas
-    project = canvas.project
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
     input_text = strip_tags(input_text)
 
@@ -712,12 +797,15 @@ def edit_idea(logged_in_user, idea_pk, input_text):
 
         removed_return_tag_data.append(tag_data)
 
+    # singular idea, remove enclosing square brackets
+    return_idea = return_idea[1:-1]
 
     return {
         'removed_return_tag_data': removed_return_tag_data,
         'new_return_tag_data': new_return_tag_data,
         'return_idea': return_idea,
-        'old_text': old_text
+        'old_text': old_text,
+        'error': None
     }
 
 
@@ -729,12 +817,32 @@ def edit_idea(logged_in_user, idea_pk, input_text):
 
 def new_comment(input_text, idea_pk, logged_in_user):
     
-    idea = Idea.objects.get(pk = idea_pk)
-    canvas = idea.canvas
-    project = canvas.project
+    try:
+        idea = Idea.objects.get(pk = idea_pk)
+        canvas = idea.canvas
+        project = canvas.project
+
+    except:
+        Idea.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
+
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
     text = input_text
     text = strip_tags(text)
@@ -752,63 +860,134 @@ def new_comment(input_text, idea_pk, logged_in_user):
         cls = IdeaCommentEncoder
     )
 
-    data = {
+    # singular comment, remove enclosing square brackets
+    json_comment = json_comment[1:-1]
+
+    return {
         'comment': json_comment,
         'category': idea.category,
+        'error': None
     }
-
-    return data
 
 
 def delete_comment(logged_in_user, comment_pk):
     '''
     Deletion of a comment
     '''
-    comment = IdeaComment.objects.get(pk = comment_pk)
-    canvas = comment.idea.canvas
-    project = canvas.project
+    try:
+        comment = IdeaComment.objects.get(pk = comment_pk)
+        canvas = comment.idea.canvas
+        project = canvas.project
+
+    except:
+        IdeaComment.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
+
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
 
     if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
   
     category = comment.idea.category
     comment.delete()
 
-    return category
+    return {
+        'category': category,
+        'error': None
+    }
 
 def single_comment_resolve(logged_in_user, comment_pk):
     '''
     Resolution of a single comment
     '''
-    comment = IdeaComment.objects.get(pk = comment_pk)
-    canvas = comment.idea.canvas
-    project = canvas.project
+    try:
+        comment = IdeaComment.objects.get(pk = comment_pk)
+        canvas = comment.idea.canvas
+        project = canvas.project
+
+    except:
+        IdeaComment.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
+
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
+
 
     if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
   
     category = comment.idea.category
     comment.resolved = True
     comment.save()
 
-    return category
+    return {
+        'category': category,
+        'error': None
+    }
 
 
 def all_comment_resolve(logged_in_user, idea_pk):
     '''
     Resolution of comments - mark all as resolved
     '''
-    idea = Idea.objects.get(pk = idea_pk)
-    canvas = idea.canvas
-    project = canvas.project
+    try: 
+        idea = Idea.objects.get(pk = idea_pk)
+        canvas = idea.canvas
+        project = canvas.project
+    except:
+        Idea.DoesNotExist
+        return {
+            'error': 'Comment does not exist'
+        }
+
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
 
     if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
     
     IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
     
 
-    return idea.category
+    return {
+        'category': idea.category,
+        'error': None
+    }
         
 
 ##################################################################################################################################
@@ -857,28 +1036,46 @@ def add_user(logged_in_user, project_pk, name):
     '''
     Function for addition of user to project
     '''
-    project = Project.objects.get(pk=project_pk)
+    try:
+        project = Project.objects.get(pk=project_pk)
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
+
+    name = name
     
 
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
 
     else:
-        user = User.objects.get(username = name)
+        user = User.objects.get(username=name)
 
         if not user:
             reply = 'Error: ' + name + ' does not exist. Please try a different username.'
-            return HttpResponse(reply, status = 500)
+            return { 
+                'error': 500,
+                'response': reply
+            }
 
-            if logged_in_user in project.users.all() or user in project.admins.all():
-                reply = ''
+        if user in project.users.all() or user in project.admins.all():
+            reply = ''
 
             if user is logged_in_user:
                 reply = 'Error: you\'re already a collaborator, you can\'t add yourself!'
+
             else:
                 reply = 'Error: ' + name + ' is already a collaborator!'
-
-            return HttpResponse(reply, status = 500)
+        
+            return { 
+                'error': 500,
+                'response': reply
+            }
 
         project.users.add(user)
 
@@ -887,25 +1084,42 @@ def add_user(logged_in_user, project_pk, name):
             [user],
             cls = UserModelEncoder
         )
-       
-        return json_user
+        # singular user - remove enclosing square brackets
+        json_user = json_user[1:-1]
+
+        return {
+            'json_user': json_user,
+            'error': None
+        }
 
 def delete_user(logged_in_user, project_pk, user_pk):
     '''
     Function for deleting a user from the project.
     '''
-    project = Project.objects.get(pk=project_pk)
+    try:
+        project = Project.objects.get(pk=project_pk)
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
     
 
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
 
 
     user = User.objects.get(pk = user_pk)
 
     if user not in project.users.all():
         reply = 'Error: ' + name + ' is not a collaborator'
-        return HttpResponse(reply, status = 500)
+        return { 
+                'error': 500,
+                'response': reply
+            }
 
     admins = project.admins.all()
 
@@ -915,7 +1129,10 @@ def delete_user(logged_in_user, project_pk, user_pk):
     # is in the project admin set
     if (len(admins) == 1 and user in admins):
         reply = 'Error: You are the only admin, you may not delete yourself!'
-        return HttpResponse(reply, status = 500)
+        return { 
+                'error': 500,
+                'response': reply
+            }
 
     victim_is_admin = "false"
     # if the user is also an admin, remove them from that field also
@@ -925,20 +1142,31 @@ def delete_user(logged_in_user, project_pk, user_pk):
 
     project.users.remove(user)
 
-    return victim_is_admin
-
+    return {
+        'victim_is_admin': victim_is_admin,
+        'error': None
+    }
 
 
 def promote_user(logged_in_user, project_pk, user_pk):
     '''
     Function for promoting a user to admin status
     '''
-    project = Project.objects.get(pk=project_pk)
+    try:
+        project = Project.objects.get(pk=project_pk)
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
     
 
     # check is admin
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Forbidden', status = 403)
+            return { 
+                    'error': 403,
+                    'response': 'forbidden'
+                }
 
     user = User.objects.get(pk = user_pk)
     name_str = user.username
@@ -953,7 +1181,10 @@ def promote_user(logged_in_user, project_pk, user_pk):
             name_str = name_str + ' is '
         reply = 'Error: ' + name_str + ' already an admin!'
         
-        return HttpResponse(reply, status = 500)
+        return { 
+                'error': 500,
+                'response': reply
+            }
 
     project.admins.add(user)
 
@@ -962,8 +1193,13 @@ def promote_user(logged_in_user, project_pk, user_pk):
         [user],
         cls = UserModelEncoder
     )
-    
-    return json_user
+    # singular user - remove enclosing square brackets
+    json_user = json_user[1:-1]
+
+    return {
+        'json_user': json_user,
+        'error': None
+    }
 
 
 def demote_user(logged_in_user, project_pk, user_pk):
@@ -971,26 +1207,44 @@ def demote_user(logged_in_user, project_pk, user_pk):
     Function to delete a user from the admin field - this is for demotion only.
     For complete deletion, call delete user
     '''
-    project = Project.objects.get(pk=project_pk)
-    
+    try:
+        project = Project.objects.get(pk=project_pk)
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
     
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
 
     user = User.objects.get(pk = user_pk)
     admins = project.admins.all()
     # Can't delete a non-existent admin
     if user not in admins:
         reply = 'Error: ' + name + ' is not an admin'
-        return HttpResponse(reply, status = 500)
+        return { 
+                'error': 500,
+                'response': reply
+            }
 
     # if there is one admin who is the logged-in user, do not allow them to 
     # delete themselves
     if len(admins) == 1:
         reply = 'Error: You are the only admin, you may not demote yourself!'
-        return HttpResponse(reply, status = 500)
+        return { 
+                'error': 500,
+                'response': reply
+            }
 
     project.admins.remove(user)
+
+    return {
+        'error': None
+    }
 
 
 def toggle_public(project_pk, logged_in_user):
@@ -998,10 +1252,17 @@ def toggle_public(project_pk, logged_in_user):
 
 
     if (not admin_permission(logged_in_user, project)):
-        return HttpResponse('Forbidden', status = 403)
+        return { 
+                'error': 403,
+                'response': 'forbidden'
+            }
 
     project.is_public = not(project.is_public)
     project.save()
+
+    return {
+        'error': None
+    }
 
 
 
@@ -1015,12 +1276,30 @@ def add_tag(canvas_pk, logged_in_user, label):
     '''
     ADDITION OF NEW TAG 
     '''
-    canvas = Canvas.objects.get(pk=canvas_pk)
+    try: 
+        canvas = Canvas.objects.get(pk=canvas_pk)
+    except:
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
     # idea = Idea.objects.get(pk=idea_pk)
-    project = canvas.project
+
+    try:
+        project = canvas.project
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
+
+
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
     # check existence of tag within project - avoid duplicating tags
     if CanvasTag.objects.filter(label=label, canvas_set__project=project).exists():
@@ -1094,26 +1373,55 @@ def add_tag(canvas_pk, logged_in_user, label):
         [tag], 
         cls = CanvasTagEncoder
     )
+    # singular tag - remove enclosing square brackets
+    json_tag = json_tag[1:-1]
 
     data = {
         'taggedCanvases': json_tagged_canvases,
         'taggedIdeas': json_tagged_ideas,
         'tag': json_tag,
     }
-    return data
+
+    return {
+        'data': data,
+        'error': None
+    }
 
 
 def delete_tag(canvas_pk, logged_in_user, label):
     '''
     DELETION OF TAG
     '''
-    canvas = Canvas.objects.get(pk=canvas_pk)
-    project = canvas.project
+    try: 
+        canvas = Canvas.objects.get(pk=canvas_pk)
+    except:
+        Canvas.DoesNotExist
+        return {
+            'error': 'Canvas does not exist'
+        }
+    # idea = Idea.objects.get(pk=idea_pk)
+
+    try:
+        project = canvas.project
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 'Project does not exist'
+        }
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return HttpResponse('Unauthorized', status = 401)
+        return { 
+                'error': 401,
+                'response': 'unauthorized'
+            }
 
-    tag = CanvasTag.objects.get(label=label, canvas_set=canvas)
+    try:
+        tag = CanvasTag.objects.get(label=label, canvas_set=canvas)
+    except:
+        CanvasTag.DoesNotExist
+        return {
+            'error': 'Tag does not exist'
+        }
 
     CanvasTag.objects.filter(label=label, canvas_set__project=project).delete()
 
@@ -1125,12 +1433,13 @@ def delete_tag(canvas_pk, logged_in_user, label):
         [tag], 
         cls = CanvasTagEncoder
     )
+    # singular tag - remove enclosing square brackets
+    json_tag = json_tag[1:-1]
 
-    data = {
+    return {
         'tag': json_tag,
+        'error': None
     }
-
-    return data
 
 
 ##################################################################################################################################

@@ -159,18 +159,18 @@ $j(document).on("select", ".idea-input", function(e){
 *************************************************************************************************************/
 function addUserSuccessCallback(data){
     var tempUser = (JSON.parse(data.user));
-    users.push(tempUser[0]);
+    users.push(tempUser);
 }
 
 function addUserFailureCallback(data){
-    // console.log(data.responseText);
+    console.log(data);
 }
 
 function deleteUserSuccessCallback(data){
     var userListIndex = JSON.parse(data.userListIndex);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
 
-    if (users[userListIndex].fields.username === loggedInUser[0].fields.username){
+    if (users[userListIndex].fields.username === loggedInUser.fields.username){
         alert("You've been removed from the project");
         // go back to project view after 2s 
         setInterval(
@@ -187,14 +187,14 @@ function deleteUserSuccessCallback(data){
 }
 
 function deleteUserFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
 function newActiveUserCallback(data){
 
     user = data.user;
-    activeUsers.push(user[0].fields.username);
+    activeUsers.push(user.fields.username);
 
 
     collabSocket.send(JSON.stringify({
@@ -221,7 +221,7 @@ function wholeListCallback(data){
 function removeActiveUserCallback(data){
 
     user = data.user;
-    i = activeUsers.indexOf(user[0].fields.username);
+    i = activeUsers.indexOf(user.fields.username);
 
     if (i > -1)
         activeUsers.splice(i, 1);
@@ -230,10 +230,10 @@ function removeActiveUserCallback(data){
 
 function promoteUserSuccessCallback(data){
     var tempAdmin = JSON.parse(data.admin);
-    admins.push(tempAdmin[0]);
-    adminNames.push(tempAdmin[0].fields.username);
+    admins.push(tempAdmin);
+    adminNames.push(tempAdmin.fields.username);
 
-    if (loggedInUser[0].fields.username === tempAdmin[0].fields.username)
+    if (loggedInUser.fields.username === tempAdmin.fields.username)
     {
         isAdmin = true;
         ideaListComponent.admin = true;
@@ -241,7 +241,7 @@ function promoteUserSuccessCallback(data){
 }
 
 function promoteUserFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 function demoteAdminSuccessCallback(data){
@@ -250,7 +250,7 @@ function demoteAdminSuccessCallback(data){
     admins.splice(adminListIndex, 1);
     adminNames.splice(adminListIndex, 1);
 
-    if (loggedInUser[0].fields.username === victimName)
+    if (loggedInUser.fields.username === victimName)
     {
         isAdmin = false;
         ideaListComponent.admin = false;
@@ -258,7 +258,7 @@ function demoteAdminSuccessCallback(data){
 }
 
 function demoteAdminFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 /*************************************************************************************************************
@@ -282,7 +282,7 @@ function deleteIdeaSuccessCallback(data){
         removeTag(dataForTagRemoveSuccess);
     }
 
-    var tempIdea = JSON.parse(data.idea)[0];
+    var tempIdea = JSON.parse(data.idea);
 
     // do nothing if it's not the right canvas
 
@@ -309,16 +309,16 @@ function deleteIdeaSuccessCallback(data){
 }
 
 function deleteIdeaFailureCallback(data){
-    // console.log("Deletion Failed");
+    console.log(data);
 }
 
-function newIdeaSuccessCallback(idea){
+function newIdeaSuccessCallback(data){
 /*
     Function for updating the idea list for the modified category
     upon addition of new or deletion of current idea
 */
 
-    var tempIdea = JSON.parse(idea)[0];
+    var tempIdea = JSON.parse(data.idea);
 
     if (tempIdea.fields.canvas != canvasPK)
         return;
@@ -348,13 +348,14 @@ function newIdeaSuccessCallback(idea){
 }
 
 function newIdeaFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
-function editIdeaSuccessCallback (data){
+function editIdeaSuccessCallback(data){
 
-    var inIdea = (JSON.parse(data.idea))[0];
+    // console.log(data.idea);
+    var inIdea = (JSON.parse(data.idea));
 
     // update the idea iff it's the right idea
     if (inIdea.fields.canvas == canvasPK){
@@ -387,7 +388,7 @@ function editIdeaSuccessCallback (data){
 }
 
 function editIdeaFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
@@ -403,7 +404,7 @@ function typingCallback(data, f){
     var ideaListIndex = data['ideaListIndex']
 
     // do nothing, the logged in user knows when they're typing
-    if (tempName == loggedInUser[0].fields.username)
+    if (tempName == loggedInUser.fields.username)
         return;
 
     if (f === "typing"){
@@ -427,11 +428,11 @@ function addCommentSuccessCallback(data){
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var returnComment = JSON.parse(data.comment);
     var tempCategory = JSON.parse(data.ideaCategory);
-    sortedIdeas[tempCategory][ideaListIndex].comments.unshift(returnComment[0]);
+    sortedIdeas[tempCategory][ideaListIndex].comments.unshift(returnComment);
 }
 
 function addCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 
@@ -445,7 +446,7 @@ function deleteCommentSuccessCallback(data){
 }
 
 function deleteCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 function resolveIndividualCommentSuccessCallback(data){
@@ -460,7 +461,7 @@ function resolveIndividualCommentSuccessCallback(data){
 }
 
 function resolveIndividualCommentFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 function resolveAllCommentsSuccessCallback(data){
@@ -479,7 +480,7 @@ function resolveAllCommentsSuccessCallback(data){
     }
 }
 function resolveAllCommentsFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 /*************************************************************************************************************
@@ -488,7 +489,7 @@ function resolveAllCommentsFailureCallback(data){
 
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
-    var newTag = JSON.parse(data.tag)[0];
+    var newTag = JSON.parse(data.tag);
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
@@ -547,7 +548,7 @@ function newTagSuccessCallback(data){
 }
 
 function newTagFailureCallback(data){
-    // console.log(data.responseText);
+    console.log(data);
 }
 
 
@@ -556,7 +557,7 @@ function removeTag(data){
     // the tag's presence may still be in that canvas and in other canvases, so it shouldn't be deleted.
     // instead the set of ideas is altered.
 
-    var victimTag = JSON.parse(data.tag)[0];
+    var victimTag = JSON.parse(data.tag);
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
@@ -618,7 +619,9 @@ function removeTag(data){
 
 function deleteTagSuccessCallback(data){
 
-    var tag = JSON.parse(data.tag)[0];
+    console.log(data);
+    console.log(data.tag);
+    var tag = JSON.parse(data.tag);
     var i; 
 
     for (t in tags){
@@ -652,6 +655,7 @@ function deleteTagSuccessCallback(data){
 }
 
 function deleteTagFailureCallback(data){
+    console.log(data);
 }
 
 
@@ -661,11 +665,12 @@ function deleteTagFailureCallback(data){
 
 
 function initSuccessCallback(data){
-/*
+/*  
     This function is to pick apart the data received from the initial AJAX POST request, as there are several django models being sent back.
     I'll do something with these eventually, for now just having them extracted is enough. Decisions on which may be global or which are useful 
     at all remain undecided. 
 */  
+
     // initially declare empty arrays for each index of sortedIdeas
     for (var i = 0; i < sortedIdeas.length; i++){
         sortedIdeas[i] = new Array();
@@ -677,22 +682,29 @@ function initSuccessCallback(data){
     ideas = JSON.parse(data.ideas);
     
     allTags = JSON.parse(data.allTags);
+
     loggedInUser = JSON.parse(data.loggedInUser);
     projectPK = JSON.parse(data.projectPK);
-    thisCanvas = JSON.parse(data.thisCanvas)[0];
+    thisCanvas = JSON.parse(data.thisCanvas);
+    
+    // console.log(data.thisCanvas);
     canvasType = thisCanvas.fields.canvas_type;
     users = JSON.parse(data.users);
+    
+    // console.log(data.users[0]);
 
     admins = JSON.parse(data.admins);
 
-    if (loggedInUser.length === 0)
+    if (loggedInUser.length == 0){
         isAuth = false;
-    
-    if (loggedInUser.length > 0) {
+    }
+
+    else {
         isAuth = true;
         initialiseSockets();
     }
 
+    // console.log(isAuth);
         // initialise each category as empty
 
 
@@ -731,23 +743,27 @@ function initSuccessCallback(data){
         for (a in admins)
         adminNames.push(admins[a].fields.username);
 
-        if (adminNames.indexOf(loggedInUser[0].fields.username) !== -1)
+        if (adminNames.indexOf(loggedInUser.fields.username) !== -1)
             isAdmin = true;
         else
             isAdmin = false;
 
         $j('#canvas-title').html(thisCanvas.fields.title);
-        newTags = JSON.parse(data.tags);
+        var inTags = JSON.parse(data.tags);
 
-        if (newTags[0].pk !== null){
-            for (t in newTags){
-                tags.push((newTags[t]));
+        // if tags exist - the zeroth tag won't be null 
+        if (inTags[0].pk !== null){
+            for (t in inTags){
+                tags.push((inTags[t]));
                 allTaggedIdeas.push(JSON.parse(data.allTaggedIdeas[t]));
                 taggedCanvases.push(JSON.parse(data.taggedCanvases[t]));
+
+                console.log(taggedCanvases[t]);
+                console.log(allTaggedIdeas[t]);
             }
         }
         else {
-            tags.push(newTags[0]);
+            tags.push(inTags[0]);
             allTaggedIdeas = [];
             taggedCanvases = [];
         }
@@ -804,7 +820,7 @@ function initSuccessCallback(data){
 }
 
 function initFailureCallback(data){
-    // console.log(data);
+    console.log(data);
 }
 
 /*************************************************************************************************************
@@ -926,15 +942,11 @@ Vue.component('idea', {
         ideaList: {
             get: function(){
                 var list = []
-
-                
-                // if (this.ideas[0] !== null){
                     if (this.ideas[0] !== null){
                         for (i in this.ideas){
                             list.push(this.ideas[i].idea)
                         }
                     }
-                // }
                 return list
             },
 
@@ -1131,7 +1143,7 @@ Vue.component('idea', {
                     ideaSocket.send(JSON.stringify({
                         'function': 'typing',
                         'idea_category': this.index,
-                        'username': loggedInUser[0].fields.username,
+                        'username': loggedInUser.fields.username,
                         'idea_list_index': ideaListIndex,
                         'canvas_pk': canvasPK
                     }))
@@ -1238,7 +1250,7 @@ Vue.component('comment', {
             return this.admins 
         },
         isAdmin: function(){
-            return (this.adminNames.includes(loggedInUser[0].fields.username))
+            return (this.adminNames.includes(loggedInUser.fields.username))
         },
     },
     
@@ -1521,16 +1533,25 @@ function initialiseSockets(){
         }
         switch(f) {
             case "modifyIdea": {
-                editIdeaSuccessCallback(data.data);
+                if (data.data.error)
+                    editIdeaFailureCallback(data.data);
+                else
+                    editIdeaSuccessCallback(data.data);
                 break;
             }
             case "addIdea": {
-                var idea = data.data['idea'];
-                newIdeaSuccessCallback(idea);
+                if (data.data.error)
+                    newIdeaFailureCallback(data.data);
+                else
+                    
+                    newIdeaSuccessCallback(data.data);
                 break;
             }
             case "deleteIdea": {
-                deleteIdeaSuccessCallback(data.data);
+                if (data.data.error)
+                    deleteIdeaFailureCallback(data.data);
+                else
+                    deleteIdeaSuccessCallback(data.data);
                 break;
             }
         }
@@ -1545,19 +1566,31 @@ function initialiseSockets(){
 
         switch(f) {
             case "addComment": {
-                addCommentSuccessCallback(data.data);
+                if (data.data.error)
+                    CommentFailureCallback(data.data);
+                else
+                    addCommentSuccessCallback(data.data);
                 break;
             }
             case "deleteComment": {
-                deleteCommentSuccessCallback(data.data);
+                if (data.data.error)
+                    deleteCommentFailureCallback(data.data);
+                else
+                    deleteCommentSuccessCallback(data.data);
                 break;
             }
             case "resolveIndividualComment": {
-                resolveIndividualCommentSuccessCallback(data.data);
+                if (data.data.error)
+                    resolveIndividualCommentFailureCallback(data.data);
+                else
+                    resolveIndividualCommentSuccessCallback(data.data);
                 break;
             }
             case "resolveAllComments": {
-                resolveAllCommentsSuccessCallback(data.data);
+                if (data.data.error)
+                    resolveAllCommentFailureCallback(data.data);
+                else
+                    resolveAllCommentsSuccessCallback(data.data);
                 break;
             }
         }
@@ -1572,11 +1605,17 @@ function initialiseSockets(){
 
         switch(f) {
             case "addTag": {
-                newTagSuccessCallback(data.data);
+                if (data.data.error)
+                    newTagFailureCallback(data.data);
+                else
+                    newTagSuccessCallback(data.data);
                 break;
             }
             case "deleteTag": {
-                deleteTagSuccessCallback(data.data);
+                if (data.data.error)
+                    deleteTagFailureCallback(data.data);
+                else
+                    deleteTagSuccessCallback(data.data);
                 break;
             }
         }
@@ -1592,19 +1631,31 @@ function initialiseSockets(){
 
         switch(f) {
             case "promoteUser": {
-                promoteUserSuccessCallback(data.data);
+                if (data.data.error)
+                    promoteUserFailureCallback(data.data);
+                else
+                    promoteUserSuccessCallback(data.data);
                 break;
             }
             case "demoteUser": {
-                demoteAdminSuccessCallback(data.data);
+                if (data.data.error)
+                    demoteUserFailureCallback(data.data);
+                else
+                    demoteAdminSuccessCallback(data.data);
                 break;
             }
             case "addUser": {
-                addUserSuccessCallback(data.data);
+                if (data.data.error)
+                    addUserFailureCallback(data.data);
+                else
+                    addUserSuccessCallback(data.data);
                 break;
             }
             case "deleteUser": {
-                deleteUserSuccessCallback(data.data);
+                if (data.data.error)
+                    deleteUserFailureCallback(data.data);
+                else
+                    deleteUserSuccessCallback(data.data);
                 break;
             }
             case "newActiveUser": {
@@ -1647,7 +1698,7 @@ function setFalse(){
     ideaSocket.send(JSON.stringify({
         'function': 'done_typing',
         'idea_category': this.index,
-        'username': loggedInUser[0].fields.username,
+        'username': loggedInUser.fields.username,
         'idea_list_index': this.ideaListIndex,
         'canvas_pk': canvasPK
 

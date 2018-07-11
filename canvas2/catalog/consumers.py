@@ -69,11 +69,20 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             idea_category = text_data_json['idea_category']
             canvas_pk = text_data_json['canvas_pk']
-            idea = views.new_idea(logged_in_user, canvas_pk, idea_category)
+            return_data = views.new_idea(logged_in_user, canvas_pk, idea_category)
 
-            data = {
-                'idea': idea,
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'idea': return_data['return_idea']
+                }
 
 
         elif function == 'modifyIdea':
@@ -84,15 +93,23 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             idea_pk = text_data_json['idea_pk']
             idea_list_index = text_data_json['idea_list_index']
 
-            returned_data = views.edit_idea(logged_in_user, idea_pk, input_text)
+            return_data = views.edit_idea(logged_in_user, idea_pk, input_text)
 
-            data = {
-                'removedReturnTagData': returned_data['removed_return_tag_data'],
-                'newReturnTagData': returned_data['new_return_tag_data'],
-                'idea': returned_data['return_idea'],
-                'oldText': returned_data['old_text'],
-                'ideaListIndex': idea_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+                data = {
+                    'removedReturnTagData': return_data['removed_return_tag_data'],
+                    'newReturnTagData': return_data['new_return_tag_data'],
+                    'idea': return_data['return_idea'],
+                    'oldText': return_data['old_text'],
+                    'ideaListIndex': idea_list_index
+                }
 
 
         elif function == 'deleteIdea':
@@ -101,14 +118,23 @@ class IdeaConsumer(AsyncWebsocketConsumer):
             '''
             idea_pk = text_data_json['idea_pk']
             idea_list_index = text_data_json['idea_list_index']
-            returned_data = views.delete_idea(logged_in_user, idea_pk)
+            return_data = views.delete_idea(logged_in_user, idea_pk)
+
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
             
-            data = {
-                'ideaListIndex': idea_list_index,
-                'ideaCategory': returned_data['category'],
-                'returnTagData': returned_data['return_tag_data'],
-                'idea': returned_data['idea']
-            }
+                data = {
+                    'ideaListIndex': idea_list_index,
+                    'ideaCategory': return_data['category'],
+                    'returnTagData': return_data['return_tag_data'],
+                    'idea': return_data['idea']
+                }
 
         elif function == 'typing' or function == 'done_typing':
             '''
@@ -187,13 +213,22 @@ class CommentConsumer(AsyncWebsocketConsumer):
             text = text_data_json['input_text']
             idea_pk = text_data_json['idea_pk']
 
-            data = views.new_comment(text, idea_pk, logged_in_user)
+            return_data = views.new_comment(text, idea_pk, logged_in_user)
 
-            data = {
-                'comment': data['comment'],
-                'ideaCategory': data['category'],
-                'ideaListIndex': idea_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'comment': return_data['comment'],
+                    'ideaCategory': return_data['category'],
+                    'ideaListIndex': idea_list_index
+                }
 
 
         elif function == 'deleteComment':
@@ -201,38 +236,65 @@ class CommentConsumer(AsyncWebsocketConsumer):
             comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
-            idea_category = views.delete_comment(logged_in_user, comment_pk)
+            return_data = views.delete_comment(logged_in_user, comment_pk)
 
-            data = {
-                'ideaCategory': idea_category,
-                'ideaListIndex': idea_list_index,
-                'commentListIndex': comment_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'ideaCategory': return_data['category'],
+                    'ideaListIndex': idea_list_index,
+                    'commentListIndex': comment_list_index
+                }
 
         elif function == 'resolveIndividualComment':
             idea_list_index = text_data_json['idea_list_index']
             comment_list_index = text_data_json['comment_list_index']
             comment_pk = text_data_json['comment_pk']
 
-            idea_category = views.single_comment_resolve(logged_in_user, comment_pk)
+            return_data = views.single_comment_resolve(logged_in_user, comment_pk)
 
-            data = {
-                'ideaCategory': idea_category,
-                'ideaListIndex': idea_list_index,
-                'commentListIndex': comment_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'ideaCategory': return_data['category'],
+                    'ideaListIndex': idea_list_index,
+                    'commentListIndex': comment_list_index
+                }
 
 
         elif function == 'resolveAllComments':
             idea_list_index = text_data_json['idea_list_index']
             idea_pk = text_data_json['idea_pk']
 
-            idea_category = views.all_comment_resolve(logged_in_user, idea_pk)
+            return_data = views.all_comment_resolve(logged_in_user, idea_pk)
 
-            data = {
-                'ideaCategory': idea_category,
-                'ideaListIndex': idea_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'ideaCategory': return_data['category'],
+                    'ideaListIndex': idea_list_index
+                }
 
             
         await self.channel_layer.group_send(
@@ -288,54 +350,99 @@ class CollabConsumer(AsyncWebsocketConsumer):
         
         text_data_json = json.loads(text_data)
         function = text_data_json['function']
+        error = None
+        data = []
 
         if function == 'togglePublic':
-            project_pk = text_data_json['canvas_pk']
+            project_pk = text_data_json['project_pk']
 
-            views.toggle_public(project_pk, logged_in_user)
+            return_data = views.toggle_public(project_pk, logged_in_user)
+
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+                data = []
             # this returns no data, so we want to skip the reply altogether, hence why it's confined in the 'else' block
 
 
         elif function == 'addUser':
 
             name = text_data_json['name']
-            user = views.add_user(logged_in_user, project_pk, name)
+            return_data = views.add_user(logged_in_user, project_pk, name)
+            
 
-            data = {
-                'user': user
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+
+            else:
+
+                data = {
+                    'user': return_data['json_user']
+                }
 
 
         elif function == 'deleteUser':
 
             user_pk = text_data_json['user_pk']
             user_list_index = text_data_json['user_list_index']
-            victim_is_admin = views.delete_user(logged_in_user, project_pk, user_pk)
+            return_data = views.delete_user(logged_in_user, project_pk, user_pk)
 
-            data = {
-                'victimIsAdmin': victim_is_admin,
-                'userListIndex': user_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+            else:
+                data = {
+                    'victimIsAdmin': return_data['victim_is_admin'],
+                    'userListIndex': user_list_index
+                }
 
 
         elif function == 'promoteUser':
 
             user_pk = text_data_json['user_pk']
-            admin = views.promote_user(logged_in_user, project_pk, user_pk)
+            return_data = views.promote_user(logged_in_user, project_pk, user_pk)
 
-            data = {
-                'admin': admin
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+            else:
+
+                data = {
+                    'admin': return_data['json_user']
+                }
 
         elif function == 'demoteUser':
 
             user_pk = text_data_json['user_pk']
             admin_list_index = text_data_json['admin_list_index']
-            views.demote_user(logged_in_user, project_pk, user_pk)
+            return_data = views.demote_user(logged_in_user, project_pk, user_pk)
 
-            data = {
-                'adminListIndex': admin_list_index
-            }
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+            else:
+
+                data = {
+                    'adminListIndex': admin_list_index
+                }
 
         elif function == 'newActiveUser':
             user = text_data_json['user']
@@ -354,6 +461,7 @@ class CollabConsumer(AsyncWebsocketConsumer):
             data = {
                 'users': users
             }
+        
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -410,10 +518,30 @@ class TagConsumer(AsyncWebsocketConsumer):
         data = []
             
         if function == 'addTag':
-            data = views.add_tag(canvas_pk, logged_in_user, label)
+            return_data = views.add_tag(canvas_pk, logged_in_user, label)
+
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+            else:
+                data = return_data['data']
         
         elif function == 'deleteTag':
-            data = views.delete_tag(canvas_pk, logged_in_user, label)
+            return_data = views.delete_tag(canvas_pk, logged_in_user, label)
+
+            if return_data['error']:
+                error = return_data['error']
+                data = {
+                    'error': return_data['error'],
+                    'response': return_data['response']
+                }
+            else:
+                data = {
+                    'tag': return_data['tag']
+                }
 
         await self.channel_layer.group_send(
             self.room_group_name,
