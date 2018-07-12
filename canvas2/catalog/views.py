@@ -326,6 +326,7 @@ class CanvasDetailView(generic.DetailView):
             else: 
                 # a null tag is used for conditionally rendering the tag Vue element
                 tag = CanvasTag(label=None)
+                # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
                 json_tags = serialize(
                     'json', 
                     [tag], 
@@ -344,6 +345,7 @@ class CanvasDetailView(generic.DetailView):
             else: 
                 # a null tag is used for conditionally rendering the tag Vue element
                 tag = CanvasTag(label=None)
+                # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
                 json_all_tags = serialize(
                     'json', 
                     [tag], 
@@ -359,7 +361,8 @@ class CanvasDetailView(generic.DetailView):
                     cls = IdeaCommentEncoder
                 )
 
-
+            # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+            # NB: current assigned above as either empty string if Anon. user or [logged_in_user] if is_authenticated
             json_self=serialize(
                 'json',
                 current,
@@ -370,6 +373,7 @@ class CanvasDetailView(generic.DetailView):
                 # singular user, remove enclosing square brackets
                 json_self = json_self[1:-1]
 
+            # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
             json_canvas=serialize(
                 'json',
                 [canvas],
@@ -458,6 +462,7 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
     idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
     idea.save()
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     return_idea = serialize(
         'json', 
         [idea], 
@@ -514,6 +519,7 @@ def new_idea(logged_in_user, canvas_pk, category):
     idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
     idea.save()
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     return_idea = serialize(
         'json', 
         [idea], 
@@ -627,7 +633,8 @@ def delete_idea(logged_in_user, idea_pk):
         }
 
         return_tag_data.append(tag_data)
-  
+    
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     return_idea = serialize(
         'json', 
         [idea], 
@@ -720,6 +727,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     new_return_tag_data = []
     removed_return_tag_data = []
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     return_idea = serialize(
         'json', 
         [idea], 
@@ -765,6 +773,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
 
     for tag in removed_tags:
 
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
         removed_tags=(
             serialize(
                 'json', 
@@ -854,6 +863,7 @@ def new_comment(input_text, idea_pk, logged_in_user):
     )
     comment.save()
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     json_comment = serialize(
         'json',
         [comment],
@@ -1079,6 +1089,7 @@ def add_user(logged_in_user, project_pk, name):
 
         project.users.add(user)
 
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
         json_user = serialize(
             'json', 
             [user],
@@ -1188,6 +1199,7 @@ def promote_user(logged_in_user, project_pk, user_pk):
 
     project.admins.add(user)
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     json_user = serialize(
         'json', 
         [user],
@@ -1368,6 +1380,7 @@ def add_tag(canvas_pk, logged_in_user, label):
         )
     )
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     json_tag = serialize(
         'json', 
         [tag], 
@@ -1428,6 +1441,7 @@ def delete_tag(canvas_pk, logged_in_user, label):
     # delete any tags that aren't attached to a canvas: they are never useful
     CanvasTag.objects.filter(canvas_set=None).delete()
 
+    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
     json_tag = serialize(
         'json', 
         [tag], 
