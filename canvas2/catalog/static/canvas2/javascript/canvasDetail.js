@@ -683,6 +683,7 @@ function initSuccessCallback(data){
     
     allTags = JSON.parse(data.allTags);
 
+    // console.log(data.loggedInUser);
     loggedInUser = JSON.parse(data.loggedInUser);
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas);
@@ -749,23 +750,28 @@ function initSuccessCallback(data){
             isAdmin = false;
 
         $j('#canvas-title').html(thisCanvas.fields.title);
+        // console.log(data);
+        // console.log(data.tags);
+        // console.log(JSON.parse(data.tags));
         var inTags = JSON.parse(data.tags);
 
+        console.log(inTags);
         // if tags exist - the zeroth tag won't be null 
-        if (inTags[0].pk !== null){
-            for (t in inTags){
-                tags.push((inTags[t]));
-                allTaggedIdeas.push(JSON.parse(data.allTaggedIdeas[t]));
-                taggedCanvases.push(JSON.parse(data.taggedCanvases[t]));
-
-                console.log(taggedCanvases[t]);
-                console.log(allTaggedIdeas[t]);
-            }
-        }
-        else {
-            tags.push(inTags[0]);
+        if (inTags.pk -= null){
+            tags.push(inTags);
             allTaggedIdeas = [];
             taggedCanvases = [];
+            // console.log(":D")
+        }
+
+        else {
+            var i;
+            for (i = 0; i < inTags.length; i++){
+                tags.push((inTags[i]));
+                allTaggedIdeas.push(JSON.parse(data.allTaggedIdeas[i]));
+                taggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
+
+            }
         }
     }
     else {

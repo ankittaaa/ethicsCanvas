@@ -22,10 +22,9 @@
         v-if="auth"
         id="tag"
         v-for="(tag, index) in tagList"
+        v-bind:label = tag.fields.label
         v-bind:key="index"
         v-bind:index="index"
-        v-bind:label="tag.fields.label"
-
     >
         
         <li 

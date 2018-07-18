@@ -30,8 +30,10 @@ class Project(models.Model):
 def ensure_project_has_atleast_one_admin(sender, instance, **kwargs):
     # TODO: check post_save hooks if you want behaviour to happen AFTER instance is saved
     if instance.pk is not None:
-        ''' The above line is to ensure that it doesn't break when creating a brand new project. It throws an error when the project is new; the project has no pk before it is saved, so 
-            an error is thrown when the m2m field is referenced below 
+        ''' 
+        The above line is to ensure that it doesn't break when creating a brand new project. 
+        It throws an error when the project is new; the project has no pk before it is saved, so 
+        an error is thrown when the m2m field is referenced below 
         '''
         if instance.admins.count == 0 and title != 'blank-project':
             raise Exception('Project should have at least one admin.')
@@ -74,8 +76,10 @@ class Canvas(models.Model):
 
 
 class Idea(models.Model):
-    """Idea
-    A block/post belonging to a category on the Canvas"""
+    """
+    Idea
+    A block/post belonging to a category on the Canvas
+    """
     title = models.CharField(max_length=50)
     text = models.CharField(max_length=255)
     # Default = 9 for uncategorised
@@ -104,7 +108,8 @@ class Idea(models.Model):
 
 
 class CanvasTag(models.Model):
-    """Canvas Tag
+    """
+    Canvas Tag
     Model representing tags that relate ideas,
     many to many relationship (declared in canvas model),
     there may exist many different tags to an idea and vice versa
@@ -123,7 +128,8 @@ class CanvasTag(models.Model):
 
 
 class IdeaComment(models.Model):
-    """IdeaComment
+    """
+    IdeaComment
     Comments on an idea
     """
     text = models.CharField(max_length=255, help_text="Type a comment")

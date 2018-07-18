@@ -332,8 +332,9 @@ class CanvasDetailView(generic.DetailView):
                     [tag], 
                     cls = CanvasTagEncoder
                 )
-                # singular tag, remove enclosing square brackets
+                # singular tag, replace enclosing square brackets with curly brackets
                 json_tags = json_tags[1:-1]
+                # json_tags = '{' + json_tags + '}'
 
             if all_tags:
                 json_all_tags = serialize(
@@ -352,7 +353,7 @@ class CanvasDetailView(generic.DetailView):
                     cls = CanvasTagEncoder
                 )
                 # singular tag, remove enclosing square brackets
-                json_tags = json_tags[1:-1]
+                json_all_tags = json_all_tags[1:-1]
 
             if comments:
                 json_comments = serialize(
@@ -373,6 +374,7 @@ class CanvasDetailView(generic.DetailView):
                 # singular user, remove enclosing square brackets
                 json_self = json_self[1:-1]
 
+
             # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
             json_canvas=serialize(
                 'json',
@@ -382,6 +384,7 @@ class CanvasDetailView(generic.DetailView):
 
             # singular canvas, remove enclosing square brackets
             json_canvas = json_canvas[1:-1]
+
 
             json_users=serialize(
                 'json',
@@ -528,6 +531,7 @@ def new_idea(logged_in_user, canvas_pk, category):
     # singular idea, remove enclosing square brackets
     return_idea = return_idea[1:-1]
 
+
     return {
         'return_idea': return_idea,
         'error': None
@@ -642,7 +646,6 @@ def delete_idea(logged_in_user, idea_pk):
     )
     # singular idea, remove enclosing square brackets
     return_idea = return_idea[1:-1]
-
 
     idea.delete()
 
@@ -809,6 +812,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     # singular idea, remove enclosing square brackets
     return_idea = return_idea[1:-1]
 
+
     return {
         'removed_return_tag_data': removed_return_tag_data,
         'new_return_tag_data': new_return_tag_data,
@@ -872,6 +876,7 @@ def new_comment(input_text, idea_pk, logged_in_user):
 
     # singular comment, remove enclosing square brackets
     json_comment = json_comment[1:-1]
+
 
     return {
         'comment': json_comment,
@@ -1449,6 +1454,7 @@ def delete_tag(canvas_pk, logged_in_user, label):
     )
     # singular tag - remove enclosing square brackets
     json_tag = json_tag[1:-1]
+
 
     return {
         'tag': json_tag,
