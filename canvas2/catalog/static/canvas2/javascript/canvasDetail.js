@@ -374,6 +374,7 @@ function editIdeaSuccessCallback(data){
             'taggedIdeas': (data.newReturnTagData[d].newTaggedIdeas),
             'tag': (data.newReturnTagData[d].newTag)
         };
+        console.log(data.newReturnTagData[d].newTag);
         newTagSuccessCallback(dataForTagAddition);
     }
 
@@ -493,8 +494,11 @@ function newTagSuccessCallback(data){
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
-
+    console.log(tags);
+    console.log(allTags);
+    console.log(newTag.pk);
     console.log("TAG: " + newTag);
+    // console.log(data.tag);
     
     for (t in tempTaggedCanvases){
         console.log("CANVAS: " + tempTaggedCanvases[t].pk + " IDEA: " + tempTaggedIdeas[t].pk);
@@ -508,6 +512,8 @@ function newTagSuccessCallback(data){
         console.log(newTag.pk + "  " + tags[t].pk);
         if (tags[t].pk == newTag.pk){
             i = t;
+            console.log(tags[t].pk);
+            console.log(newTag.pk);
             break;
         }
     }
@@ -525,6 +531,7 @@ function newTagSuccessCallback(data){
     // if the tag doesn't exist (index === -1), but the canvas is tagged by it, add it
     if (canvasTagged === true){
         if (i === -1){
+            console.log(tags[0] == null);
             if (tags[0].pk !== null){
                 tags.push(newTag);
                 taggedCanvases.push(tempTaggedCanvases);
@@ -536,6 +543,7 @@ function newTagSuccessCallback(data){
                 allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
             }
         }
+        
 
         // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
         else{
@@ -543,6 +551,8 @@ function newTagSuccessCallback(data){
             allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
         }
     }
+        console.log("Newly added");
+
     
     // otherwise do nothing
 }
@@ -586,6 +596,7 @@ function removeTag(data){
 
     // if the tag does exist, but the canvas is not tagged by it, remove it
     if (tagExists === true && canvasTagged === false){
+        console.log("one");
         if (tags.length > 0 && tags.length != 1){
             // simply remove the tag if there will be more remaining
             tags.splice(tagIndex, 1);
@@ -618,9 +629,6 @@ function removeTag(data){
 
 
 function deleteTagSuccessCallback(data){
-
-    console.log(data);
-    console.log(data.tag);
     var tag = JSON.parse(data.tag);
     var i; 
 
@@ -755,9 +763,9 @@ function initSuccessCallback(data){
         // console.log(JSON.parse(data.tags));
         var inTags = JSON.parse(data.tags);
 
-        console.log(inTags);
+        // console.log(inTags);
         // if tags exist - the zeroth tag won't be null 
-        if (inTags.pk -= null){
+        if (inTags.pk == null){
             tags.push(inTags);
             allTaggedIdeas = [];
             taggedCanvases = [];
@@ -809,7 +817,7 @@ function initSuccessCallback(data){
             adminNameList: adminNames,
         }
     })
-
+    console.log(tags);
 
     if (isAuth === true){
         tagButtons = new Vue({
@@ -932,19 +940,6 @@ Vue.component('idea', {
     `,
          
     computed: {
-         adminNameList: function(){
-            return this.adminNames
-        },
-
-        flexClass: function(){
-            var i = this.index
-            return "idea-flex-container-" + i
-        },
-
-        ideaCategory: function(){
-            return ethicsCategories[this.index]
-        },
-
         ideaList: {
             get: function(){
                 var list = []
@@ -966,6 +961,20 @@ Vue.component('idea', {
                 return list
             },
         },
+
+        adminNameList: function(){
+            return this.adminNames
+        },
+
+        flexClass: function(){
+            var i = this.index
+            return "idea-flex-container-" + i
+        },
+
+        ideaCategory: function(){
+            return ethicsCategories[this.index]
+        },
+
 
         commentList: {
             get: function(){

@@ -27,6 +27,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+GRAPH_MODELS = {
+  'all_applications': True,
+  'group_models': True,
+}
+
 
 # Application definition
 
@@ -40,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'catalog.apps.CatalogConfig',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

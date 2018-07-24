@@ -629,6 +629,7 @@ def delete_idea(logged_in_user, idea_pk):
                 cls = CanvasTagEncoder
             )
         )
+        json_tags = json_tags[1:-1]
 
         tag_data = {
             'taggedCanvases': json_tagged_canvases,
@@ -748,6 +749,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
                 cls = CanvasTagEncoder
             )
         )
+        new_tags = new_tags[1:-1]
 
         new_tags_canvas_set=(
             serialize(
@@ -784,6 +786,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
                 cls = CanvasTagEncoder
             )
         )
+        removed_tags = removed_tags[1:-1]
 
         removed_tags_canvas_set=(
             serialize(
@@ -1467,25 +1470,6 @@ def delete_tag(canvas_pk, logged_in_user, label):
 ################################################################################################################################## 
 
 
-
-# def get_canvases_accessible_by_user(logged_in_user, project):
-#     '''
-#     function to get every canvas accessible to the currently logged-in user
-#     '''
-#     all_canvases = Canvas.objects.filter(project=project)
-    
-#     json_all_canvases = serialize(
-#         'json', 
-#         all_canvases,
-#         cls=CanvasEncoder
-#     )   
-
-#     data = {
-#         'all_canvases': json_all_canvases
-#     }
-
-#     return data
-
 def search_canvas_for_tag(tag, canvas):
     '''
     check for presence of tag in canvas 
@@ -1506,7 +1490,6 @@ def search_canvas_for_tag(tag, canvas):
                 
                 # save tag if modifications made
                 tag.save()
-
 
 
 
