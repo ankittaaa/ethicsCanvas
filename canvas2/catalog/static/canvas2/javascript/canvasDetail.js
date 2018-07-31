@@ -365,8 +365,6 @@ function editIdeaSuccessCallback(data){
         sortIdeas(inIdea, ideaListIndex, tempCategory, oldText);
     }
 
-
-
     for (d in data.newReturnTagData){
 
         var dataForTagAddition = {
@@ -374,7 +372,6 @@ function editIdeaSuccessCallback(data){
             'taggedIdeas': (data.newReturnTagData[d].newTaggedIdeas),
             'tag': (data.newReturnTagData[d].newTag)
         };
-        console.log(data.newReturnTagData[d].newTag);
         newTagSuccessCallback(dataForTagAddition);
     }
 
@@ -493,51 +490,43 @@ function newTagSuccessCallback(data){
     var newTag = JSON.parse(data.tag);
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
-
-    console.log(tags);
-    console.log(allTags);
-    console.log(newTag.pk);
-    console.log("TAG: " + newTag);
-    // console.log(data.tag);
-    
-    for (t in tempTaggedCanvases){
-        console.log("CANVAS: " + tempTaggedCanvases[t].pk + " IDEA: " + tempTaggedIdeas[t].pk);
-    }
-
+    console.log("hi");
     var i = -1;
     var canvasTagged = false;
 
         
     for (t in tags){
-        console.log(newTag.pk + "  " + tags[t].pk);
         if (tags[t].pk == newTag.pk){
+            console.log("hi");
             i = t;
-            console.log(tags[t].pk);
-            console.log(newTag.pk);
             break;
         }
     }
 
+    console.log(tempTaggedCanvases);
     for (tc in tempTaggedCanvases){
-        console.log(tempTaggedCanvases[tc].pk + " == " + canvasPK + "?");
         if (tempTaggedCanvases[tc].pk == canvasPK){
+            console.log("hi");
             canvasTagged = true;
             break;
         }
     }
 
-    console.log(canvasTagged);
-    console.log(i);
     // if the tag doesn't exist (index === -1), but the canvas is tagged by it, add it
+    console.log(canvasTagged);
     if (canvasTagged === true){
+        console.log("tagExists");
         if (i === -1){
+            console.log("tagNotInCanvas");
             console.log(tags[0] == null);
             if (tags[0].pk !== null){
+                console.log("noTags");
                 tags.push(newTag);
                 taggedCanvases.push(tempTaggedCanvases);
                 allTaggedIdeas.push(tempTaggedIdeas);
             }
             else {
+                console.log("Tags");
                 tags.splice(0, 1, newTag);
                 taggedCanvases.splice(0, 1, tempTaggedCanvases);
                 allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
@@ -547,11 +536,12 @@ function newTagSuccessCallback(data){
 
         // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
         else{
+            console.log("tagIsInCanvas");
             taggedCanvases.splice(i, 1, tempTaggedCanvases);
             allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
         }
     }
-        console.log("Newly added");
+    
 
     
     // otherwise do nothing
@@ -758,14 +748,10 @@ function initSuccessCallback(data){
             isAdmin = false;
 
         $j('#canvas-title').html(thisCanvas.fields.title);
-        // console.log(data);
-        // console.log(data.tags);
-        // console.log(JSON.parse(data.tags));
         var inTags = JSON.parse(data.tags);
 
-        // console.log(inTags);
         // if tags exist - the zeroth tag won't be null 
-        if (inTags.pk == null){
+        if (inTags.pk === null){
             tags.push(inTags);
             allTaggedIdeas = [];
             taggedCanvases = [];
@@ -817,7 +803,6 @@ function initSuccessCallback(data){
             adminNameList: adminNames,
         }
     })
-    console.log(tags);
 
     if (isAuth === true){
         tagButtons = new Vue({
@@ -1733,12 +1718,14 @@ function sortIdeas(inIdea, ideaListIndex, tempCategory, oldText){
     var currentIdea = sortedIdeas[tempCategory][ideaListIndex].idea;
     
     if (isAuth === true){
-        for (t in tags){
-            // iterate through tags, check for occurrences in old text that no longer exist in new text
-            var tempIdeaText = currentIdea.fields.text;
+        if (tags[0].pk != null){
+            for (t in tags){
+                // iterate through tags, check for occurrences in old text that no longer exist in new text
+                var tempIdeaText = currentIdea.fields.text;
 
-            if ((oldText.includes(tags[t].fields.label) === true) && (tempIdeaText.includes(tags[t].fields.label) === false)) {
-                // decrement the tag if it occured in the old idea and no longer occurs in the new idea
+                if ((oldText.includes(tags[t].fields.label) === true) && (tempIdeaText.includes(tags[t].fields.label) === false)) {
+                    // decrement the tag if it occured in the old idea and no longer occurs in the new idea
+                }
             }
         }
     }   

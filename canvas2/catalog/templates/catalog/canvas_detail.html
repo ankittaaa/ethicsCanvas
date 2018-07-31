@@ -29,8 +29,7 @@
         
         <li 
             class="tag-elem" 
-            v-show="this.label != null"
-
+            v-if="this.label != null"
         >
             <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
                 <% label %>

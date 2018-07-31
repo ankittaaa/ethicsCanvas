@@ -5,6 +5,7 @@ from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 from . import views
 import json
 
+# TODO: Error messages being broadcast to all connections in a consumer's group, should only send error messages to the calling socket 
 
 
 class TrialIdeaConsumer(WebsocketConsumer):
@@ -531,6 +532,8 @@ class TagConsumer(AsyncWebsocketConsumer):
         
         elif function == 'deleteTag':
             return_data = views.delete_tag(canvas_pk, logged_in_user, label)
+            print(return_data)
+            print(return_data['error'])
 
             if return_data['error']:
                 error = return_data['error']

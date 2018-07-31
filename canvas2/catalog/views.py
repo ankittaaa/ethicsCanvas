@@ -24,6 +24,8 @@ from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
 
 import django.utils.timezone 
 
+# TODO: change serialization methods from needing to pass a singleton list to accepting a single model instance (each marked below)
+
 
 ##################################################################################################################################
 #                                                           CANVAS VIEWS                                                         #
@@ -265,6 +267,7 @@ class CanvasDetailView(generic.DetailView):
 
         if request.is_ajax():
             # initialise every json_object as the empty string
+            null_tag = CanvasTag(label=None)
             json_comments = '""'
             json_ideas = '""'
             json_tags = '""'
@@ -283,6 +286,7 @@ class CanvasDetailView(generic.DetailView):
             ideas = Idea.objects.filter(canvas=canvas)
             # every tag attached to an idea in this current canvas
             tags = CanvasTag.objects.filter(idea_set__in=ideas).distinct()
+            print(tags)
             # every tag in the entire project
             all_tags = CanvasTag.objects.filter(canvas_set__in=Canvas.objects.filter(project=project)).distinct()
             
@@ -325,16 +329,15 @@ class CanvasDetailView(generic.DetailView):
 
             else: 
                 # a null tag is used for conditionally rendering the tag Vue element
-                tag = CanvasTag(label=None)
+                
                 # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
                 json_tags = serialize(
                     'json', 
-                    [tag], 
+                    [null_tag], 
                     cls = CanvasTagEncoder
                 )
                 # singular tag, replace enclosing square brackets with curly brackets
                 json_tags = json_tags[1:-1]
-                # json_tags = '{' + json_tags + '}'
 
             if all_tags:
                 json_all_tags = serialize(
@@ -349,7 +352,7 @@ class CanvasDetailView(generic.DetailView):
                 # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
                 json_all_tags = serialize(
                     'json', 
-                    [tag], 
+                    [null_tag], 
                     cls = CanvasTagEncoder
                 )
                 # singular tag, remove enclosing square brackets
@@ -737,6 +740,7 @@ def edit_idea(logged_in_user, idea_pk, input_text):
         [idea], 
         cls=IdeaEncoder
     )
+    return_idea = return_idea[1:-1]
 
 
 
@@ -813,7 +817,6 @@ def edit_idea(logged_in_user, idea_pk, input_text):
         removed_return_tag_data.append(tag_data)
 
     # singular idea, remove enclosing square brackets
-    return_idea = return_idea[1:-1]
 
 
     return {
@@ -1418,7 +1421,8 @@ def delete_tag(canvas_pk, logged_in_user, label):
     except:
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
     # idea = Idea.objects.get(pk=idea_pk)
 
@@ -1427,7 +1431,8 @@ def delete_tag(canvas_pk, logged_in_user, label):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
@@ -1441,7 +1446,8 @@ def delete_tag(canvas_pk, logged_in_user, label):
     except:
         CanvasTag.DoesNotExist
         return {
-            'error': 'Tag does not exist'
+            'error': 404,
+            'response': 'Tag does not exist'
         }
 
     CanvasTag.objects.filter(label=label, canvas_set__project=project).delete()
