@@ -317,7 +317,6 @@ function newIdeaSuccessCallback(data){
     Function for updating the idea list for the modified category
     upon addition of new or deletion of current idea
 */
-
     var tempIdea = JSON.parse(data.idea);
 
     if (tempIdea.fields.canvas != canvasPK)
@@ -778,8 +777,9 @@ function initSuccessCallback(data){
         );
 
         trialIdeaSocket.onmessage = function(e){
-            var data = JSON.parse(e.data);
-            var idea = data['idea'];
+            var data = (e.data);
+            idea = JSON.parse(data)['data'];
+            
             newIdeaSuccessCallback(idea);
         };
     }

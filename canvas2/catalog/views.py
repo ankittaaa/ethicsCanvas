@@ -26,6 +26,15 @@ import django.utils.timezone
 
 # TODO: change serialization methods from needing to pass a singleton list to accepting a single model instance (each marked below)
 
+''' 
+TODO: nullable owner field, blank admins & users - this is for a 'blank' project that 'blank' canvasses use, which the trial user
+uses. The selected trial canvas is currently downloaded as any other canvas, and a new idea is created like other ones, but the idea
+is not added to the canvas model in the database. It is just so that a blank idea can be sent back to the trial user and appended
+to the list of ideas in the front-end. This is why View functions, when testing for user permissions, also check for project.title == blank-project
+
+This approach was written as a 'quick-fix', a better solution should be investigated.
+'''
+
 
 ##################################################################################################################################
 #                                                           CANVAS VIEWS                                                         #
@@ -53,6 +62,7 @@ def new_canvas(request, canvas_type):
         return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
     
     else:
+        # NOTE: code below relates to blank project
         # check that a blank canvas exists - this will be used to render a blank canvas for the anonymous user to interact with
 
         if Project.objects.filter(title='blank-project').exists() == False:
@@ -63,6 +73,7 @@ def new_canvas(request, canvas_type):
             project = Project.objects.get(title='blank-project', is_public=False)
 
             if canvas_type == 0:
+
                 if Canvas.objects.filter(title='blank-ethics').exists():
                     return redirect(Canvas.objects.get(title='blank-ethics').get_absolute_url()) 
                 else :
@@ -445,6 +456,9 @@ class CanvasDetailView(generic.DetailView):
 ################################################################################################################################## 
 
 def new_trial_idea(logged_in_user, canvas_pk, category):
+    '''
+    NOTE: BLANK CANVAS, TRIAL USER IDEA ADDITION
+    '''
     try:
         canvas = Canvas.objects.get(pk = canvas_pk)
     except Canvas.DoesNotExist:
@@ -461,11 +475,9 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
     idea = Idea(
         canvas = canvas, 
         category = category, 
-        text = ''
+        text = '',
+        title = f'Canvas {canvas_pk} TRIAL IDEA'
     )
-    idea.save()
-    # This is so I can click on it in the django admin - should probably delete later
-    idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
     idea.save()
 
     # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
@@ -474,18 +486,22 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
         [idea], 
         cls=IdeaEncoder
     )
+    idea.delete()
 
     # singular idea, remove enclosing square brackets        
     return_idea = return_idea[1:-1]
-
+    print(return_idea)
     data = {
         'return_idea': return_idea,
-        'pk': idea.pk
+        'error': None
     }
 
     return data
 
 def delete_trial_idea(idea_pk):
+    '''
+    NOTE: BLANK CANVAS, TRIAL USER IDEA DELETION - IMM
+    '''
     Idea.objects.get(pk=idea_pk).delete()
 
 
