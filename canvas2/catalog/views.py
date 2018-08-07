@@ -145,13 +145,13 @@ def delete_project(request, pk):
     user = request.user
     project = Project.objects.get(pk = pk)
 
-    if (not admin_permission(user, project) or (project.title == 'blank-project')):
+    if (project.owner != user):
         return { 
                 'error': 403,
                 'response': 'forbidden'
             }
         
-    canvas.delete()
+    project.delete()
     return redirect(request.META.get('HTTP_REFERER'))
 
 ##################################################################################################################################
@@ -462,7 +462,10 @@ def new_trial_idea(logged_in_user, canvas_pk, category):
     try:
         canvas = Canvas.objects.get(pk = canvas_pk)
     except Canvas.DoesNotExist:
-        return error
+        return { 
+            'error': 404,
+            'response': 'Canvas does not exist'
+        }
 
     project = canvas.project
     # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
@@ -516,12 +519,14 @@ def new_idea(logged_in_user, canvas_pk, category):
     except:
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
@@ -558,10 +563,6 @@ def new_idea(logged_in_user, canvas_pk, category):
 
 
 
-
-
-
-
 def delete_idea(logged_in_user, idea_pk):
     '''
     Deletion of an idea 
@@ -574,17 +575,20 @@ def delete_idea(logged_in_user, idea_pk):
     except:
         Idea.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Idea does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     # can't remove ideas if the canvas is unavailable or if the blank canvas is being edited by an authenticated user
@@ -691,17 +695,20 @@ def edit_idea(logged_in_user, idea_pk, input_text):
     except:
         Idea.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Idea does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
     current_tags_in_idea = idea.tags.all()
 
@@ -860,17 +867,20 @@ def new_comment(input_text, idea_pk, logged_in_user):
     except:
         Idea.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Idea does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
@@ -919,17 +929,20 @@ def delete_comment(logged_in_user, comment_pk):
     except:
         IdeaComment.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Comment does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
@@ -958,17 +971,20 @@ def single_comment_resolve(logged_in_user, comment_pk):
     except:
         IdeaComment.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Comment does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
 
@@ -999,17 +1015,20 @@ def all_comment_resolve(logged_in_user, idea_pk):
     except:
         Idea.DoesNotExist
         return {
-            'error': 'Comment does not exist'
+            'error': 404,
+            'response': 'Idea does not exist'
         }
 
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
 
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
@@ -1078,7 +1097,8 @@ def add_user(logged_in_user, project_pk, name):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
     name = name
@@ -1091,13 +1111,13 @@ def add_user(logged_in_user, project_pk, name):
             }
 
     else:
-        user = User.objects.get(username=name)
-
-        if not user:
-            reply = 'Error: ' + name + ' does not exist. Please try a different username.'
-            return { 
-                'error': 500,
-                'response': reply
+        try:
+            user = User.objects.get(username = name)
+        except: 
+            User.DoesNotExist
+            return {
+                'error': 404,
+                'response': 'User does not exist'
             }
 
         if user in project.users.all() or user in project.admins.all():
@@ -1139,7 +1159,8 @@ def delete_user(logged_in_user, project_pk, user_pk):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
     
 
@@ -1150,7 +1171,14 @@ def delete_user(logged_in_user, project_pk, user_pk):
             }
 
 
-    user = User.objects.get(pk = user_pk)
+    try:
+        user = User.objects.get(pk = user_pk)
+    except: 
+        User.DoesNotExist
+        return {
+            'error': 404,
+            'response': 'User does not exist'
+        }
 
     if user not in project.users.all():
         reply = 'Error: ' + name + ' is not a collaborator'
@@ -1195,7 +1223,8 @@ def promote_user(logged_in_user, project_pk, user_pk):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
     
 
@@ -1206,7 +1235,16 @@ def promote_user(logged_in_user, project_pk, user_pk):
                     'response': 'forbidden'
                 }
 
-    user = User.objects.get(pk = user_pk)
+    try:
+        user = User.objects.get(pk = user_pk)
+    except: 
+        User.DoesNotExist
+        return {
+            'error': 404,
+            'response': 'User does not exist'
+        }
+
+
     name_str = user.username
     admins = project.admins.all()
 
@@ -1251,7 +1289,8 @@ def demote_user(logged_in_user, project_pk, user_pk):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
     
     if (not admin_permission(logged_in_user, project)):
@@ -1260,7 +1299,15 @@ def demote_user(logged_in_user, project_pk, user_pk):
                 'response': 'forbidden'
             }
 
-    user = User.objects.get(pk = user_pk)
+    try:
+        user = User.objects.get(pk = user_pk)
+    except: 
+        User.DoesNotExist
+        return {
+            'error': 404,
+            'response': 'User does not exist'
+        }
+
     admins = project.admins.all()
     # Can't delete a non-existent admin
     if user not in admins:
@@ -1287,7 +1334,14 @@ def demote_user(logged_in_user, project_pk, user_pk):
 
 
 def toggle_public(project_pk, logged_in_user):
-    project = Project.objects.get(pk=project_pk)
+    try:
+        project = Project.objects.get(pk=project_pk)
+    except:
+        Project.DoesNotExist
+        return {
+            'error': 404,
+            'response': 'Project does not exist'
+        }
 
 
     if (not admin_permission(logged_in_user, project)):
@@ -1320,7 +1374,8 @@ def add_tag(canvas_pk, logged_in_user, label):
     except:
         Canvas.DoesNotExist
         return {
-            'error': 'Canvas does not exist'
+            'error': 404,
+            'response': 'Canvas does not exist'
         }
     # idea = Idea.objects.get(pk=idea_pk)
 
@@ -1329,7 +1384,8 @@ def add_tag(canvas_pk, logged_in_user, label):
     except:
         Project.DoesNotExist
         return {
-            'error': 'Project does not exist'
+            'error': 404,
+            'response': 'Project does not exist'
         }
 
 
@@ -1479,7 +1535,6 @@ def delete_tag(canvas_pk, logged_in_user, label):
     )
     # singular tag - remove enclosing square brackets
     json_tag = json_tag[1:-1]
-
 
     return {
         'tag': json_tag,

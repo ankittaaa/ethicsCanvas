@@ -84,11 +84,25 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
 
                 data = {
                     'idea': return_data['return_idea']
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'modifyIdea':
@@ -108,6 +122,11 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
                 data = {
                     'removedReturnTagData': return_data['removed_return_tag_data'],
@@ -116,6 +135,15 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'oldText': return_data['old_text'],
                     'ideaListIndex': idea_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'deleteIdea':
@@ -133,6 +161,11 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
             
                 data = {
@@ -141,6 +174,15 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                     'returnTagData': return_data['return_tag_data'],
                     'idea': return_data['idea']
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
         elif function == 'typing' or function == 'done_typing':
             '''
@@ -158,20 +200,29 @@ class IdeaConsumer(AsyncWebsocketConsumer):
                 'canvasPK': canvas_pk
             }
             
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'channel_message',
-                'function': function,
-                'data': data
-            }
-        )
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
     async def channel_message(self, event):
         function = event['function']
         data = event['data']
+        
+        await self.send(text_data=json.dumps({
+            'function': function,
+            'data': data
+        }))
 
+    async def error_message(self, event):
+        function = event['function']
+        data = event['data']
+        
         await self.send(text_data=json.dumps({
             'function': function,
             'data': data
@@ -228,6 +279,11 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))                
+
             else:
 
                 data = {
@@ -235,6 +291,15 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'ideaCategory': return_data['category'],
                     'ideaListIndex': idea_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'deleteComment':
@@ -251,6 +316,11 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))                
+
             else:
 
                 data = {
@@ -258,6 +328,15 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'ideaListIndex': idea_list_index,
                     'commentListIndex': comment_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
         elif function == 'resolveIndividualComment':
             idea_list_index = text_data_json['idea_list_index']
@@ -273,6 +352,11 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))                
+
             else:
 
                 data = {
@@ -280,6 +364,15 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'ideaListIndex': idea_list_index,
                     'commentListIndex': comment_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'resolveAllComments':
@@ -295,22 +388,26 @@ class CommentConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
-            else:
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
 
+            else:
                 data = {
                     'ideaCategory': return_data['category'],
                     'ideaListIndex': idea_list_index
                 }
 
             
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'channel_message',
-                'function': function,
-                'data': data,
-            }
-        )
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'channel_message',
+                        'function': function,
+                        'data': data,
+                    }
+                )
 
 
     async def channel_message(self, event):
@@ -321,9 +418,6 @@ class CommentConsumer(AsyncWebsocketConsumer):
             'function': function,
             'data': data
         }))
-
-
-
 
 
 
@@ -371,6 +465,11 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))                
+
             else:
                 data = []
             # this returns no data, so we want to skip the reply altogether, hence why it's confined in the 'else' block
@@ -389,11 +488,25 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'response': return_data['response']
                 }
 
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))                
+
             else:
 
                 data = {
                     'user': return_data['json_user']
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'deleteUser':
@@ -408,11 +521,26 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'error': return_data['error'],
                     'response': return_data['response']
                 }
+
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
                 data = {
                     'victimIsAdmin': return_data['victim_is_admin'],
                     'userListIndex': user_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
 
         elif function == 'promoteUser':
@@ -426,11 +554,26 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'error': return_data['error'],
                     'response': return_data['response']
                 }
+
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
 
                 data = {
                     'admin': return_data['json_user']
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
         elif function == 'demoteUser':
 
@@ -444,11 +587,26 @@ class CollabConsumer(AsyncWebsocketConsumer):
                     'error': return_data['error'],
                     'response': return_data['response']
                 }
+                
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
 
                 data = {
                     'adminListIndex': admin_list_index
                 }
+
+                await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
 
         elif function == 'newActiveUser':
             user = text_data_json['user']
@@ -456,29 +614,45 @@ class CollabConsumer(AsyncWebsocketConsumer):
                 'user': user
             }
 
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
+
         elif function == 'removeActiveUser':
             user = text_data_json['user']
             data = {
                 'user': user
             }
 
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
+
         elif function == 'sendWholeList':
             users = text_data_json['users']
             data = {
                 'users': users
             }
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'channel_message',
+                    'function': function,
+                    'data': data
+                }
+            )
         
-
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'channel_message',
-                'function': function,
-                'data': data,
-            }
-        )
-
-
 
     async def channel_message(self, event):
         function = event['function']
@@ -528,41 +702,64 @@ class TagConsumer(AsyncWebsocketConsumer):
 
             if return_data['error']:
                 error = return_data['error']
+                
                 data = {
                     'error': return_data['error'],
                     'response': return_data['response']
                 }
+
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
                 data = return_data['data']
+
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'channel_message',
+                        'function': function,
+                        'data': data
+                    }
+                )
         
         elif function == 'deleteTag':
             return_data = views.delete_tag(canvas_pk, logged_in_user, label)
 
             if return_data['error']:
                 error = return_data['error']
+                
                 data = {
                     'error': return_data['error'],
                     'response': return_data['response']
                 }
+
+                await self.send(text_data=json.dumps({
+                        'function': function,
+                        'data': data
+                }))
+
             else:
                 data = {
                     'tag': return_data['tag']
                 }
 
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'channel_message',
-                'function': function,
-                'data': data,
-            }
-        )
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'channel_message',
+                        'function': function,
+                        'data': data,
+                    }
+                )
 
 
     async def channel_message(self, event):
         function = event['function']
         data = event['data']
-
+        
         await self.send(text_data=json.dumps({
             'function': function,
             'data': data

@@ -5,8 +5,14 @@ from django.contrib.auth.models import User
 from django.db.models.signals import pre_save, m2m_changed
 from django.dispatch import receiver
 
-# register = template.Library()
+''' 
+TODO: nullable owner field, blank admins & users - this is for a 'blank' project that 'blank' canvasses use, which the trial user
+uses. The selected trial canvas is currently downloaded as any other canvas, and a new idea is created like other ones, but the idea
+is not added to the canvas model in the database. It is just so that a blank idea can be sent back to the trial user and appended
+to the list of ideas in the front-end. This is why View functions, when testing for user permissions, also check for project.title == blank-project
 
+This approach was written as a 'quick-fix', a better solution should be investigated.
+'''
 
 class Project(models.Model):
     '''
@@ -24,6 +30,9 @@ class Project(models.Model):
 
     def get_absolute_url(self):
         return reverse('project-detail', args=[self.pk])
+
+    def get_delete_url(self):
+        return reverse('delete-project', args=[self.pk])
 
 
 @receiver(pre_save, sender=Project)
