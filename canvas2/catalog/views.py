@@ -21,6 +21,7 @@ from django.db.models.query import EmptyQuerySet
 
 from .models import Canvas, CanvasTag, Idea, IdeaComment, Project
 from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
+from . import consumers
 
 import django.utils.timezone 
 
@@ -130,10 +131,7 @@ def delete_canvas(request, pk):
         tag.save()
 
     if (not admin_permission(user, canvas.project) or (project.title == 'blank-project')):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
+        return HttpResponse('Forbidden', status=403)
     
     canvas.delete()
     return redirect(request.META.get('HTTP_REFERER'))
@@ -146,10 +144,7 @@ def delete_project(request, pk):
     project = Project.objects.get(pk = pk)
 
     if (project.owner != user):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
+        return HttpResponse('Forbidden', status=403)
         
     project.delete()
     return redirect(request.META.get('HTTP_REFERER'))
@@ -297,7 +292,6 @@ class CanvasDetailView(generic.DetailView):
             ideas = Idea.objects.filter(canvas=canvas)
             # every tag attached to an idea in this current canvas
             tags = CanvasTag.objects.filter(idea_set__in=ideas).distinct()
-            print(tags)
             # every tag in the entire project
             all_tags = CanvasTag.objects.filter(canvas_set__in=Canvas.objects.filter(project=project)).distinct()
             
@@ -455,51 +449,50 @@ class CanvasDetailView(generic.DetailView):
 #                                                         IDEA VIEWS                                                             #
 ################################################################################################################################## 
 
-def new_trial_idea(logged_in_user, canvas_pk, category):
+def new_trial_idea(request):
     '''
     NOTE: BLANK CANVAS, TRIAL USER IDEA ADDITION
     '''
-    try:
-        canvas = Canvas.objects.get(pk = canvas_pk)
-    except Canvas.DoesNotExist:
-        return { 
-            'error': 404,
-            'response': 'Canvas does not exist'
+    if request.method == 'POST':
+        print("..")
+        canvas_pk = request.POST['canvas_pk']
+        try:
+            canvas = Canvas.objects.get(pk=canvas_pk)
+        except Canvas.DoesNotExist:
+            return HttpResponse('Canvas does not exist', status=404)
+
+        logged_in_user = request.user
+
+        project = canvas.project
+        # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
+        if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
+            return HttpResponse('Unauthorized', status=401)
+        
+        category = request.POST['idea_category']
+            
+        idea = Idea(
+            canvas = canvas, 
+            category = category, 
+            text = '',
+            title = f'Canvas {canvas_pk} TRIAL IDEA'
+        )
+        idea.save()
+
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        return_idea = serialize(
+            'json', 
+            [idea], 
+            cls=IdeaEncoder
+        )
+        idea.delete()
+
+        # singular idea, remove enclosing square brackets        
+        return_idea = return_idea[1:-1]
+        data = {
+            'idea': return_idea,
         }
 
-    project = canvas.project
-    # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
-    if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
-        
-    idea = Idea(
-        canvas = canvas, 
-        category = category, 
-        text = '',
-        title = f'Canvas {canvas_pk} TRIAL IDEA'
-    )
-    idea.save()
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    return_idea = serialize(
-        'json', 
-        [idea], 
-        cls=IdeaEncoder
-    )
-    idea.delete()
-
-    # singular idea, remove enclosing square brackets        
-    return_idea = return_idea[1:-1]
-    print(return_idea)
-    data = {
-        'return_idea': return_idea,
-        'error': None
-    }
-
-    return data
+        return JsonResponse(data)
 
 def delete_trial_idea(idea_pk):
     '''
@@ -509,346 +502,334 @@ def delete_trial_idea(idea_pk):
 
 
 
-def new_idea(logged_in_user, canvas_pk, category):
+def new_idea(request):
     '''
     Creation of a new idea. This gets the id for the canvas in which it is created from the calling URL
     '''
-    try:
-        canvas = Canvas.objects.get(pk = canvas_pk)
-        project = canvas.project
-    except:
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+    if request.method == 'POST':
+        canvas_pk = request.POST['canvas_pk']
+        category = request.POST['idea_category']
+        logged_in_user = request.user
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
 
-    # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
-    if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
+        try:
+            canvas = Canvas.objects.get(pk = canvas_pk)
+            project = canvas.project
+        except:
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist', status=404)
+
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
+
+        # can't add ideas if the canvas is unavailable or if the blank canvas is being edited to by an authenticated user
+        if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
+            return HttpResponse('Unauthorized', status=401)
         
-    idea = Idea(
-        canvas = canvas, 
-        category = category, 
-        text = ''
-    )
-    idea.save()
-    # This is so I can click on it in the django admin - should probably delete later
-    idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
-    idea.save()
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    return_idea = serialize(
-        'json', 
-        [idea], 
-        cls=IdeaEncoder
-    )
-    # singular idea, remove enclosing square brackets
-    return_idea = return_idea[1:-1]
 
 
-    return {
-        'return_idea': return_idea,
-        'error': None
-    }
+        idea = Idea(
+            canvas = canvas, 
+            category = category, 
+            text = ''
+        )
+        idea.save()
+        # This is so I can click on it in the django admin - should probably delete later
+        idea.title = f'Canvas {canvas_pk} Idea {idea.pk}'
+        idea.save()
+
+
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        return_idea = serialize(
+            'json', 
+            [idea], 
+            cls=IdeaEncoder
+        )
+        # singular idea, remove enclosing square brackets
+        return_idea = return_idea[1:-1]
+
+
+        return JsonResponse({
+            'function': request.POST['function'],
+            'idea': return_idea,
+        })
 
 
 
-def delete_idea(logged_in_user, idea_pk):
+
+def delete_idea(request):
     '''
     Deletion of an idea 
     '''
-    try:
-        idea = Idea.objects.get(pk=idea_pk)
-        canvas = idea.canvas
-        project = canvas.project
+    if request.method == 'POST':
+        try:
+            logged_in_user = request.user
+            idea_pk = request.POST['idea_pk']
 
-    except:
-        Idea.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Idea does not exist'
-        }
+            idea = Idea.objects.get(pk=idea_pk)
+            canvas = idea.canvas
+            project = canvas.project
 
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+        except:
+            Idea.DoesNotExist
+            return HttpResponse('Idea does not exist', status=404)
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist', status=404)
 
-    # can't remove ideas if the canvas is unavailable or if the blank canvas is being edited by an authenticated user
-    if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
+
+        # can't remove ideas if the canvas is unavailable or if the blank canvas is being edited by an authenticated user
+        if (not user_permission(logged_in_user, project) and ('blank-' not in canvas.title and logged_in_user.is_authenticated)):
+            return HttpResponse('Unauthorized', status=401)
+
+        category = idea.category
+
+        # get every tag associated with the idea
+        tags = idea.tags.all()
+        removed_tags = []
+
+        json_tagged_canvases = []
+        json_tagged_ideas = []
+        json_tags = []
+
+        # iterate through the tags, removing the idea from each 
+        for tag in tags: 
+            tag.idea_set.remove(idea)
+            tag.save()
+
+            # check if any ideas remain
+            updated_ideas = tag.idea_set.filter(canvas=canvas).distinct()
+        
+            # if no idaes remain, remove the canvas from the tag's canvas set as well
+            if not updated_ideas:
+                tag.canvas_set.remove(canvas)
+                tag.save()
+                canvas.save()
+
+            removed_tags.append(tag)
+        
+
+        return_tag_data = []
+        
+        for tag in removed_tags:
+
+            json_tagged_canvases=(
+                serialize(
+                    'json', 
+                    tag.canvas_set.all(),
+                    cls=CanvasEncoder
+                )
+            )
+
+            json_tagged_ideas=(
+                serialize(
+                    'json',
+                    tag.idea_set.all(),
+                    cls=IdeaEncoder
+                )
+            )
+
+            json_tags=(
+                serialize(
+                    'json', 
+                    [tag], 
+                    cls = CanvasTagEncoder
+                )
+            )
+            json_tags = json_tags[1:-1]
+
+            tag_data = {
+                'taggedCanvases': json_tagged_canvases,
+                'taggedIdeas': json_tagged_ideas,
+                'tags': json_tags,
             }
 
-    category = idea.category
-
-    # get every tag associated with the idea
-    tags = idea.tags.all()
-    removed_tags = []
-
-    json_tagged_canvases = []
-    json_tagged_ideas = []
-    json_tags = []
-
-    # iterate through the tags, removing the idea from each 
-    for tag in tags: 
-        tag.idea_set.remove(idea)
-        tag.save()
-
-        # check if any ideas remain
-        updated_ideas = tag.idea_set.filter(canvas=canvas).distinct()
-    
-        # if no idaes remain, remove the canvas from the tag's canvas set as well
-        if not updated_ideas:
-            tag.canvas_set.remove(canvas)
-            tag.save()
-            canvas.save()
-
-        removed_tags.append(tag)
-    
-
-    return_tag_data = []
-    
-    for tag in removed_tags:
-
-        json_tagged_canvases=(
-            serialize(
-                'json', 
-                tag.canvas_set.all(),
-                cls=CanvasEncoder
-            )
+            return_tag_data.append(tag_data)
+        
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        return_idea = serialize(
+            'json', 
+            [idea], 
+            cls=IdeaEncoder
         )
+        # singular idea, remove enclosing square brackets
+        return_idea = return_idea[1:-1]
 
-        json_tagged_ideas=(
-            serialize(
-                'json',
-                tag.idea_set.all(),
-                cls=IdeaEncoder
-            )
-        )
-
-        json_tags=(
-            serialize(
-                'json', 
-                [tag], 
-                cls = CanvasTagEncoder
-            )
-        )
-        json_tags = json_tags[1:-1]
-
-        tag_data = {
-            'taggedCanvases': json_tagged_canvases,
-            'taggedIdeas': json_tagged_ideas,
-            'tags': json_tags,
-        }
-
-        return_tag_data.append(tag_data)
-    
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    return_idea = serialize(
-        'json', 
-        [idea], 
-        cls=IdeaEncoder
-    )
-    # singular idea, remove enclosing square brackets
-    return_idea = return_idea[1:-1]
-
-    idea.delete()
+        idea.delete()
 
 
-    return{
-        'return_tag_data': return_tag_data,
-        'idea': return_idea,
-        'category': category,
-        'error': None
-    }
+        return JsonResponse({
+            'function': request.POST['function'],
+            'returnTagData': return_tag_data,
+            'idea': return_idea,
+            'ideaCategory': category,
+            'ideaListIndex': request.POST['idea_list_index']
+        })
 
 
 
-def edit_idea(logged_in_user, idea_pk, input_text):
+def edit_idea(request):
     '''
     Update of an idea
     '''
-    try:
-        idea = Idea.objects.get(pk = idea_pk)
-        canvas = idea.canvas
-        project = canvas.project
-    
-    except:
-        Idea.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Idea does not exist'
-        }
+    if request.method == 'POST':
+        try:
+            logged_in_user = request.user
+            idea_pk = request.POST['idea_pk']
+            input_text = request.POST['input_text']
 
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+            idea = Idea.objects.get(pk = idea_pk)
+            canvas = idea.canvas
+            project = canvas.project
+        
+        except:
+            Idea.DoesNotExist
+            return HttpResponse('Idea does not exist', status=404)
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-    current_tags_in_idea = idea.tags.all()
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist', status=404)
 
-    old_text = idea.text
-
-    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
-
-    input_text = strip_tags(input_text)
-
-    updated_tags_in_idea = []
-
-    new_tags = []
-    new_tags_canvas_set = []
-    new_tags_idea_set = []
-
-    removed_tags = []
-    removed_tags_canvas_set = []
-    removed_tags_idea_set = []
-
-    # check if any of the tags are implicitly removed or inserted by their labels no longer occurring in the idea or newly occurring in the idea respectively
-    for temp_canvas in project.canvas_set.all():
-        for tag in temp_canvas.tags.all():
-
-            # if the tag is in the input_text, add it. RHS of and operation is to keep the list elements unique
-            if tag.label in input_text and tag not in updated_tags_in_idea:
-                updated_tags_in_idea.append(tag)
-
-            # if it was in the old text and no longer occurs, remove it
-            elif tag.label in old_text and tag.label not in input_text:
-                removed_tags.append(tag)
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
 
 
-    # update the tags field in canvas by setting them - implicitly remove the removed tags
-    canvas.tags.set(updated_tags_in_idea)
-    canvas.save()
+        current_tags_in_idea = idea.tags.all()
 
-    # the same for idea's tags field
-    idea.tags.set(updated_tags_in_idea)
-    idea.text = input_text
-    idea.save()
+        old_text = idea.text
 
-    new_return_tag_data = []
-    removed_return_tag_data = []
+        if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Unauthorized', status=401)
 
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    return_idea = serialize(
-        'json', 
-        [idea], 
-        cls=IdeaEncoder
-    )
-    return_idea = return_idea[1:-1]
+        input_text = strip_tags(input_text)
 
+        updated_tags_in_idea = []
 
+        new_tags = []
+        new_tags_canvas_set = []
+        new_tags_idea_set = []
 
-    for tag in updated_tags_in_idea:
+        removed_tags = []
+        removed_tags_canvas_set = []
+        removed_tags_idea_set = []
 
-        new_tags=(
-            serialize(
-                'json', 
-                [tag], 
-                cls = CanvasTagEncoder
-            )
-        )
-        new_tags = new_tags[1:-1]
+        # check if any of the tags are implicitly removed or inserted by their labels no longer occurring in the idea or newly occurring in the idea respectively
+        for temp_canvas in project.canvas_set.all():
+            for tag in temp_canvas.tags.all():
 
-        new_tags_canvas_set=(
-            serialize(
-                'json', 
-                tag.canvas_set.all(),
-                cls=CanvasEncoder
-            )
-        )
+                # if the tag is in the input_text, add it. RHS of and operation is to keep the list elements unique
+                if tag.label in input_text and tag not in updated_tags_in_idea:
+                    updated_tags_in_idea.append(tag)
 
-        new_tags_idea_set=(
-            serialize(
-                'json',
-                tag.idea_set.all(),
-                cls=IdeaEncoder
-            )
-        )
+                # if it was in the old text and no longer occurs, remove it
+                elif tag.label in old_text and tag.label not in input_text:
+                    removed_tags.append(tag)
 
 
-        tag_data = {
-            'newTag': new_tags,
-            'newTaggedCanvases': new_tags_canvas_set,
-            'newTaggedIdeas': new_tags_idea_set,
-        }
+        # update the tags field in canvas by setting them - implicitly remove the removed tags
+        canvas.tags.set(updated_tags_in_idea)
+        canvas.save()
 
-        new_return_tag_data.append(tag_data)
+        # the same for idea's tags field
+        idea.tags.set(updated_tags_in_idea)
+        idea.text = input_text
+        idea.save()
 
-    for tag in removed_tags:
+        new_return_tag_data = []
+        removed_return_tag_data = []
 
         # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-        removed_tags=(
-            serialize(
-                'json', 
-                [tag], 
-                cls = CanvasTagEncoder
-            )
+        return_idea = serialize(
+            'json', 
+            [idea], 
+            cls=IdeaEncoder
         )
-        removed_tags = removed_tags[1:-1]
+        return_idea = return_idea[1:-1]
 
-        removed_tags_canvas_set=(
-            serialize(
-                'json', 
-                tag.canvas_set.all(),
-                cls=CanvasEncoder
+
+
+        for tag in updated_tags_in_idea:
+
+            new_tags=(
+                serialize(
+                    'json', 
+                    [tag], 
+                    cls = CanvasTagEncoder
+                )
             )
-        )
+            new_tags = new_tags[1:-1]
 
-        removed_tags_idea_set=(
-            serialize(
-                'json',
-                tag.idea_set.all(),
-                cls=IdeaEncoder
+            new_tags_canvas_set=(
+                serialize(
+                    'json', 
+                    tag.canvas_set.all(),
+                    cls=CanvasEncoder
+                )
             )
-        )
 
-        tag_data = {
-            'removedTag': removed_tags,
-            'removedTaggedCanvases': removed_tags_canvas_set,
-            'removedTaggedIdeas': removed_tags_idea_set,
-        }
-
-        removed_return_tag_data.append(tag_data)
-
-    # singular idea, remove enclosing square brackets
+            new_tags_idea_set=(
+                serialize(
+                    'json',
+                    tag.idea_set.all(),
+                    cls=IdeaEncoder
+                )
+            )
 
 
-    return {
-        'removed_return_tag_data': removed_return_tag_data,
-        'new_return_tag_data': new_return_tag_data,
-        'return_idea': return_idea,
-        'old_text': old_text,
-        'error': None
-    }
+            tag_data = {
+                'newTag': new_tags,
+                'newTaggedCanvases': new_tags_canvas_set,
+                'newTaggedIdeas': new_tags_idea_set,
+            }
+
+            new_return_tag_data.append(tag_data)
+
+        for tag in removed_tags:
+
+            # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+            removed_tags=(
+                serialize(
+                    'json', 
+                    [tag], 
+                    cls = CanvasTagEncoder
+                )
+            )
+            removed_tags = removed_tags[1:-1]
+
+            removed_tags_canvas_set=(
+                serialize(
+                    'json', 
+                    tag.canvas_set.all(),
+                    cls=CanvasEncoder
+                )
+            )
+
+            removed_tags_idea_set=(
+                serialize(
+                    'json',
+                    tag.idea_set.all(),
+                    cls=IdeaEncoder
+                )
+            )
+
+            tag_data = {
+                'removedTag': removed_tags,
+                'removedTaggedCanvases': removed_tags_canvas_set,
+                'removedTaggedIdeas': removed_tags_idea_set,
+            }
+
+            removed_return_tag_data.append(tag_data)
+
+        return JsonResponse({
+            'function': request.POST['function'],
+            'removedReturnTagData': removed_return_tag_data,
+            'newReturnTagData': new_return_tag_data,
+            'idea': return_idea,
+            'oldText': old_text,
+            'ideaCategory': idea.category,
+            'ideaListIndex': request.POST['idea_list_index'],
+        })
 
 
 
@@ -857,193 +838,174 @@ def edit_idea(logged_in_user, idea_pk, input_text):
 ################################################################################################################################## 
 
 
-def new_comment(input_text, idea_pk, logged_in_user):
-    
-    try:
-        idea = Idea.objects.get(pk = idea_pk)
-        canvas = idea.canvas
-        project = canvas.project
-
-    except:
-        Idea.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Idea does not exist'
-        }
-
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
-
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-
-    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
-
-    text = input_text
-    text = strip_tags(text)
-
-    comment = IdeaComment(
-        user = logged_in_user, 
-        text = text,
-        idea = idea
-    )
-    comment.save()
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    json_comment = serialize(
-        'json',
-        [comment],
-        cls = IdeaCommentEncoder
-    )
-
-    # singular comment, remove enclosing square brackets
-    json_comment = json_comment[1:-1]
+def new_comment(request):
+    if request.method == 'POST':
+        logged_in_user = request.user
+        idea_pk = request.POST['idea_pk']
+        input_text = request.POST['input_text']
 
 
-    return {
-        'comment': json_comment,
-        'category': idea.category,
-        'error': None
-    }
+        try:
+            idea = Idea.objects.get(pk=idea_pk)
+            canvas = idea.canvas
+            project = canvas.project
+
+        except:
+            Idea.DoesNotExist
+            return HttpResponse('Idea does not exist.', status=404)
+
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
+
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
 
 
-def delete_comment(logged_in_user, comment_pk):
+        if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Unauthorized', status=401)
+
+
+        text = input_text
+        text = strip_tags(text)
+
+        comment = IdeaComment(
+            user = logged_in_user, 
+            text = text,
+            idea = idea
+        )
+        comment.save()
+
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        json_comment = serialize(
+            'json',
+            [comment],
+            cls = IdeaCommentEncoder
+        )
+
+        # singular comment, remove enclosing square brackets
+        json_comment = json_comment[1:-1]
+
+        return JsonResponse({
+            'function': request.POST['function'],
+            'comment': json_comment,
+            'ideaCategory': idea.category,
+            'ideaListIndex': request.POST['idea_list_index']
+        })
+
+
+def delete_comment(request):
     '''
     Deletion of a comment
     '''
-    try:
-        comment = IdeaComment.objects.get(pk = comment_pk)
-        canvas = comment.idea.canvas
-        project = canvas.project
+    if request.method == 'POST':
+        logged_in_user = request.user
+        comment_pk = request.POST['comment_pk']
 
-    except:
-        IdeaComment.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Comment does not exist'
-        }
+        try:
+            comment = IdeaComment.objects.get(pk=comment_pk)
+            canvas = comment.idea.canvas
+            project = canvas.project
 
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+        except:
+            IdeaComment.DoesNotExist
+            return HttpResponse('Comment does not exist.', status=404)
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
 
-    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
-  
-    category = comment.idea.category
-    comment.delete()
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
 
-    return {
-        'category': category,
-        'error': None
-    }
 
-def single_comment_resolve(logged_in_user, comment_pk):
+        if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Forbidden.', status=403)
+
+      
+        category = comment.idea.category
+        comment.delete()
+
+
+        return JsonResponse({
+            'function': request.POST['function'],
+            'ideaCategory': category,
+            'ideaListIndex': request.POST['idea_list_index'], 
+            'commentListIndex': request.POST['comment_list_index'], 
+        })
+
+
+def single_comment_resolve(request):
     '''
     Resolution of a single comment
     '''
-    try:
-        comment = IdeaComment.objects.get(pk = comment_pk)
-        canvas = comment.idea.canvas
-        project = canvas.project
+    if request.method == 'POST':
+        logged_in_user = request.user
+        comment_pk = request.POST['comment_pk']
 
-    except:
-        IdeaComment.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Comment does not exist'
-        }
+        try:
+            comment = IdeaComment.objects.get(pk=comment_pk)
+            canvas = comment.idea.canvas
+            project = canvas.project
 
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+        except:
+            IdeaComment.DoesNotExist
+            return HttpResponse('Comment does not exist.', status=404)
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
+
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
 
 
-    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
-  
-    category = comment.idea.category
-    comment.resolved = True
-    comment.save()
+        if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Forbidden.', status=403)
+      
+        category = comment.idea.category
+        comment.resolved = True
+        comment.save()
 
-    return {
-        'category': category,
-        'error': None
-    }
+        return JsonResponse({
+            'function': request.POST['function'],
+            'ideaCategory': category,
+            'ideaListIndex': request.POST['idea_list_index'], 
+            'commentListIndex': request.POST['comment_list_index'], 
+        })
 
 
-def all_comment_resolve(logged_in_user, idea_pk):
+def all_comment_resolve(request):
     '''
     Resolution of comments - mark all as resolved
     '''
-    try: 
-        idea = Idea.objects.get(pk = idea_pk)
-        canvas = idea.canvas
-        project = canvas.project
-    except:
-        Idea.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Idea does not exist'
-        }
+    if request.method == 'POST':
+        logged_in_user = request.user
+        idea_pk = request.POST['idea_pk']
 
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
+        try: 
+            idea = Idea.objects.get(pk = idea_pk)
+            canvas = idea.canvas
+            project = canvas.project
+        except:
+            Idea.DoesNotExist
+            return HttpResponse('Idea does not exist.', status=404)
 
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
 
-    if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
-    
-    IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
-    
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
 
-    return {
-        'category': idea.category,
-        'error': None
-    }
+
+        if (not admin_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Forbidden.', status=403)
+        
+        IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
+        
+
+        return JsonResponse({
+            'function': request.POST['function'],
+            'ideaCategory': idea.category,
+            'ideaListIndex': request.POST['idea_list_index'], 
+        })
         
 
 ##################################################################################################################################
@@ -1088,53 +1050,156 @@ def register(request):
         {'form': form}
     )
         
-def add_user(logged_in_user, project_pk, name):
+def add_user(request):
     '''
     Function for addition of user to project
     '''
-    try:
-        project = Project.objects.get(pk=project_pk)
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+    if request.method == 'POST':
 
-    name = name
-    
+        try:
+            project = Project.objects.get(pk=request.POST['project_pk'])
+        except:
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
 
-    if (not admin_permission(logged_in_user, project)):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
+        name = request.POST['name']
+        
+        logged_in_user = request.user
+        # check is admin
+        if (not admin_permission(logged_in_user, project)):
+            return HttpResponse('Forbidden.', status=403)
+
+
+        else:
+            try:
+                user = User.objects.get(username=name)
+            except: 
+                User.DoesNotExist
+                return HttpResponse('User does not exist.', status=404)
+
+            if user in project.users.all() or user in project.admins.all():
+                reply = ''
+
+                if user is logged_in_user:
+                    reply = 'Error: you\'re already a collaborator, you can\'t add yourself!'
+
+                else:
+                    reply = 'Error: ' + name + ' is already a collaborator!'
+            
+                return HttpResponse(reply, status=500)
+
+
+            project.users.add(user)
+
+            # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+            json_user = serialize(
+                'json', 
+                [user],
+                cls = UserModelEncoder
+            )
+            # singular user - remove enclosing square brackets
+            json_user = json_user[1:-1]
+
+            data = {
+                'function': request.POST['function'],
+                'user': json_user,
             }
 
-    else:
+            return JsonResponse(data)
+
+def delete_user(request):
+    '''
+    Function for deleting a user from the project.
+    '''
+    if request.method == 'POST':
+
         try:
-            user = User.objects.get(username = name)
+            project = Project.objects.get(pk=request.POST['project_pk'])
+        except:
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
+        
+        logged_in_user = request.user
+        # check is admin
+        if (not admin_permission(logged_in_user, project)):
+            return HttpResponse('Forbidden', status=403)
+
+
+        try:
+            user = User.objects.get(pk=request.POST['user_pk'])
         except: 
             User.DoesNotExist
-            return {
-                'error': 404,
-                'response': 'User does not exist'
-            }
+            return HttpResponse('User does not exist.', status=404)
 
-        if user in project.users.all() or user in project.admins.all():
-            reply = ''
+        if user not in project.users.all():
+            reply = 'Error: ' + name + ' is not a collaborator'
+            return HttpResponse(reply, status=500)
 
-            if user is logged_in_user:
-                reply = 'Error: you\'re already a collaborator, you can\'t add yourself!'
+        admins = project.admins.all()
 
-            else:
-                reply = 'Error: ' + name + ' is already a collaborator!'
+        # if there is one admin who is the logged-in user, do not allow them to 
+        # delete themselves. It's implied that if there's one admin, the logged_in 
+        # user is that admin, as earlier it is checked that the logged_in user
+        # is in the project admin set
+        if (len(admins) == 1 and user in admins):
+            reply = 'Error: You are the only admin, you may not delete yourself!'
+            return HttpResponse(reply, status=500)
+
+        victim_is_admin = "false"
+        # if the user is also an admin, remove them from that field also
+        if user in admins:
+            victim_is_admin = "true"
+            project.admins.remove(user)      
+
+        project.users.remove(user)
+
+        data = {
+            'function': request.POST['function'],
+            'userListIndex': request.POST['user_list_index'],
+            'victimIsAdmin': victim_is_admin,
+        }
+
+        return JsonResponse(data)
+
+
+def promote_user(request):
+    '''
+    Function for promoting a user to admin status
+    '''
+    if request.method == 'POST':
+        try:
+            project = Project.objects.get(pk=request.POST['project_pk'])
+        except:
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
         
-            return { 
-                'error': 500,
-                'response': reply
-            }
+        logged_in_user = request.user
+        # check is admin
+        if (not admin_permission(logged_in_user, project)):
+                return HttpResponse('Forbidden', status=403)
 
-        project.users.add(user)
+        try:
+            user = User.objects.get(pk=request.POST['user_pk'])
+        except: 
+            User.DoesNotExist
+            return HttpResponse('User does not exist', status=404)
+
+
+        name_str = user.username
+        admins = project.admins.all()
+
+        # check presence in admin set
+        if user in admins:
+            # additionally check the user isn't trying to promote themselves
+            if user is logged_in_user:
+                name_str = 'you are'
+            else: 
+                name_str = name_str + ' is '
+            reply = 'Error: ' + name_str + ' already an admin!'
+            
+            return HttpResponse(reply, status=500)
+
+        project.admins.add(user)
 
         # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
         json_user = serialize(
@@ -1145,218 +1210,81 @@ def add_user(logged_in_user, project_pk, name):
         # singular user - remove enclosing square brackets
         json_user = json_user[1:-1]
 
-        return {
-            'json_user': json_user,
-            'error': None
+        data = {
+            'function': request.POST['function'],
+            'admin': json_user,
         }
 
-def delete_user(logged_in_user, project_pk, user_pk):
-    '''
-    Function for deleting a user from the project.
-    '''
-    try:
-        project = Project.objects.get(pk=project_pk)
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-    
-
-    if (not admin_permission(logged_in_user, project)):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
+        return JsonResponse(data)
 
 
-    try:
-        user = User.objects.get(pk = user_pk)
-    except: 
-        User.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'User does not exist'
-        }
-
-    if user not in project.users.all():
-        reply = 'Error: ' + name + ' is not a collaborator'
-        return { 
-                'error': 500,
-                'response': reply
-            }
-
-    admins = project.admins.all()
-
-    # if there is one admin who is the logged-in user, do not allow them to 
-    # delete themselves. It's implied that if there's one admin, the logged_in 
-    # user is that admin, as earlier it is checked that the logged_in user
-    # is in the project admin set
-    if (len(admins) == 1 and user in admins):
-        reply = 'Error: You are the only admin, you may not delete yourself!'
-        return { 
-                'error': 500,
-                'response': reply
-            }
-
-    victim_is_admin = "false"
-    # if the user is also an admin, remove them from that field also
-    if user in admins:
-        victim_is_admin = "true"
-        project.admins.remove(user)      
-
-    project.users.remove(user)
-
-    return {
-        'victim_is_admin': victim_is_admin,
-        'error': None
-    }
-
-
-def promote_user(logged_in_user, project_pk, user_pk):
-    '''
-    Function for promoting a user to admin status
-    '''
-    try:
-        project = Project.objects.get(pk=project_pk)
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-    
-
-    # check is admin
-    if (not admin_permission(logged_in_user, project)):
-            return { 
-                    'error': 403,
-                    'response': 'forbidden'
-                }
-
-    try:
-        user = User.objects.get(pk = user_pk)
-    except: 
-        User.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'User does not exist'
-        }
-
-
-    name_str = user.username
-    admins = project.admins.all()
-
-    # check presence in admin set
-    if user in admins:
-        # additionally check the user isn't trying to promote themselves
-        if user is logged_in_user:
-            name_str = 'you are'
-        else: 
-            name_str = name_str + ' is '
-        reply = 'Error: ' + name_str + ' already an admin!'
-        
-        return { 
-                'error': 500,
-                'response': reply
-            }
-
-    project.admins.add(user)
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    json_user = serialize(
-        'json', 
-        [user],
-        cls = UserModelEncoder
-    )
-    # singular user - remove enclosing square brackets
-    json_user = json_user[1:-1]
-
-    return {
-        'json_user': json_user,
-        'error': None
-    }
-
-
-def demote_user(logged_in_user, project_pk, user_pk):
+def demote_user(request):
     '''
     Function to delete a user from the admin field - this is for demotion only.
     For complete deletion, call delete user
     '''
-    try:
-        project = Project.objects.get(pk=project_pk)
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-    
-    if (not admin_permission(logged_in_user, project)):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
+    if request.method == 'POST':
+        try:
+            project = Project.objects.get(pk=request.POST['project_pk'])
+        except:
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
 
-    try:
-        user = User.objects.get(pk = user_pk)
-    except: 
-        User.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'User does not exist'
-        }
+        logged_in_user = request.user
+        # check is admin
+        if (not admin_permission(logged_in_user, project)):
+                return HttpResponse('Forbidden', status=403)
 
-    admins = project.admins.all()
-    # Can't delete a non-existent admin
-    if user not in admins:
-        reply = 'Error: ' + name + ' is not an admin'
-        return { 
-                'error': 500,
-                'response': reply
-            }
+        try:
+            user = User.objects.get(pk=request.POST['user_pk'])
+        except: 
+            User.DoesNotExist
+            return HttpResponse('User does not exist', status=404)
 
-    # if there is one admin who is the logged-in user, do not allow them to 
-    # delete themselves
-    if len(admins) == 1:
-        reply = 'Error: You are the only admin, you may not demote yourself!'
-        return { 
-                'error': 500,
-                'response': reply
-            }
+        admins = project.admins.all()
+        # Can't delete a non-existent admin
+        if user not in admins:
+            reply = 'Error: ' + name + ' is not an admin'
+            return HttpResponse(reply, status=500)
 
-    project.admins.remove(user)
+        # if there is one admin who is the logged-in user, do not allow them to 
+        # delete themselves
+        if len(admins) == 1:
+            reply = 'Error: You are the only admin, you may not demote yourself!'
+            return HttpResponse(reply, status=500)
 
-    return {
-        'error': None
-    }
+        project.admins.remove(user)
 
-
-def toggle_public(project_pk, logged_in_user):
-    try:
-        project = Project.objects.get(pk=project_pk)
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
+        data = {
+            'function': request.POST['function'],
+            'adminListIndex': request.POST['admin_list_index']
         }
 
+        return JsonResponse(data)
 
-    if (not admin_permission(logged_in_user, project)):
-        return { 
-                'error': 403,
-                'response': 'forbidden'
-            }
 
-    project.is_public = not(project.is_public)
-    project.save()
+def toggle_public(request):
+    if request.method == 'POST':
 
-    return {
-        'error': None
-    }
+        try:
+            project = Project.objects.get(pk=request.POST['project_pk'])
+        except:
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist', status=404)
 
+        logged_in_user = request.user
+        # check is admin
+        if (not admin_permission(logged_in_user, project)):
+                return HttpResponse('Forbidden', status=403)
+
+        project.is_public = not(project.is_public)
+        project.save()
+
+        data = {
+            'function': request.POST['function'],
+        }
+
+        return JsonResponse(data)
 
 
 
@@ -1365,181 +1293,162 @@ def toggle_public(project_pk, logged_in_user):
 #                                                           TAG VIEWS                                                            #
 ##################################################################################################################################
 
-def add_tag(canvas_pk, logged_in_user, label):
+def add_tag(request):
     '''
     ADDITION OF NEW TAG 
     '''
-    try: 
-        canvas = Canvas.objects.get(pk=canvas_pk)
-    except:
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
-        }
-    # idea = Idea.objects.get(pk=idea_pk)
+    if request.method == 'POST':
+        try:
+            canvas = Canvas.objects.get(pk=request.POST['canvas_pk'])
+            print(canvas)
+            project = canvas.project
 
-    try:
-        project = canvas.project
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
+        except:
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
+
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
+
+        logged_in_user = request.user
+        label = request.POST['label']
+
+        if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Unauthorized', status=401)
+
+        # check existence of tag within project - avoid duplicating tags
+        if CanvasTag.objects.filter(label=label, canvas_set__project=project).exists():
+            tag = CanvasTag.objects.get(label=label)
+
+            tag_canvas_set = tag.canvas_set.all()
+
+            if canvas not in tag_canvas_set:
+                tag.canvas_set.add(canvas)
 
 
-
-    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
-
-    # check existence of tag within project - avoid duplicating tags
-    if CanvasTag.objects.filter(label=label, canvas_set__project=project).exists():
-        tag = CanvasTag.objects.get(label=label)
-
-        tag_canvas_set = tag.canvas_set.all()
-
-        if canvas not in tag_canvas_set:
+        else:
+            # only create tag if it doesn't exist anywhere visible to the user
+            tag = CanvasTag(label=label)
+            tag.save()
             tag.canvas_set.add(canvas)
-
-
-    else:
-        # only create tag if it doesn't exist anywhere visible to the user
-        tag = CanvasTag(label=label)
+        
         tag.save()
-        tag.canvas_set.add(canvas)
-    
-    tag.save()
-    canvas.save()
+        canvas.save()
+
+        # check every canvas for presence of new tag's label in those canvases on creation of new tag
+        for canvas in project.canvas_set.all():
+            ideas = Idea.objects.filter(canvas=canvas)
+
+            for idea in ideas:
+
+                if tag.label in idea.text:            
+
+                    if idea not in tag.idea_set.all():
+                        tag.idea_set.add(idea)
+                        idea.save()
+
+                        # skip the below step if the above is false
+                        if canvas not in tag.canvas_set.all():
+                            canvas.save()
+                            tag.canvas_set.add(canvas)
+                            canvas.save()
+                        
+                        # save tag if modifications made
+                        tag.save()
 
 
+        tags = CanvasTag.objects.filter(canvas_set__project=project).distinct()
+        json_tagged_canvases = []
+        json_tagged_ideas = []
 
 
-    # check every canvas for presence of new tag's label in those canvases on creation of new tag
-    for canvas in project.canvas_set.all():
-        ideas = Idea.objects.filter(canvas=canvas)
-
-        for idea in ideas:
-
-            if tag.label in idea.text:            
-
-                if idea not in tag.idea_set.all():
-                    tag.idea_set.add(idea)
-                    idea.save()
-
-                    # skip the below step if the above is false
-                    if canvas not in tag.canvas_set.all():
-                        canvas.save()
-                        tag.canvas_set.add(canvas)
-                        canvas.save()
-                    
-                    # save tag if modifications made
-                    tag.save()
+        # for t in tags:
+        json_tagged_canvases.append(
+            serialize(
+                'json', 
+                tag.canvas_set.all().order_by('-id'),
+                cls=CanvasEncoder
+            )
+        )
 
 
-    tags = CanvasTag.objects.filter(canvas_set__project=project).distinct()
-    json_tagged_canvases = []
-    json_tagged_ideas = []
+        json_tagged_ideas.append(
+            serialize(
+                'json',
+                tag.idea_set.all().order_by('canvas'),
+                cls=IdeaEncoder
+            )
+        )
 
-
-    # for t in tags:
-    json_tagged_canvases.append(
-        serialize(
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        json_tag = serialize(
             'json', 
-            tag.canvas_set.all().order_by('-id'),
-            cls=CanvasEncoder
+            [tag], 
+            cls = CanvasTagEncoder
         )
-    )
+        # singular tag - remove enclosing square brackets
+        json_tag = json_tag[1:-1]
+
+        data = {
+            'function': request.POST['function'],
+            'taggedCanvases': json_tagged_canvases,
+            'taggedIdeas': json_tagged_ideas,
+            'tag': json_tag,
+        }
+
+        return JsonResponse(data)
 
 
-    json_tagged_ideas.append(
-        serialize(
-            'json',
-            tag.idea_set.all().order_by('canvas'),
-            cls=IdeaEncoder
-        )
-    )
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    json_tag = serialize(
-        'json', 
-        [tag], 
-        cls = CanvasTagEncoder
-    )
-    # singular tag - remove enclosing square brackets
-    json_tag = json_tag[1:-1]
-
-    data = {
-        'taggedCanvases': json_tagged_canvases,
-        'taggedIdeas': json_tagged_ideas,
-        'tag': json_tag,
-    }
-
-    return {
-        'data': data,
-        'error': None
-    }
-
-
-def delete_tag(canvas_pk, logged_in_user, label):
+def delete_tag(request):
     '''
     DELETION OF TAG
     '''
-    try: 
-        canvas = Canvas.objects.get(pk=canvas_pk)
-    except:
-        Canvas.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Canvas does not exist'
+    if request.method == 'POST':
+
+        try:
+            canvas = Canvas.objects.get(pk=request.POST['canvas_pk'])
+            project = canvas.project
+
+        except:
+            Canvas.DoesNotExist
+            return HttpResponse('Canvas does not exist.', status=404)
+
+            Project.DoesNotExist
+            return HttpResponse('Project does not exist.', status=404)
+
+        logged_in_user = request.user
+        label = request.POST['label']
+
+        if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
+            return HttpResponse('Unauthorized', status=401)
+
+        try:
+            tag = CanvasTag.objects.get(label=label, canvas_set=canvas)
+        except:
+            CanvasTag.DoesNotExist
+            return HttpResponse('Tag does not exist.', status=404)
+
+
+        CanvasTag.objects.filter(label=label, canvas_set__project=project).delete()
+
+        # delete any tags that aren't attached to a canvas: they are never useful
+        CanvasTag.objects.filter(canvas_set=None).delete()
+
+        # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
+        json_tag = serialize(
+            'json', 
+            [tag], 
+            cls = CanvasTagEncoder
+        )
+        # singular tag - remove enclosing square brackets
+        json_tag = json_tag[1:-1]
+
+        data = {
+            'function': request.POST['function'],
+            'tag': json_tag,
         }
-    # idea = Idea.objects.get(pk=idea_pk)
 
-    try:
-        project = canvas.project
-    except:
-        Project.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Project does not exist'
-        }
-
-    if (not user_permission(logged_in_user, project) or (project.title == 'blank-project')):
-        return { 
-                'error': 401,
-                'response': 'unauthorized'
-            }
-
-    try:
-        tag = CanvasTag.objects.get(label=label, canvas_set=canvas)
-    except:
-        CanvasTag.DoesNotExist
-        return {
-            'error': 404,
-            'response': 'Tag does not exist'
-        }
-
-    CanvasTag.objects.filter(label=label, canvas_set__project=project).delete()
-
-    # delete any tags that aren't attached to a canvas: they are never useful
-    CanvasTag.objects.filter(canvas_set=None).delete()
-
-    # TODO: change serialization method from needing to pass a singleton list to accepting a single model instance
-    json_tag = serialize(
-        'json', 
-        [tag], 
-        cls = CanvasTagEncoder
-    )
-    # singular tag - remove enclosing square brackets
-    json_tag = json_tag[1:-1]
-
-    return {
-        'tag': json_tag,
-        'error': None
-    }
+        return JsonResponse(data)
 
 
 ##################################################################################################################################

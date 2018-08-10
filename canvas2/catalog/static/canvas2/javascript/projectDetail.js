@@ -35,6 +35,12 @@ $j(document).ready(function(data){
                                         COLLABORATOR CALLBACKS
 *************************************************************************************************************/
 
+function collabSuccessCallbackAJAX(data){    
+    collabSocket.send(JSON.stringify({
+        'data': data,
+    }));
+}
+
 function addUserSuccessCallback(data){
     var tempUser = (JSON.parse(data.user));
     users.push(tempUser);
@@ -108,11 +114,14 @@ function newActiveUserCallback(data){
 
     user = data.user;
     activeUsers.push(user.fields.username);
-
-
-    collabSocket.send(JSON.stringify({
+    
+    var data = {
         'function': 'sendWholeList',
         'users': activeUsers,
+    }
+
+    collabSocket.send(JSON.stringify({
+        'data': data,   
     }));
 }
 
@@ -204,10 +213,15 @@ Vue.component('collabs', {
 
     methods: {
         togglePublic: function(){
-            collabSocket.send(JSON.stringify({
+            var data = {
                 'function': 'togglePublic',
                 'project_pk': projectPK
-            }))
+            }
+            var url = '/catalog/toggle_public/'
+            performAjaxPOST(url, data, function placeholder(){}, function placeholder(){})
+            // collabSocket.send(JSON.stringify({
+            //     'data': data,
+            // }))
         }
     },
 })
@@ -308,34 +322,46 @@ Vue.component('collab-popup', {
 
     methods: {
         addUser: function(event, name, isAdmin){
-            collabSocket.send(JSON.stringify({
+            var data = {
                 'function': 'addUser',
+                'project_pk': projectPK,
                 'name': name
-            }));
+            }
+            var url = '/catalog/add_user/'
+            performAjaxPOST(url, data, collabSuccessCallbackAJAX, addUserFailureCallback)
             this.name = ""
         },
 
         deleteUser: function(event, user, userListIndex){
-            collabSocket.send(JSON.stringify({
+            var url = '/catalog/delete_user/'
+            var data = {
                 'function': 'deleteUser',
+                'project_pk': projectPK,
                 'user_pk': user.pk,
                 'user_list_index': userListIndex
-            }));
+            }
+            performAjaxPOST(url, data, collabSuccessCallbackAJAX, deleteUserFailureCallback)
         },
 
         promoteUser: function(event, user){
-            collabSocket.send(JSON.stringify({
+            var url = '/catalog/promote_user/'
+            var data = {
                 'function': 'promoteUser',
+                'project_pk': projectPK,
                 'user_pk': user.pk,
-            }));            
+            }   
+            performAjaxPOST(url, data, collabSuccessCallbackAJAX, promoteUserFailureCallback)
         },
 
         demoteAdmin: function(event, admin, adminListIndex){
-            collabSocket.send(JSON.stringify({
+            var url = '/catalog/demote_user/'
+            var data = {
                 'function': 'demoteUser',
+                'project_pk': projectPK,
                 'user_pk': admin.pk,
-                'admin_list_index': adminListIndex
-            }));
+                'admin_list_index': adminListIndex    
+            }
+            performAjaxPOST(url, data, collabSuccessCallbackAJAX, demoteAdminFailureCallback)
         },
 
     },
@@ -364,7 +390,7 @@ function initCollabSocket(){
     ************************************/
     collabSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data["function"];
+        var f = data.data["function"];
 
         switch(f) {
             case "promoteUser": {
@@ -376,7 +402,7 @@ function initCollabSocket(){
             }
             case "demoteUser": {
                 if (data.data.error)
-                    demoteUserFailureCallback(data.data);
+                    demoteAdminFailureCallback(data.data);
                 else
                     demoteAdminSuccessCallback(data.data);
                 break;
@@ -413,18 +439,25 @@ function initCollabSocket(){
     };
 
     collabSocket.onopen = function(e){
-        collabSocket.send(JSON.stringify({
+        var data = {
             "function": "newActiveUser",
             "user": loggedInUser,
+        }
+
+        collabSocket.send(JSON.stringify({
+            "data": data,
         }));
     };
 
 }
 
 window.onbeforeunload = function(e){
+    var data = {
+        "function": "removeActiveUser",
+        "user": loggedInUser,
+    }
     collabSocket.send(JSON.stringify({
-            "function": "removeActiveUser",
-            "user": loggedInUser,
+        "data": data,
     }));
     collabSocket.close();
 };

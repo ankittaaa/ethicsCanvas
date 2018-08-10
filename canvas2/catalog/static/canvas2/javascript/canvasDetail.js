@@ -1,3 +1,14 @@
+/********************************************************************************
+ ********************************************************************************
+
+    NOTE: DO NOT USE THIS AS GOSPEL, IT WAS MADE FOR TESTING PURPOSES ONLY!!!
+
+********************************************************************************
+*********************************************************************************/
+
+
+
+
 /*
 ****************
     GLOBALS       
@@ -91,7 +102,6 @@ var currentURL;
 var tagButtons;
 var ideaListComponent;
 
-var trialIdeaSocket;
 var ideaSocket;
 var commentSocket;
 var tagSocket;
@@ -195,11 +205,13 @@ function newActiveUserCallback(data){
 
     user = data.user;
     activeUsers.push(user.fields.username);
-
+    data = {
+        'function': 'sendWholeList',
+        'users': activeUsers,        
+    }
 
     collabSocket.send(JSON.stringify({
-        'function': 'sendWholeList',
-        'users': activeUsers,
+        'data': data
     }));
 }
 
@@ -264,12 +276,14 @@ function demoteAdminFailureCallback(data){
 /*************************************************************************************************************
                                                 IDEA CALLBACKS
 *************************************************************************************************************/
-
+function deleteIdeaSuccessCallbackAJAX(data){
+    ideaSocket.send(JSON.stringify({
+        'function': 'deleteIdea',
+        'data': data,
+    }));
+}
 
 function deleteIdeaSuccessCallback(data){
-
-
-
 
     for (d in data.returnTagData){
 
@@ -312,12 +326,24 @@ function deleteIdeaFailureCallback(data){
     console.log(data);
 }
 
+function newIdeaSuccessCallbackAJAX(data){
+        ideaSocket.send(JSON.stringify({
+            'function': 'addIdea',
+            'data': data,
+        }));
+}
+
 function newIdeaSuccessCallback(data){
 /*
     Function for updating the idea list for the modified category
     upon addition of new or deletion of current idea
-*/
-    var tempIdea = JSON.parse(data.idea);
+*/  
+    var tempIdea;
+    if (isAuth === false){
+        tempIdea = JSON.parse(data.idea);
+    }
+    else
+        tempIdea = JSON.parse(data.idea);
 
     if (tempIdea.fields.canvas != canvasPK)
         return;
@@ -350,10 +376,15 @@ function newIdeaFailureCallback(data){
     console.log(data);
 }
 
+function editIdeaSuccessCallbackAJAX(data){
+    ideaSocket.send(JSON.stringify({
+            'function': 'modifyIdea',
+            'data': data,
+        }));
+}
 
 function editIdeaSuccessCallback(data){
 
-    // console.log(data.idea);
     var inIdea = (JSON.parse(data.idea));
 
     // update the idea iff it's the right idea
@@ -390,15 +421,14 @@ function editIdeaFailureCallback(data){
 
 
 function typingCallback(data, f){
-
-    var canvas = data['canvasPK']
+    var canvas = data.canvasPK;
 
     if (canvas != canvasPK)
         return;
 
-    var tempCategory = data['ideaCategory'];
-    var tempName = data['username'];
-    var ideaListIndex = data['ideaListIndex']
+    var tempCategory = data.ideaCategory;
+    var tempName = data.username;
+    var ideaListIndex = data.ideaListIndex;
 
     // do nothing, the logged in user knows when they're typing
     if (tempName == loggedInUser.fields.username)
@@ -421,7 +451,13 @@ function typingCallback(data, f){
 *************************************************************************************************************/
 
 
-function addCommentSuccessCallback(data){
+function commentSuccessCallbackAJAX(data){
+    commentSocket.send(JSON.stringify({
+        'data': data,
+    }))
+}
+
+function newCommentSuccessCallback(data){
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var returnComment = JSON.parse(data.comment);
     var tempCategory = JSON.parse(data.ideaCategory);
@@ -434,7 +470,6 @@ function addCommentFailureCallback(data){
 
 
 function deleteCommentSuccessCallback(data){
-    // var parsedData = JSON.parse(data);
     var ideaListIndex = JSON.parse(data.ideaListIndex);
     var commentListIndex = JSON.parse(data.commentListIndex);
     var tempCategory = JSON.parse(data.ideaCategory);
@@ -484,48 +519,44 @@ function resolveAllCommentsFailureCallback(data){
                                             TAG CALLBACKS
 *************************************************************************************************************/
 
+function newTagSuccessCallbackAJAX(data){
+    tagSocket.send(JSON.stringify({
+        'data': data,
+    }))
+}
+
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
-    console.log("hi");
     var i = -1;
     var canvasTagged = false;
 
         
     for (t in tags){
         if (tags[t].pk == newTag.pk){
-            console.log("hi");
             i = t;
             break;
         }
     }
 
-    console.log(tempTaggedCanvases);
     for (tc in tempTaggedCanvases){
         if (tempTaggedCanvases[tc].pk == canvasPK){
-            console.log("hi");
             canvasTagged = true;
             break;
         }
     }
 
     // if the tag doesn't exist (index === -1), but the canvas is tagged by it, add it
-    console.log(canvasTagged);
     if (canvasTagged === true){
-        console.log("tagExists");
         if (i === -1){
-            console.log("tagNotInCanvas");
-            console.log(tags[0] == null);
             if (tags[0].pk !== null){
-                console.log("noTags");
                 tags.push(newTag);
                 taggedCanvases.push(tempTaggedCanvases);
                 allTaggedIdeas.push(tempTaggedIdeas);
             }
             else {
-                console.log("Tags");
                 tags.splice(0, 1, newTag);
                 taggedCanvases.splice(0, 1, tempTaggedCanvases);
                 allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
@@ -535,7 +566,6 @@ function newTagSuccessCallback(data){
 
         // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
         else{
-            console.log("tagIsInCanvas");
             taggedCanvases.splice(i, 1, tempTaggedCanvases);
             allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
         }
@@ -560,11 +590,6 @@ function removeTag(data){
     var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
-    for (t in tempTaggedCanvases){
-        console.log("CANVAS: " + tempTaggedCanvases[t].pk + " IDEA: " + tempTaggedIdeas[t].pk);
-    }
-
-
     var tagExists = false;
     var canvasTagged = false;
     var tagIndex = -1;
@@ -585,7 +610,6 @@ function removeTag(data){
 
     // if the tag does exist, but the canvas is not tagged by it, remove it
     if (tagExists === true && canvasTagged === false){
-        console.log("one");
         if (tags.length > 0 && tags.length != 1){
             // simply remove the tag if there will be more remaining
             tags.splice(tagIndex, 1);
@@ -614,6 +638,12 @@ function removeTag(data){
 
         // otherwise do nothing
 
+}
+
+function deleteTagSuccessCallbackAJAX(data){
+    tagSocket.send(JSON.stringify({
+        'data': data,
+    }))
 }
 
 
@@ -680,17 +710,12 @@ function initSuccessCallback(data){
     
     allTags = JSON.parse(data.allTags);
 
-    // console.log(data.loggedInUser);
     loggedInUser = JSON.parse(data.loggedInUser);
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas);
     
-    // console.log(data.thisCanvas);
     canvasType = thisCanvas.fields.canvas_type;
     users = JSON.parse(data.users);
-    
-    // console.log(data.users[0]);
-
     admins = JSON.parse(data.admins);
 
     if (loggedInUser.length == 0){
@@ -702,10 +727,7 @@ function initSuccessCallback(data){
         initialiseSockets();
     }
 
-    // console.log(isAuth);
-        // initialise each category as empty
-
-
+    // initialise each category as empty
     if (ideas.length > 0){
         for (idea in ideas){
             var ideaComments = [];
@@ -754,7 +776,6 @@ function initSuccessCallback(data){
             tags.push(inTags);
             allTaggedIdeas = [];
             taggedCanvases = [];
-            // console.log(":D")
         }
 
         else {
@@ -771,17 +792,6 @@ function initSuccessCallback(data){
         $j('#canvas-title').html("Trial Canvas");
 
         // only want to initialise the ideaSocket so that new idea JSON objects can be acquired - NOT ADDED TO A CANVAS
-        trialIdeaSocket = new WebSocket(
-            'ws://' + window.location.host + 
-            '/ws/canvas/' + canvasPK + '/trial-idea/'
-        );
-
-        trialIdeaSocket.onmessage = function(e){
-            var data = (e.data);
-            idea = JSON.parse(data)['data'];
-            
-            newIdeaSuccessCallback(idea);
-        };
     }
 
     if (canvasType === 0)
@@ -1055,27 +1065,35 @@ Vue.component('idea', {
 
             if (isAuth === true)
             {
-                ideaSocket.send(JSON.stringify({
+                var url = '/catalog/new_idea/'
+                var data = {
                     'function': 'addIdea',
                     'idea_category': this.index,
                     'canvas_pk': canvasPK
-                }));
+                }
+                performAjaxPOST(url, data, newIdeaSuccessCallbackAJAX, newIdeaFailureCallback)
             }
             else {
-                trialIdeaSocket.send(JSON.stringify({
+                var url = '/catalog/new_trial_idea/'
+                var data = {
+                    'function': 'addIdea',
                     'idea_category': this.index,
-                }));
+                    'canvas_pk': canvasPK
+                }
+                performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback)
             }
         },
 
         deleteIdea(event, idea, ideaListIndex){
             if (isAuth === true){
-               
-                ideaSocket.send(JSON.stringify({
+                var url = '/catalog/delete_idea/'
+                var data = {
                     'function': 'deleteIdea',
                     'idea_pk': idea.pk,
                     'idea_list_index': ideaListIndex
-                }));
+                }
+                performAjaxPOST(url, data, deleteIdeaSuccessCallbackAJAX, deleteIdeaFailureCallback)
+            
             }
             else
                 sortedIdeas[this.index].splice(ideaListIndex, 1)
@@ -1088,14 +1106,15 @@ Vue.component('idea', {
 
             if (isAuth === true){
                 window.clearTimeout(typingTimer)
-                
-                ideaSocket.send(JSON.stringify({
+                var url = '/catalog/edit_idea/'
+                var data = {
                     'function': 'modifyIdea',
                     'input_text': text,
                     'idea_pk': idea.pk,
-                    'idea_category': this.index,
                     'idea_list_index': ideaListIndex,
-                }));
+                }
+                performAjaxPOST(url, data, editIdeaSuccessCallbackAJAX, editIdeaFailureCallback)
+
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
                 event.target.value = text
                 idea.fields.text = text
@@ -1140,12 +1159,16 @@ Vue.component('idea', {
 
                 // only want to send something down the socket the first time this function is called
                 if (typingEntered == false){        
-                    ideaSocket.send(JSON.stringify({
+                    data = {
                         'function': 'typing',
-                        'idea_category': this.index,
+                        'ideaCategory': this.index,
                         'username': loggedInUser.fields.username,
-                        'idea_list_index': ideaListIndex,
-                        'canvas_pk': canvasPK
+                        'ideaListIndex': ideaListIndex,
+                        'canvasPK': canvasPK
+                    }
+
+                    ideaSocket.send(JSON.stringify({
+                        'data': data,
                     }))
                 }
 
@@ -1161,11 +1184,15 @@ Vue.component('idea', {
 
         newTag(){
             if (isAuth === true){
-                tagSocket.send(JSON.stringify({
+
+                var url = '/catalog/add_tag/'
+                var data = {
                     'function': 'addTag',
-                    "label": selection,
-                    "canvas_pk": canvasPK,
-                }));
+                    'label': selection,
+                    'canvas_pk': canvasPK,
+                }
+                performAjaxPOST(url, data, newTagSuccessCallbackAJAX, newTagFailureCallback)
+                
                 selection = ""
             }
         }
@@ -1216,7 +1243,10 @@ Vue.component('comment', {
                                     <% commentAuthorString(comment) %>
                                     <div v-show="isAdmin">
                                         <button class="delete-comment" @click="deleteComment($event, comment, commentListIndex)" title="delete">Delete</button> 
-                                        <button class="resolve-individual-comment" @click="resolveIndividualComment($event, comment, commentListIndex)" title="delete">Resolve</button> 
+                                        <button class="resolve-individual-comment" 
+                                                @click="resolveIndividualComment($event, comment, commentListIndex)" 
+                                                title="delete">Resolve
+                                        </button> 
                                     </div>
                                 </div>
                                 <div class="comment-elem resolved" v-else>
@@ -1275,43 +1305,55 @@ Vue.component('comment', {
             event.target.value = ''
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
-            
-            commentSocket.send(JSON.stringify({
+
+            var url = '/catalog/new_comment/'
+            var data = {
                 'function': 'addComment',
                 'input_text': text,
                 'idea_list_index': this.selfIndex,
                 'idea_pk': this.currentIdea.pk
-            }));
+            }
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
+            performAjaxPOST(url, data, commentSuccessCallbackAJAX, addCommentFailureCallback)
         },
 
         deleteComment(event, comment, commentListIndex){
-            commentSocket.send(JSON.stringify({
+            var url = '/catalog/delete_comment/'
+            var data = {
                 'function': 'deleteComment',
-                "comment_pk": comment.pk,
+                'comment_pk': comment.pk,
                 'idea_list_index': this.selfIndex,
                 'comment_list_index': commentListIndex
-            }));
+            }
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
+            performAjaxPOST(url, data, commentSuccessCallbackAJAX, deleteCommentFailureCallback)
         },
 
         resolveIndividualComment(event, comment, commentListIndex){
-            commentSocket.send(JSON.stringify({
+            var url = '/catalog/resolve_individual_comment/'
+            var data = {
                 'function': 'resolveIndividualComment',
-                "comment_pk": comment.pk,
+                'comment_pk': comment.pk,
                 'idea_list_index': this.selfIndex,
                 'comment_list_index': commentListIndex
-            }));
+            }
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
+            performAjaxPOST(url, data, commentSuccessCallbackAJAX, resolveIndividualCommentFailureCallback)
         },
 
         resolveAllComments(idea){
-            commentSocket.send(JSON.stringify({
+            var url = '/catalog/resolve_all_comments/'
+            var data = {
                 'function': 'resolveAllComments',
-                "idea_pk": this.currentIdea.pk,
                 'idea_list_index': this.selfIndex,
-            }));
+                'idea_pk': this.currentIdea.pk
+            }
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
+            performAjaxPOST(url, data, commentSuccessCallbackAJAX, resolveAllCommentsFailureCallback)
         },
 
         getCommentAuthor(comment){
-            userPK = comment.fields.user 
+            var userPK = comment.fields.user 
             
             for (u in users){
                 if (users[u].pk === userPK)
@@ -1420,17 +1462,6 @@ Vue.component('tag-popup', {
     ,
 
     computed: {
-        // canvasData: function(){
-        //     return this.canvases
-        // },
-        // ideaList: function(){
-        //     return this.ideas
-        // },
-        // selfTag: function(){
-        //     return this.tag
-        // }
-
-
     },
 
     watch: { 
@@ -1461,11 +1492,14 @@ Vue.component('tag-popup', {
 
         },
         deleteTag: function(event){
-            tagSocket.send(JSON.stringify({
+            var url = '/catalog/delete_tag/'
+            var data = {
                 'function': 'deleteTag',
                 'label': this.tag.fields.label,
                 'canvas_pk': canvasPK,
-            }));
+            }
+            performAjaxPOST(url, data, deleteTagSuccessCallbackAJAX, deleteTagFailureCallback)
+            
         }
     },
 
@@ -1525,7 +1559,7 @@ function initialiseSockets(){
     ************************************/
     ideaSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data["function"];
+        var f = data.data.function;
         
         if (f.includes("typing")) {
             typingCallback(data.data, f);
@@ -1562,14 +1596,14 @@ function initialiseSockets(){
     ************************************/
     commentSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data["function"];
+        var f = data.data.function;
 
         switch(f) {
             case "addComment": {
                 if (data.data.error)
                     CommentFailureCallback(data.data);
                 else
-                    addCommentSuccessCallback(data.data);
+                    newCommentSuccessCallback(data.data);
                 break;
             }
             case "deleteComment": {
@@ -1601,7 +1635,7 @@ function initialiseSockets(){
     ************************************/
     tagSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data["function"];
+        var f = data.data.function;
 
         switch(f) {
             case "addTag": {
@@ -1627,7 +1661,7 @@ function initialiseSockets(){
     ************************************/
     collabSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
-        var f = data["function"];
+        var f = data.data.function;
 
         switch(f) {
             case "promoteUser": {
@@ -1675,10 +1709,14 @@ function initialiseSockets(){
         }
     };
 
+
     collabSocket.onopen = function(e){
-        collabSocket.send(JSON.stringify({
+        var data = {
             "function": "newActiveUser",
             "user": loggedInUser,
+        }
+        collabSocket.send(JSON.stringify({
+            "data": data
         }));
     };
 }
@@ -1695,13 +1733,16 @@ function escapeHTMLChars(text){
 function setFalse(){
     this.isTyping = false;
 
-    ideaSocket.send(JSON.stringify({
+    data = {
         'function': 'done_typing',
-        'idea_category': this.index,
+        'ideaCategory': this.index,
         'username': loggedInUser.fields.username,
-        'idea_list_index': this.ideaListIndex,
-        'canvas_pk': canvasPK
+        'ideaListIndex': this.ideaListIndex,
+        'canvasPK': canvasPK        
+    }
 
+    ideaSocket.send(JSON.stringify({
+        'data': data
     }))
     window.clearTimeout(typingTimer)
     typingEntered = false;
@@ -1754,27 +1795,19 @@ function sortIdeas(inIdea, ideaListIndex, tempCategory, oldText){
     }
 }
 
-function initCollabSocket(){
-   
-
-}
-
-
 window.onbeforeunload = function(e){
 
     if (isAuth){
         ideaSocket.close();
         tagSocket.close();
         commentSocket.close();
+        var data = {
+            "function": "removeActiveUser",
+            "user": loggedInUser,
+        }
         collabSocket.send(JSON.stringify({
-                "function": "removeActiveUser",
-                "user": loggedInUser,
+            "data": data   
         }));
-
-
-        collabSocket.close();
-    }
-    else {
-        trialIdeaSocket.close();
+        collabSocket.close();   
     }
 };
