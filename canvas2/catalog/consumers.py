@@ -1,8 +1,6 @@
 from asgiref.sync import async_to_sync
 from django.core import serializers
-from channels.db import database_sync_to_async
 from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer, AsyncConsumer
-from . import views
 import json
 
 # TODO: REMOVE REDUNDANT CONSUMERS, UPDATE WEBSOCKETS ON FRONT END
@@ -12,8 +10,9 @@ class IdeaConsumer(AsyncWebsocketConsumer):
     Consumer for websockets which are for modification of the Idea model
     '''
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['pk'] + "_tag"
+        self.room_name = self.scope['url_route']['kwargs']['pk'] + "_idea"
         self.room_group_name = 'canvas_%s' %self.room_name
+        print(self.room_group_name)
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name

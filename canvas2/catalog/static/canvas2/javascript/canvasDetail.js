@@ -327,10 +327,10 @@ function deleteIdeaFailureCallback(data){
 }
 
 function newIdeaSuccessCallbackAJAX(data){
-        ideaSocket.send(JSON.stringify({
-            'function': 'addIdea',
-            'data': data,
-        }));
+        // ideaSocket.send(JSON.stringify({
+        //     'function': 'addIdea',
+        //     'data': data,
+        // }));
 }
 
 function newIdeaSuccessCallback(data){
@@ -1071,7 +1071,7 @@ Vue.component('idea', {
                     'idea_category': this.index,
                     'canvas_pk': canvasPK
                 }
-                performAjaxPOST(url, data, newIdeaSuccessCallbackAJAX, newIdeaFailureCallback)
+                performAjaxPOST(url, data, function placeholder(){}, newIdeaFailureCallback)
             }
             else {
                 var url = '/catalog/new_trial_idea/'
@@ -1080,6 +1080,7 @@ Vue.component('idea', {
                     'idea_category': this.index,
                     'canvas_pk': canvasPK
                 }
+                // trial user gets no socket
                 performAjaxPOST(url, data, newIdeaSuccessCallback, newIdeaFailureCallback)
             }
         },
@@ -1092,7 +1093,7 @@ Vue.component('idea', {
                     'idea_pk': idea.pk,
                     'idea_list_index': ideaListIndex
                 }
-                performAjaxPOST(url, data, deleteIdeaSuccessCallbackAJAX, deleteIdeaFailureCallback)
+                performAjaxPOST(url, data, function placeholder(){}, deleteIdeaFailureCallback)
             
             }
             else
@@ -1113,7 +1114,7 @@ Vue.component('idea', {
                     'idea_pk': idea.pk,
                     'idea_list_index': ideaListIndex,
                 }
-                performAjaxPOST(url, data, editIdeaSuccessCallbackAJAX, editIdeaFailureCallback)
+                performAjaxPOST(url, data, function placeholder(){}, editIdeaFailureCallback)
 
                 // if a user entered loads of whitespace, then replace current input field with trimmed text
                 event.target.value = text
@@ -1191,7 +1192,7 @@ Vue.component('idea', {
                     'label': selection,
                     'canvas_pk': canvasPK,
                 }
-                performAjaxPOST(url, data, newTagSuccessCallbackAJAX, newTagFailureCallback)
+                performAjaxPOST(url, data, function placeholder(){}, newTagFailureCallback)
                 
                 selection = ""
             }
@@ -1314,7 +1315,7 @@ Vue.component('comment', {
                 'idea_pk': this.currentIdea.pk
             }
             // commentSuccessCallbackAJAX to send data to commentSocket for propagation
-            performAjaxPOST(url, data, commentSuccessCallbackAJAX, addCommentFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, addCommentFailureCallback)
         },
 
         deleteComment(event, comment, commentListIndex){
@@ -1326,7 +1327,7 @@ Vue.component('comment', {
                 'comment_list_index': commentListIndex
             }
             // commentSuccessCallbackAJAX to send data to commentSocket for propagation
-            performAjaxPOST(url, data, commentSuccessCallbackAJAX, deleteCommentFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, deleteCommentFailureCallback)
         },
 
         resolveIndividualComment(event, comment, commentListIndex){
@@ -1338,7 +1339,7 @@ Vue.component('comment', {
                 'comment_list_index': commentListIndex
             }
             // commentSuccessCallbackAJAX to send data to commentSocket for propagation
-            performAjaxPOST(url, data, commentSuccessCallbackAJAX, resolveIndividualCommentFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, resolveIndividualCommentFailureCallback)
         },
 
         resolveAllComments(idea){
@@ -1349,7 +1350,7 @@ Vue.component('comment', {
                 'idea_pk': this.currentIdea.pk
             }
             // commentSuccessCallbackAJAX to send data to commentSocket for propagation
-            performAjaxPOST(url, data, commentSuccessCallbackAJAX, resolveAllCommentsFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, resolveAllCommentsFailureCallback)
         },
 
         getCommentAuthor(comment){
@@ -1498,7 +1499,7 @@ Vue.component('tag-popup', {
                 'label': this.tag.fields.label,
                 'canvas_pk': canvasPK,
             }
-            performAjaxPOST(url, data, deleteTagSuccessCallbackAJAX, deleteTagFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, deleteTagFailureCallback)
             
         }
     },
@@ -1529,7 +1530,7 @@ function initialiseSockets(){
 
     ideaSocket = new WebSocket(
         'ws://' + window.location.host + 
-        '/ws/project/' + projectPK + '/idea/'
+        '/ws/canvas/' + canvasPK + '/idea/'
     );
 
     commentSocket = new WebSocket(

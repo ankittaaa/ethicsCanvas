@@ -218,7 +218,7 @@ Vue.component('collabs', {
                 'project_pk': projectPK
             }
             var url = '/catalog/toggle_public/'
-            performAjaxPOST(url, data, function placeholder(){}, function placeholder(){})
+            performAjaxPOST(url, data, function placeholder(){}, addUserFailureCallback)
             // collabSocket.send(JSON.stringify({
             //     'data': data,
             // }))
@@ -328,7 +328,7 @@ Vue.component('collab-popup', {
                 'name': name
             }
             var url = '/catalog/add_user/'
-            performAjaxPOST(url, data, collabSuccessCallbackAJAX, addUserFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, addUserFailureCallback)
             this.name = ""
         },
 
@@ -340,7 +340,7 @@ Vue.component('collab-popup', {
                 'user_pk': user.pk,
                 'user_list_index': userListIndex
             }
-            performAjaxPOST(url, data, collabSuccessCallbackAJAX, deleteUserFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, deleteUserFailureCallback)
         },
 
         promoteUser: function(event, user){
@@ -350,7 +350,7 @@ Vue.component('collab-popup', {
                 'project_pk': projectPK,
                 'user_pk': user.pk,
             }   
-            performAjaxPOST(url, data, collabSuccessCallbackAJAX, promoteUserFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, promoteUserFailureCallback)
         },
 
         demoteAdmin: function(event, admin, adminListIndex){
@@ -361,7 +361,7 @@ Vue.component('collab-popup', {
                 'user_pk': admin.pk,
                 'admin_list_index': adminListIndex    
             }
-            performAjaxPOST(url, data, collabSuccessCallbackAJAX, demoteAdminFailureCallback)
+            performAjaxPOST(url, data, function placeholder(){}, demoteAdminFailureCallback)
         },
 
     },

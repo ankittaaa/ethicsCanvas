@@ -23,6 +23,10 @@ from .models import Canvas, CanvasTag, Idea, IdeaComment, Project
 from .forms import SignUpForm, IdeaForm, CommentForm, AddUserForm
 from . import consumers
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer, AsyncConsumer
+
 import django.utils.timezone 
 
 # TODO: change serialization methods from needing to pass a singleton list to accepting a single model instance (each marked below)
@@ -45,8 +49,6 @@ This approach was written as a 'quick-fix', a better solution should be investig
 
 def new_canvas(request, canvas_type):
     creator = request.user
-
-
 
     if creator.is_authenticated:
         
@@ -548,12 +550,25 @@ def new_idea(request):
         # singular idea, remove enclosing square brackets
         return_idea = return_idea[1:-1]
 
+        channel_layer = get_channel_layer()
 
-        return JsonResponse({
+        room_name = canvas_pk + "_idea"
+        room_group_name = 'canvas_%s' %room_name
+
+        data = {
             'function': request.POST['function'],
             'idea': return_idea,
-        })
+        }
 
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 
@@ -660,13 +675,29 @@ def delete_idea(request):
         idea.delete()
 
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'returnTagData': return_tag_data,
             'idea': return_idea,
             'ideaCategory': category,
             'ideaListIndex': request.POST['idea_list_index']
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_idea"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
+
 
 
 
@@ -821,7 +852,7 @@ def edit_idea(request):
 
             removed_return_tag_data.append(tag_data)
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'removedReturnTagData': removed_return_tag_data,
             'newReturnTagData': new_return_tag_data,
@@ -829,7 +860,23 @@ def edit_idea(request):
             'oldText': old_text,
             'ideaCategory': idea.category,
             'ideaListIndex': request.POST['idea_list_index'],
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_idea"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
+
 
 
 
@@ -885,12 +932,27 @@ def new_comment(request):
         # singular comment, remove enclosing square brackets
         json_comment = json_comment[1:-1]
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'comment': json_comment,
             'ideaCategory': idea.category,
             'ideaListIndex': request.POST['idea_list_index']
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_comment"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 def delete_comment(request):
@@ -925,12 +987,28 @@ def delete_comment(request):
         comment.delete()
 
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'ideaCategory': category,
             'ideaListIndex': request.POST['idea_list_index'], 
             'commentListIndex': request.POST['comment_list_index'], 
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_comment"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
+
 
 
 def single_comment_resolve(request):
@@ -964,12 +1042,28 @@ def single_comment_resolve(request):
         comment.resolved = True
         comment.save()
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'ideaCategory': category,
             'ideaListIndex': request.POST['idea_list_index'], 
             'commentListIndex': request.POST['comment_list_index'], 
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_comment"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
+
 
 
 def all_comment_resolve(request):
@@ -1001,11 +1095,26 @@ def all_comment_resolve(request):
         IdeaComment.objects.all().filter(idea = idea).update(resolved=True)
         
 
-        return JsonResponse({
+        data = {
             'function': request.POST['function'],
             'ideaCategory': idea.category,
             'ideaListIndex': request.POST['idea_list_index'], 
-        })
+        }
+
+        channel_layer = get_channel_layer()
+
+        room_name = f"{canvas.pk}_comment"
+        room_group_name = 'canvas_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
         
 
 ##################################################################################################################################
@@ -1055,9 +1164,10 @@ def add_user(request):
     Function for addition of user to project
     '''
     if request.method == 'POST':
+        project_pk = request.POST['project_pk']
 
         try:
-            project = Project.objects.get(pk=request.POST['project_pk'])
+            project = Project.objects.get(pk=project_pk)
         except:
             Project.DoesNotExist
             return HttpResponse('Project does not exist.', status=404)
@@ -1105,16 +1215,30 @@ def add_user(request):
                 'user': json_user,
             }
 
-            return JsonResponse(data)
+            channel_layer = get_channel_layer()
+
+            room_name = project_pk + "_collab"
+            room_group_name = 'project_%s' %room_name
+
+            async_to_sync(channel_layer.group_send)(
+                room_group_name,
+                {
+                    'type': 'channel_message',
+                    'data': data
+                }
+            )
+
+            return HttpResponse(status=200)
 
 def delete_user(request):
     '''
     Function for deleting a user from the project.
     '''
     if request.method == 'POST':
+        project_pk = request.POST['project_pk']
 
         try:
-            project = Project.objects.get(pk=request.POST['project_pk'])
+            project = Project.objects.get(pk=project_pk)
         except:
             Project.DoesNotExist
             return HttpResponse('Project does not exist.', status=404)
@@ -1159,7 +1283,20 @@ def delete_user(request):
             'victimIsAdmin': victim_is_admin,
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = project_pk + "_collab"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 def promote_user(request):
@@ -1167,8 +1304,9 @@ def promote_user(request):
     Function for promoting a user to admin status
     '''
     if request.method == 'POST':
+        project_pk = request.POST['project_pk']
         try:
-            project = Project.objects.get(pk=request.POST['project_pk'])
+            project = Project.objects.get(pk=project_pk)
         except:
             Project.DoesNotExist
             return HttpResponse('Project does not exist', status=404)
@@ -1215,7 +1353,20 @@ def promote_user(request):
             'admin': json_user,
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = project_pk + "_collab"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 def demote_user(request):
@@ -1224,8 +1375,9 @@ def demote_user(request):
     For complete deletion, call delete user
     '''
     if request.method == 'POST':
+        project_pk = request.POST['project_pk']
         try:
-            project = Project.objects.get(pk=request.POST['project_pk'])
+            project = Project.objects.get(pk=project_pk)
         except:
             Project.DoesNotExist
             return HttpResponse('Project does not exist', status=404)
@@ -1260,14 +1412,28 @@ def demote_user(request):
             'adminListIndex': request.POST['admin_list_index']
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = project_pk + "_collab"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 def toggle_public(request):
     if request.method == 'POST':
+        project_pk = request.POST['project_pk']
 
         try:
-            project = Project.objects.get(pk=request.POST['project_pk'])
+            project = Project.objects.get(pk=project_pk)
         except:
             Project.DoesNotExist
             return HttpResponse('Project does not exist', status=404)
@@ -1284,7 +1450,20 @@ def toggle_public(request):
             'function': request.POST['function'],
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = project_pk + "_collab"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 
@@ -1396,7 +1575,20 @@ def add_tag(request):
             'tag': json_tag,
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = f"{project.pk}_tag"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 def delete_tag(request):
@@ -1448,7 +1640,20 @@ def delete_tag(request):
             'tag': json_tag,
         }
 
-        return JsonResponse(data)
+        channel_layer = get_channel_layer()
+
+        room_name = f"{project.pk}_tag"
+        room_group_name = 'project_%s' %room_name
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'channel_message',
+                'data': data
+            }
+        )
+
+        return HttpResponse(status=200)
 
 
 ##################################################################################################################################
