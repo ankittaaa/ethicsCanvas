@@ -2,22 +2,33 @@
 {% load static %}
 
 {% block title %}
-<title id="canvas-title"></title>
+
 {% if user.is_authenticated %}
-    <h3>Signed in as {{ user }}</h3>
+
+<nav class="navbar navbar-default">
+  <title id="canvas-title"></title>
+<h3 class="navbar-brand">Signed in as {{ user }}</h3>
 {% endif %}
+
 {% endblock %}
 
 {% block content %}
+</nav>
+
 
 {% if user.is_authenticated %}
 
-<!--==================================================== 
-                TAG COMPONENT 
+<!--====================================================
+                TAG COMPONENT
 =====================================================-->
 
 <div id = "tag-div">
-    <h3 v-if="auth">Canvas Tags:</h3>
+    <h3 v-if="auth"></h3>
+
+    <div id="saved_tags_row">
+
+    <label>Saved Tags for this Canvas...<label>
+
     <tag
         v-if="auth"
         id="tag"
@@ -26,9 +37,9 @@
         v-bind:key="index"
         v-bind:index="index"
     >
-        
-        <li 
-            class="tag-elem" 
+
+        <li
+            class="tag-elem"
             v-if="this.label != null"
         >
             <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
@@ -36,35 +47,39 @@
             </button>
 
 
-            <tag-popup  
+            <tag-popup
                 id="tag-popup"
                 v-bind:label="this.label"
                 v-bind:canvases="canvasList[index]"
                 v-bind:tag="tagList[index]"
                 v-bind:index="index"
                 v-bind:ideas="ideaList[index]"
-                v-show="show" 
+                v-show="show"
                 @close="show=false"
                 @delete-tag="showTag=false" show="false"
             >
             </tag-popup>
-        </li> 
+        </li>
     </tag>
     <tag v-else>
         <p>Disabled for Trial User</p>
     </tag>
+  </div>
+
 </div>
+
 </br>
 
 {% endif %}
 
 
-<!--==================================================== 
-                IDEA COMPONENT 
+<!--====================================================
+                IDEA COMPONENT
 =====================================================-->
 
 <div id="idea-div" >
-    <idea-list id="ideas">
+
+
         <div class="flex-container">
                 <idea
                     v-for="(ideas, index) in ideaList"
@@ -80,13 +95,13 @@
                 >
                 </idea>
         </div>
-    </idea-list>
+
 
 </div>
 
 
-<!--==================================================== 
-                MODAL COMPONENT 
+<!--====================================================
+                MODAL COMPONENT
 =====================================================-->
 
 <!-- FROM https://vuejs.org/v2/examples/modal.html -->
@@ -129,8 +144,9 @@
 {% if user.is_authenticated %}
     <a class="anchor-button" href="{{ project.get_absolute_url }}">
         <button>
-            Return to Project
+            Return to Project<i class="material-icons">face</i>
         </button>
+        <p color="green"><i class="mate-icons">ok</i>Your canvas is saved automatically</p>
     </a>
 {% else %}
     <a class="anchor-button" href="{% url 'index' %}">
@@ -142,5 +158,16 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
+
+ <script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
+ <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css">
+<script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<script src="//unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+<script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+
 {% endblock %}

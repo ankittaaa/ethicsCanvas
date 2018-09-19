@@ -7,6 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="{% static 'canvas2/css/base_style.css' %}">
   <link rel="shortcut icon" href="/static/canvas2/images/canvas-favicon.ico">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
+<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
   {% block title %}<title>Ethics Canvas</title>{% endblock %}
 
 </head>
@@ -14,10 +17,12 @@
   {% block content %}<p></p>{% endblock %}
 
   <script src="{% static 'canvas2/javascript/jquery-3.3.1.js' %}"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
   <script src="{% static 'canvas2/javascript/vue.js' %}"></script>
   <script src="{% static 'canvas2/javascript/boilerplate.js' %}"></script>
   <script>
-    var $j = jQuery.noConflict();    
+    var $j = jQuery.noConflict();
 
   </script>
   {% block scripts %}

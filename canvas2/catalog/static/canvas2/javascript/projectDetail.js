@@ -1,3 +1,4 @@
+
 var admins;
 var adminNames = [];
 var users;
@@ -35,7 +36,7 @@ $j(document).ready(function(data){
                                         COLLABORATOR CALLBACKS
 *************************************************************************************************************/
 
-function collabSuccessCallbackAJAX(data){    
+function collabSuccessCallbackAJAX(data){
     collabSocket.send(JSON.stringify({
         'data': data,
     }));
@@ -56,11 +57,11 @@ function deleteUserSuccessCallback(data){
 
     if (users[userListIndex].fields.username === loggedInUser.fields.username){
         alert("You've been removed from the project");
-        // go back to project view after 2s 
+        // go back to project view after 2s
         setInterval(
-            function(){ 
+            function(){
                 window.location.href="/catalog/project-list/"
-            }, 
+            },
             100);
     }
 
@@ -114,14 +115,14 @@ function newActiveUserCallback(data){
 
     user = data.user;
     activeUsers.push(user.fields.username);
-    
+
     var data = {
         'function': 'sendWholeList',
         'users': activeUsers,
     }
 
     collabSocket.send(JSON.stringify({
-        'data': data,   
+        'data': data,
     }));
 }
 
@@ -129,7 +130,7 @@ function wholeListCallback(data){
 
     if (data.users.length <= activeUsers.length)
         return;
-    else 
+    else
     {
         for (u in data.users){
             if (activeUsers.includes(data.users[u]))
@@ -159,7 +160,7 @@ function initSuccessCallback(data){
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
-    
+
     initCollabSocket();
 
     for (a in admins)
@@ -182,7 +183,7 @@ function initSuccessCallback(data){
             isAdmin: isAdmin,
             active: activeUsers,
         },
-    }) 
+    })
 }
 
 function initFailureCallback(data){
@@ -192,11 +193,11 @@ function initFailureCallback(data){
 /*************************************************************************************************************
                                             COLLAB-LIST COMPONENT
 *************************************************************************************************************/
- 
+
 Vue.component('collabs', {
     props: [],
     delimiters: ['<%', '%>'],
-    
+
     template:'#collabs',
 
     data: function(){
@@ -229,7 +230,7 @@ Vue.component('collabs', {
 /*************************************************************************************************************
                                             COLLAB-POPUP COMPONENT
 *************************************************************************************************************/
- 
+
 Vue.component('collab-popup', {
     props: ['users', 'admins', 'logged-in-user', 'is-admin', 'admin-names', 'active'],
     delimiters: ['<%', '%>'],
@@ -259,65 +260,65 @@ Vue.component('collab-popup', {
         }
     },
 
-    template: ` 
-            <modal> 
-                <div slot="header"> 
-                    <h3>Collaborators</h3> 
-                </div> 
-                 
-                <div slot="body"> 
-                    <h3>Admins</h3> 
-                        <ul> 
-                        <li v-for="(admin, adminListIndex) in adminList" style="list-style-type:none;"> 
-                            <span> 
-                                <% admin.fields.username 
-                                + ( loggedInUser.fields.username === admin.fields.username ? " (you)" : activeList.includes(admin.fields.username) ? " (active)" : "" ) %> 
-                            </span> 
+    template: `
+            <modal>
+                <div slot="header">
+                    <h3>Collaborators</h3>
+                </div>
 
-                            <div  
+                <div slot="body">
+                    <h3>Admins</h3>
+                        <ul>
+                        <li v-for="(admin, adminListIndex) in adminList" style="list-style-type:none;">
+                            <span>
+                                <% admin.fields.username
+                                + ( loggedInUser.fields.username === admin.fields.username ? " (you)" : activeList.includes(admin.fields.username) ? " (active)" : "" ) %>
+                            </span>
 
-                                id="admin-buttons" 
-                                v-if="loggedInUser.fields.username !== admin.fields.username && adminNameList.includes(loggedInUser.fields.username)" 
-                            > 
-                                <button class="delete-admin" @click="deleteUser($event, admin, adminListIndex)">Delete</button> 
-                                <button class="demote-admin" @click="demoteAdmin($event, admin, adminListIndex)">Demote</button> 
-                            </div> 
-                        </li> 
-                    </ul> 
-                     
-                    <h3>Users</h3> 
-                    <ul> 
-                        <li v-for="(user, userListIndex) in this.users" style="list-style-type:none;"> 
-                            <span> 
-                                <% user.fields.username   
-                                + ( loggedInUser.fields.username === user.fields.username ? " (you)" : activeList.includes(user.fields.username) ? " (active)" : "" ) %> 
+                            <div
 
-                            </span> 
-                            <div  
-                                id="user-buttons" 
-                                v-if="loggedInUser.fields.username !== user.fields.username && adminNameList.includes(loggedInUser.fields.username)" 
-                            > 
-                                <button class="delete-user" @click="deleteUser($event, user, userListIndex)">Delete</button> 
-                                <button  
-                                    v-if="adminNameList.indexOf(user.fields.username) === -1" 
-                                    class="promote-user" @click="promoteUser($event, user)" 
-                                >Promote</button> 
-                            </div> 
-                        </li> 
-                    </ul> 
-                    <div v-if="adminNameList.includes(loggedInUser.fields.username)"> 
-                        <h3>Add User</h3> 
-                        <input v-model="name" placeholder="Enter admin username"> 
-                        <button @click="addUser($event, name, this.isAdmin)">Add User</button> 
-                    </div> 
-                </div> 
-                 
-                <div slot="footer"> 
-                    <button class="modal-default-button" @click="$emit( 'close' )"> 
-                    Close 
-                    </button> 
-                </div> 
-            </modal> 
+                                id="admin-buttons"
+                                v-if="loggedInUser.fields.username !== admin.fields.username && adminNameList.includes(loggedInUser.fields.username)"
+                            >
+                                <button class="delete-admin" @click="deleteUser($event, admin, adminListIndex)">Delete</button>
+                                <button class="demote-admin" @click="demoteAdmin($event, admin, adminListIndex)">Demote</button>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <h3>Users</h3>
+                    <ul>
+                        <li v-for="(user, userListIndex) in this.users" style="list-style-type:none;">
+                            <span>
+                                <% user.fields.username
+                                + ( loggedInUser.fields.username === user.fields.username ? " (you)" : activeList.includes(user.fields.username) ? " (active)" : "" ) %>
+
+                            </span>
+                            <div
+                                id="user-buttons"
+                                v-if="loggedInUser.fields.username !== user.fields.username && adminNameList.includes(loggedInUser.fields.username)"
+                            >
+                                <button class="delete-user" @click="deleteUser($event, user, userListIndex)">Delete</button>
+                                <button
+                                    v-if="adminNameList.indexOf(user.fields.username) === -1"
+                                    class="promote-user" @click="promoteUser($event, user)"
+                                >Promote</button>
+                            </div>
+                        </li>
+                    </ul>
+                    <div v-if="adminNameList.includes(loggedInUser.fields.username)">
+                        <h3>Add User</h3>
+                        <input v-model="name" placeholder="Enter admin username">
+                        <button @click="addUser($event, name, this.isAdmin)">Add User</button>
+                    </div>
+                </div>
+
+                <div slot="footer">
+                    <button class="modal-default-button" @click="$emit( 'close' )">
+                    Close
+                    </button>
+                </div>
+            </modal>
         `,
 
     methods: {
@@ -349,7 +350,7 @@ Vue.component('collab-popup', {
                 'function': 'promoteUser',
                 'project_pk': projectPK,
                 'user_pk': user.pk,
-            }   
+            }
             performAjaxPOST(url, data, function placeholder(){}, promoteUserFailureCallback)
         },
 
@@ -359,7 +360,7 @@ Vue.component('collab-popup', {
                 'function': 'demoteUser',
                 'project_pk': projectPK,
                 'user_pk': admin.pk,
-                'admin_list_index': adminListIndex    
+                'admin_list_index': adminListIndex
             }
             performAjaxPOST(url, data, function placeholder(){}, demoteAdminFailureCallback)
         },
@@ -381,7 +382,7 @@ Vue.component('modal', {
 
 function initCollabSocket(){
     collabSocket = new WebSocket(
-        'ws://' + window.location.host + 
+        'ws://' + window.location.host +
         '/ws/project/' + projectPK + '/collab/'
     );
 
