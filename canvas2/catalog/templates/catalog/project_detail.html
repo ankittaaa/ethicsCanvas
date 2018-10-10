@@ -4,20 +4,20 @@
 
 {% block title %}
     <h1>Welcome {{ user.username }}.</h1>
-<!--==================================================== 
-                COLLABORATOR COMPONENT 
+<!--====================================================
+                COLLABORATOR COMPONENT
 =====================================================-->
 <div id = "collab-div">
-    <collabs 
+    <collabs
         id="collabs"
     >
         <div>
             <button class="collab-button" title="collaborators" @click="showCollab=true">Collaborators</button>
             <button v-if="isAdmin" class="collab-button" title="make public" @click="togglePublic()">Toggle Public</button>
 
-            <collab-popup  
+            <collab-popup
                 id='collab-popup-component'
-                v-show="showCollab" 
+                v-show="showCollab"
                 v-bind:users="usersList"
                 v-bind:admins="adminsList"
                 v-bind:admin-names="adminNameList"
@@ -56,7 +56,7 @@
 
     {% endif %}
 
-    
+
         <a class="anchor-button" href="{% url 'new-canvas' canvas_type=0 %}"><button>New Ethics Canvas</button></a>
         <a class="anchor-button" href="{% url 'new-canvas' canvas_type=1 %}"><button>New Business Canvas</button></a>
         <a class="anchor-button" href="{% url 'new-canvas' canvas_type=2 %}"><button>New Privacy Canvas</button></a>
@@ -68,8 +68,8 @@
 
 
 
-<!--==================================================== 
-                MODAL COMPONENT 
+<!--====================================================
+                MODAL COMPONENT
 =====================================================-->
 
 <!-- FROM https://vuejs.org/v2/examples/modal.html -->
@@ -113,6 +113,3 @@
 {% block scripts %}
 <script src="{% static 'canvas2/javascript/projectDetail.js' %}"></script>
 {% endblock %}
-
-
-

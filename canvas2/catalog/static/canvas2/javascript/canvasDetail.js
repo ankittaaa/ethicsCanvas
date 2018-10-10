@@ -1,9 +1,10 @@
 /*
 ***************************************************
-Do the tag bar thing on the canvas PAGE so that it allows user to navigate back and add and remove colabs accordinglyy
+
 
 
 */
+
 
 
 
@@ -15,46 +16,43 @@ Do the tag bar thing on the canvas PAGE so that it allows user to navigate back 
 */
 var canvasPK;
 var projectPK;
-
-var ethicsTitles = [
-    {id:"Individuals Affected",popup:"Who use your product or service? Who are affected by its use? Are they men/women,of different ages,etc?"},
-        {id:"Behaviour",popup:"How might people's behaviour change because of your product or service? Thei habits, time schedules, choice of activities, etc?"},
-      {id:"What can we do?",popup:"What are the most important ethical impacts you found? How can you address these by changing your design, organisation, or by proposing broader changes?"},
-      {id:"Worldviews",popup:"How might people's worldviews be affected by your product or service? Their ideas about consumption, religion, work, etc?"},
-      {id:"Groups Affected",popup:"Which groups are involved in the design, production, distribution and use of your product or service? Which groups might be affected by it? Are these work-related organisation, interest groups, etc?"},
-      {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-
+var ethicsCategories = [
+    "individuals-affected",
+    "behaviour",
+    "relations",
+    "what-can-we-do",
+    "world-views",
+    "group-conflicts",
+    "groups-affected",
+    "product-or-service-failure",
+    "problematic-use-of-resources",
+    "uncategorised"
 ];
 
-var businessTitles = [
-  {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
+var businessCategories = [
+    "key-partners",
+    "key-activities",
+    "key-resources",
+    "value-propositions",
+    "customer-relationships",
+    "channels",
+    "customer-segments",
+    "cost-structure",
+    "revenue-streams",
+    "uncategorised"
 ];
-//not yet defined about the columns it would have
-var privacyTitles = [
-  {id:"Individuals Affected",popup:"hey"},
-      {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
-    {id:"Individuals Affected",popup:"hey"},
 
+var privacyCategories = [
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "TBD",
+    "uncategorised"
 ];
 
 var months = [
@@ -72,47 +70,46 @@ var months = [
     "December",
 ];
 
-var theTitles;
+var theCategories;
 
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the
 // 'j' indices will be an object encapulating an idea and an array of its comments ( { idea, comments[] } )
-//let it remain this way in a form of 2d array
+
 var sortedIdeas = new Array(10);
 var typingBools = new Array(10);
 var typingUser = new Array(10);
 
 
-
+var thisCanvas;
+var allTags = [];
+var tags = [];
+var taggedCanvases = [];
+var allTaggedIdeas = [];
+// var taggedIdeas;
+var ideas;
+var comments;
 
 var users;
 var admins;
-var nameAdmins = [];
-var UsersActive = [];
+var adminNames = [];
+var activeUsers = [];
 var loggedInUser
 var isAuth;
 var isAdmin;
 var selection;
 var currentURL;
 
-var thisCanvas;
-var allTags = [];
-var tags = [];
-var tagedCanvas = [];
-var tagedideas = [];
-var ideas;
-var comments;
-
 var tagButtons;
 var ideaListComponent;
 
-var ideaWebsocket;
-var commentWebsocket;
-var tagWebsocket;
-var collabWebsocket;
+var ideaSocket;
+var commentSocket;
+var tagSocket;
+var collabSocket;
 
 
 var typingEntered = false;
-// initialising the variable as a timeout handler
+// initialise this variable as a timeout handle
 var typingTimer = setInterval(
             function(){ console.log()}
             , 0);
@@ -126,7 +123,7 @@ $j(document).ready(function(data){
     $j.ajaxSetup({
         beforeSend: function(xhr, settings) {
             if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
-                // It sends token localy that is relative URLs
+                // Only send the token to relative URLs i.e. locally.
                 xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
             }
         }
@@ -139,7 +136,7 @@ $j(document).ready(function(data){
         "operation": " "
     };
 
-    // The initial AJAX request to render information on the page
+    // INITIAL AJAX REQUEST TO GET CANVAS INFORMATION AND RENDER IT TO PAGE
     performAjaxGET(currentURL, data, initSuccessCallback, initFailureCallback);
 });
 
@@ -183,9 +180,9 @@ function deleteUserSuccessCallback(data){
     var userListIndex = JSON.parse(data.userListIndex);
     var victimIsAdmin = JSON.parse(data.victimIsAdmin);
 
-    if (users[userListIndex].fields.username === UserLoggedIn .fields.username){
+    if (users[userListIndex].fields.username === loggedInUser.fields.username){
         alert("You've been removed from the project");
-        // timeout handler to go back to project page after 2 secs
+        // go back to project view after 2s
         setInterval(
             function(){
                 window.location.href="/catalog/project-list/"
@@ -194,7 +191,8 @@ function deleteUserSuccessCallback(data){
     }
     users.splice(userListIndex, 1);
     /*
-        We dont require admin - permission  -  callbacks in here unlike the previous page
+        Unlike the callback in projectDetail, we don't care if it's an admin as there are no
+        admin-permission-required component operations in canvasDetail.
     */
 }
 
@@ -206,28 +204,28 @@ function deleteUserFailureCallback(data){
 function newActiveUserCallback(data){
 
     user = data.user;
-    UsersActive.push(user.fields.username);
+    activeUsers.push(user.fields.username);
     data = {
         'function': 'sendWholeList',
-        'users': UsersActive,
+        'users': activeUsers,
     }
 
-    collabWebsocket.send(JSON.stringify({
+    collabSocket.send(JSON.stringify({
         'data': data
     }));
 }
 
 function wholeListCallback(data){
 
-    if (data.users.length <= UsersActive.length)
+    if (data.users.length <= activeUsers.length)
         return;
     else
     {
         for (u in data.users){
-            if (UsersActive.includes(data.users[u]))
+            if (activeUsers.includes(data.users[u]))
                 continue;
             else
-                UsersActive.push(data.users[u]);
+                activeUsers.push(data.users[u]);
         }
     }
 }
@@ -235,19 +233,19 @@ function wholeListCallback(data){
 function removeActiveUserCallback(data){
 
     user = data.user;
-    i = UsersActive.indexOf(user.fields.username);
+    i = activeUsers.indexOf(user.fields.username);
 
     if (i > -1)
-        UsersActive.splice(i, 1);
+        activeUsers.splice(i, 1);
 }
 
 
 function promoteUserSuccessCallback(data){
     var tempAdmin = JSON.parse(data.admin);
     admins.push(tempAdmin);
-    nameAdmins.push(tempAdmin.fields.username);
+    adminNames.push(tempAdmin.fields.username);
 
-    if (UserLoggedIn .fields.username === tempAdmin.fields.username)
+    if (loggedInUser.fields.username === tempAdmin.fields.username)
     {
         isAdmin = true;
         ideaListComponent.admin = true;
@@ -260,11 +258,11 @@ function promoteUserFailureCallback(data){
 
 function demoteAdminSuccessCallback(data){
     var adminListIndex = JSON.parse(data.adminListIndex);
-    var victimName = nameAdmins[adminListIndex];
+    var victimName = adminNames[adminListIndex];
     admins.splice(adminListIndex, 1);
-    nameAdmins.splice(adminListIndex, 1);
+    adminNames.splice(adminListIndex, 1);
 
-    if (UserLoggedIn .fields.username === victimName)
+    if (loggedInUser.fields.username === victimName)
     {
         isAdmin = false;
         ideaListComponent.admin = false;
@@ -279,7 +277,7 @@ function demoteAdminFailureCallback(data){
                                                 IDEA CALLBACKS
 *************************************************************************************************************/
 function deleteIdeaSuccessCallbackAJAX(data){
-    ideaWebsocket.send(JSON.stringify({
+    ideaSocket.send(JSON.stringify({
         'function': 'deleteIdea',
         'data': data,
     }));
@@ -290,7 +288,7 @@ function deleteIdeaSuccessCallback(data){
     for (d in data.returnTagData){
 
         var dataForTagRemoveSuccess = {
-            'tagedCanvas': (data.returnTagData[d].tagedCanvas),
+            'taggedCanvases': (data.returnTagData[d].taggedCanvases),
             'taggedIdeas': (data.returnTagData[d].taggedIdeas),
             'tag': (data.returnTagData[d].tags)
         };
@@ -329,7 +327,7 @@ function deleteIdeaFailureCallback(data){
 }
 
 function newIdeaSuccessCallbackAJAX(data){
-        // ideaWebsocket.send(JSON.stringify({
+        // ideaSocket.send(JSON.stringify({
         //     'function': 'addIdea',
         //     'data': data,
         // }));
@@ -379,7 +377,7 @@ function newIdeaFailureCallback(data){
 }
 
 function editIdeaSuccessCallbackAJAX(data){
-    ideaWebsocket.send(JSON.stringify({
+    ideaSocket.send(JSON.stringify({
             'function': 'modifyIdea',
             'data': data,
         }));
@@ -400,7 +398,7 @@ function editIdeaSuccessCallback(data){
     for (d in data.newReturnTagData){
 
         var dataForTagAddition = {
-            'tagedCanvas': (data.newReturnTagData[d].newtagedCanvas),
+            'taggedCanvases': (data.newReturnTagData[d].newTaggedCanvases),
             'taggedIdeas': (data.newReturnTagData[d].newTaggedIdeas),
             'tag': (data.newReturnTagData[d].newTag)
         };
@@ -409,7 +407,7 @@ function editIdeaSuccessCallback(data){
 
     for (d in data.removedReturnTagData){
         var dataForTagRemoval = {
-            'tagedCanvas': (data.removedReturnTagData[d].removedtagedCanvas),
+            'taggedCanvases': (data.removedReturnTagData[d].removedTaggedCanvases),
             'taggedIdeas': (data.removedReturnTagData[d].removedTaggedIdeas),
             'tag': (data.removedReturnTagData[d].removedTag)
         };
@@ -433,7 +431,7 @@ function typingCallback(data, f){
     var ideaListIndex = data.ideaListIndex;
 
     // do nothing, the logged in user knows when they're typing
-    if (tempName == UserLoggedIn .fields.username)
+    if (tempName == loggedInUser.fields.username)
         return;
 
     if (f === "typing"){
@@ -454,7 +452,7 @@ function typingCallback(data, f){
 
 
 function commentSuccessCallbackAJAX(data){
-    commentWebsocket.send(JSON.stringify({
+    commentSocket.send(JSON.stringify({
         'data': data,
     }))
 }
@@ -522,7 +520,7 @@ function resolveAllCommentsFailureCallback(data){
 *************************************************************************************************************/
 
 function newTagSuccessCallbackAJAX(data){
-    tagWebsocket.send(JSON.stringify({
+    tagSocket.send(JSON.stringify({
         'data': data,
     }))
 }
@@ -530,7 +528,7 @@ function newTagSuccessCallbackAJAX(data){
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
     var newTag = JSON.parse(data.tag);
-    var temptagedCanvas = JSON.parse(data.tagedCanvas);
+    var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
     var i = -1;
     var canvasTagged = false;
@@ -543,8 +541,8 @@ function newTagSuccessCallback(data){
         }
     }
 
-    for (tc in temptagedCanvas){
-        if (temptagedCanvas[tc].pk == canvasPK){
+    for (tc in tempTaggedCanvases){
+        if (tempTaggedCanvases[tc].pk == canvasPK){
             canvasTagged = true;
             break;
         }
@@ -555,21 +553,21 @@ function newTagSuccessCallback(data){
         if (i === -1){
             if (tags[0].pk !== null){
                 tags.push(newTag);
-                tagedCanvas.push(temptagedCanvas);
-                tagedideas.push(tempTaggedIdeas);
+                taggedCanvases.push(tempTaggedCanvases);
+                allTaggedIdeas.push(tempTaggedIdeas);
             }
             else {
                 tags.splice(0, 1, newTag);
-                tagedCanvas.splice(0, 1, temptagedCanvas);
-                tagedideas.splice(0, 1, tempTaggedIdeas);
+                taggedCanvases.splice(0, 1, tempTaggedCanvases);
+                allTaggedIdeas.splice(0, 1, tempTaggedIdeas);
             }
         }
 
 
         // if the tag DOES exist (index > -1) and the canvas is tagged by it, update it
         else{
-            tagedCanvas.splice(i, 1, temptagedCanvas);
-            tagedideas.splice(i, 1, tempTaggedIdeas);
+            taggedCanvases.splice(i, 1, tempTaggedCanvases);
+            allTaggedIdeas.splice(i, 1, tempTaggedIdeas);
         }
     }
 
@@ -589,7 +587,7 @@ function removeTag(data){
     // instead the set of ideas is altered.
 
     var victimTag = JSON.parse(data.tag);
-    var temptagedCanvas = JSON.parse(data.tagedCanvas);
+    var tempTaggedCanvases = JSON.parse(data.taggedCanvases);
     var tempTaggedIdeas = JSON.parse(data.taggedIdeas);
 
     var tagExists = false;
@@ -603,8 +601,8 @@ function removeTag(data){
             tagExists = true;
             tagIndex = i;
         }
-        for (j in temptagedCanvas){
-            if (temptagedCanvas[j].pk == canvasPK){
+        for (j in tempTaggedCanvases){
+            if (tempTaggedCanvases[j].pk == canvasPK){
                 canvasTagged = true;
             }
         }
@@ -615,8 +613,8 @@ function removeTag(data){
         if (tags.length > 0 && tags.length != 1){
             // simply remove the tag if there will be more remaining
             tags.splice(tagIndex, 1);
-            tagedCanvas.splice(tagIndex, 1);
-            tagedideas.splice(tagIndex, 1);
+            taggedCanvases.splice(tagIndex, 1);
+            allTaggedIdeas.splice(tagIndex, 1);
         }
         else {
             // if removing last tag, replace with null tag
@@ -626,15 +624,15 @@ function removeTag(data){
             tempTag.fields.date_modified = null;
             tempTag.fields.label = null;
             tags.splice(0, 1, tempTag);
-            tagedCanvas.splice(0, 1);
-            tagedideas.splice(0, 1);
+            taggedCanvases.splice(0, 1);
+            allTaggedIdeas.splice(0, 1);
         }
         return;
     }
     // if the tag does exist and the canvas is tagged by it, update it to reflect removal form other canvases
     else if (tagExists === true && canvasTagged === true){
-        tagedCanvas.splice(tagIndex, 1, temptagedCanvas);
-        tagedideas.splice(tagIndex, 1, tempTaggedIdeas);
+        taggedCanvases.splice(tagIndex, 1, tempTaggedCanvases);
+        allTaggedIdeas.splice(tagIndex, 1, tempTaggedIdeas);
 
     }
 
@@ -643,7 +641,7 @@ function removeTag(data){
 }
 
 function deleteTagSuccessCallbackAJAX(data){
-    tagWebsocket.send(JSON.stringify({
+    tagSocket.send(JSON.stringify({
         'data': data,
     }))
 }
@@ -664,8 +662,8 @@ function deleteTagSuccessCallback(data){
         if (tags.length > 1){
             // if there'll be more tags left, just delete it
             tags.splice(i, 1);
-            tagedCanvas.splice(i, 1);
-            tagedideas.splice(i, 1);
+            taggedCanvases.splice(i, 1);
+            allTaggedIdeas.splice(i, 1);
         }
         else {
             // if last tag, replace with null tag
@@ -675,8 +673,8 @@ function deleteTagSuccessCallback(data){
             tempTag.fields.date_modified = null;
             tempTag.fields.label = null;
             tags.splice(i, 1, tempTag);
-            tagedCanvas.splice(0, 1);
-            tagedideas.splice(0, 1);
+            taggedCanvases.splice(0, 1);
+            allTaggedIdeas.splice(0, 1);
         }
     }
 
@@ -712,7 +710,7 @@ function initSuccessCallback(data){
 
     allTags = JSON.parse(data.allTags);
 
-    UserLoggedIn  = JSON.parse(data.UserLoggedIn );
+    loggedInUser = JSON.parse(data.loggedInUser);
     projectPK = JSON.parse(data.projectPK);
     thisCanvas = JSON.parse(data.thisCanvas);
 
@@ -720,7 +718,7 @@ function initSuccessCallback(data){
     users = JSON.parse(data.users);
     admins = JSON.parse(data.admins);
 
-    if (UserLoggedIn .length == 0){
+    if (loggedInUser.length == 0){
         isAuth = false;
     }
 
@@ -763,9 +761,9 @@ function initSuccessCallback(data){
     if (isAuth === true){
 
         for (a in admins)
-        nameAdmins.push(admins[a].fields.username);
+        adminNames.push(admins[a].fields.username);
 
-        if (nameAdmins.indexOf(UserLoggedIn .fields.username) !== -1)
+        if (adminNames.indexOf(loggedInUser.fields.username) !== -1)
             isAdmin = true;
         else
             isAdmin = false;
@@ -776,16 +774,16 @@ function initSuccessCallback(data){
         // if tags exist - the zeroth tag won't be null
         if (inTags.pk === null){
             tags.push(inTags);
-            tagedideas = [];
-            tagedCanvas = [];
+            allTaggedIdeas = [];
+            taggedCanvases = [];
         }
 
         else {
             var i;
             for (i = 0; i < inTags.length; i++){
                 tags.push((inTags[i]));
-                tagedideas.push(JSON.parse(data.tagedideas[i]));
-                tagedCanvas.push(JSON.parse(data.tagedCanvas[i]));
+                allTaggedIdeas.push(JSON.parse(data.allTaggedIdeas[i]));
+                taggedCanvases.push(JSON.parse(data.taggedCanvases[i]));
 
             }
         }
@@ -793,26 +791,26 @@ function initSuccessCallback(data){
     else {
         $j('#canvas-title').html("Trial Canvas");
 
-        // only want to initialise the ideaWebsocket so that new idea JSON objects can be acquired - NOT ADDED TO A CANVAS
+        // only want to initialise the ideaSocket so that new idea JSON objects can be acquired - NOT ADDED TO A CANVAS
     }
 
     if (canvasType === 0)
-        theTitles = ethicsTitles;
+        theCategories = ethicsCategories;
     else if (canvasType === 1)
-        theTitles = businessTitles;
+        theCategories = businessCategories;
     else if (canvasType === 2)
-        theTitles = privacyTitles;
+        theCategories = privacyCategories;
 
 
     ideaListComponent = new Vue({
         el: '#idea-div',
         data: {
             ideaList: sortedIdeas,
-            categories: theTitles,
+            categories: theCategories,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
-            adminNameList: nameAdmins,
+            adminNameList: adminNames,
         }
     })
 
@@ -821,8 +819,8 @@ function initSuccessCallback(data){
             el: '#tag-div',
             data: {
                 tagList: tags,
-                canvasList: tagedCanvas,
-                ideaList: tagedideas,
+                canvasList: taggedCanvases,
+                ideaList: allTaggedIdeas,
                 show: false,
                 auth: isAuth,
             },
@@ -833,7 +831,6 @@ function initSuccessCallback(data){
 function initFailureCallback(data){
     console.log(data);
 }
-
 /*************************************************************************************************************
 **************************************************************************************************************
                                             VUE COMPONENTS
@@ -856,46 +853,11 @@ Vue.component('idea-list', {
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
-            adminNameList: nameAdmins,
+            adminNameList: adminNames,
         }
     },
 
-    template:`
-    <div>
-    <table>
-    <tr>
-    <td rowspan="2" bgcolor="#a67de0" valign="top" >
-    </td>
-    <td class="one" bgcolor="#85ade5" valign="top">
-    </td>
-    <td rowspan="2" bgcolor="#8b99e0" valign="top" >
-    </td>
-    <td class="one"   bgcolor="#15af97" valign="top" >
-    </td>
-     <td rowspan="2" bgcolor="#a67de0" valign="top" >
-     </td>
-    </tr>
-    <tr>
-    <td bgcolor="#aed581" valign="top" >
-   </td>
-   <td bgcolor="#85ade5" valign="top" >
-   </td>
-   </tr>
-    </table>
-    <table>
-    <tr>
-     <td class="three" bgcolor="#85ade5" valign="top" >
-     </td>
-        <td class="three" bgcolor="#aed581" valign="top" >
-        </td>
-        </tr>
-    <tr>
-      <td class="two" colspan="2" bgcolor="#a67de0" valign="top" >
-      </td>
-      </tr>
-      </table>
-    </div>
-  `,
+    template:`#ideas`,
 
     watch: {
     },
@@ -923,18 +885,21 @@ Vue.component('idea', {
             isTypingBools: this.isTyping,
             typingUser: this.user,
             categoryList: this.categories,
-            max:100
+            max:100,
+            char:"characters remaining",
+            isActive:false
         }
     },
 
-    template:`    <div class="masonry">
-                 <div v-bind:class="this.flexClass" >
+    template:`    <div class="grid">
+                 <div v-bind:class="this.flexClass" class="grid" >
 
-                    <h3><% title()%>&emsp;&emsp;&emsp;&emsp;
-                    <hr><h3><strong><% popup()%></strong></h3>
+                    <h3><% title()%>&emsp;&emsp;&emsp;&emsp;<hr>
+                    <!--<hr><h3><strong><% popup()%></strong></h3>
+                    <button id="showDesc" class="btn btn-link" @click="showDescr($event)">
+                    <i class="material-icons" style="font-size: 18px">help</i>  </button>-->
 
-                    <i class="material-icons">help</i>
-                    </h3>
+                  </h3>
 
 
                     <div class="idea-container" v-if="escapedIdeas[0]" >
@@ -950,15 +915,16 @@ Vue.component('idea', {
                                     placeholder="Enter an idea"/>
 
                                     <p id="user-typing" v-show="isTypingBools[ideaListIndex] == true">
-                                        <%typingUser[ideaListIndex]%> is typing...
-                                    <p v-text="(max - idea.fields.text.length)"  color="white"><p>characters remaining</p></p>
+                                        <%typingUser[ideaListIndex]%> is typing...</p>
+                                    <h6 v-text="(max - idea.fields.text.length)"/><h6 v-text="char"/>
+
                             </div>
 
-                            <div class='idea-buttons'>
+
 
                             <div v-if="isAuth">
                                 <button id="comment-button" class="btn btn-link" v-on:click="displayMe(ideaListIndex)">
-                                    <span> <i class="material-icons">chat_bubble</i>(<% commentList[ideaListIndex].length %>)</span>
+                                    <span> <i class="material-icons" style="font-size: 18px; color:white;">chat_bubble</i>(<% commentList[ideaListIndex].length %>)</span>
                                 </button>
                                 <comment v-show=showCommentThread[ideaListIndex] v-bind:commentList="commentList[ideaListIndex]" v-bind:idea="idea" v-bind:ideaListIndex="ideaListIndex" v-bind:admins="adminNameList" @close="displayMe(ideaListIndex)">
                                 </comment>
@@ -966,34 +932,32 @@ Vue.component('idea', {
 
                             <div v-else>
                                 <button id="comment-button"  class="btn btn-link" title="Sign up to use this feature" disabled>
-                                <i class="material-icons">chat_bubble</i>
+                                <i class="material-icons" style="font-size: 18px; color:white;">chat_bubble</i>
                                 </button>
                             </div>
                               <div v-if="isAuth">
                                 <button id="move-idea" class="btn btn-link" v-on:click="movingidea()">
-                                <i class="material-icons">format_list_bulleted</i>
+                                <i class="material-icons" style="font-size: 18px; color:white;">format_list_bulleted</i>
                                 </button>
                                 </div>
                                 <div v-else>
                                 <button id="move-idea" class="btn btn-link" title="Sign up to use this feature" disabled>
-                                    <i class="material-icons">format_list_bulleted</i>
+                                    <i class="material-icons" style="font-size: 18px; color:white;">format_list_bulleted</i>
                                     </button>
                                 </div>
-                                <button class="btn btn-link" @click="upIdea($event, idea, ideaListIndex)"><i class="material-icons">keyboard_arrow_up</i></button>
-                                <button class="btn btn-link"><i class="material-icons">keyboard_arrow_down</i></button>
-                                <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons">highlight_off</i><br/></button>
 
-                                   <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  color:white v-on:click="newTag()"><br/><i class="material-icons">local_offer</i>Tag Selected Term</button>
-                            </div>
+                                <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons" style="font-size: 18px; color:white;">highlight_off</i><br/></button>
+
+                                   <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  style="color:white;" v-on:click="newTag()"><br/><i class="material-icons" style="font-size: 18px; color:white;">local_offer</i>Tag Selected Term</button>
+
                            </div>
 
                             </div>
-                    <div class="main-idea-buttons">
-                         <a href="#"  @click="newIdea($event)" style="color:white"> <i class="material-icons">lightbulb_outline</i>Add an idea</a>
+                        <div class="main-idea-buttons">
+                         <a href="#ideaListIndex" @click="newIdea($event)" style="color:white"> <i class="material-icons" style="font-size: 18px; color:white;">lightbulb_outline</i>Add an idea</a>
                          </div>
-
-              </div>
-              </div>
+                         </div>
+                         </div>
 
     `,
 
@@ -1021,7 +985,7 @@ Vue.component('idea', {
         },
 
         adminNameList: function(){
-            return this.nameAdmins
+            return this.adminNames
         },
 
         flexClass: function(){
@@ -1115,22 +1079,19 @@ Vue.component('idea', {
         },
 
         title: function(){
-                 var cat = this.categoryList[this.index]
+             var cat = this.categoryList[this.index]
+             var newCat = []
+             var returnCat = ''
 
-                 var returnCat = []
-                 var returntitle =[]
-                 var final = ''
-                  var i
-               for (c in cat){
+             cat = cat.split('-')
 
-                     returntitle =  cat[c].slice( 0,cat[c].length)
-                      returnCat +=  cat[c].slice( 0,cat[c].length)
+             for (c in cat){
+                 var upperCat = cat[c][0].toUpperCase()
+                 returnCat += upperCat + cat[c].slice(1, cat[c].length) + ' '
+             }
 
-                }
-                       for(i=0;i<20;i++)
-                       final +=  returnCat[i]
-                 return final
-             },
+             return returnCat
+         },
         popup: function(){
             var cate = this.categoryList[this.index]
 
@@ -1145,6 +1106,13 @@ Vue.component('idea', {
             return returnCate
         },
 
+      showDescr:function(event){
+
+        $("showDesc").click(function(){
+        alert("hety");
+        });
+
+      },
         ideaString: function(idea){
             var string = escapeChars(idea.fields.text)
             // the following is to convert elements like &apos back to " ' "
@@ -1260,12 +1228,12 @@ Vue.component('idea', {
                     data = {
                         'function': 'typing',
                         'ideaCategory': this.index,
-                        'username': UserLoggedIn .fields.username,
+                        'username': loggedInUser .fields.username,
                         'ideaListIndex': ideaListIndex,
                         'canvasPK': canvasPK
                     }
 
-                    ideaWebsocket.send(JSON.stringify({
+                    ideaSocket.send(JSON.stringify({
                         'data': data,
                     }))
                 }
@@ -1275,7 +1243,7 @@ Vue.component('idea', {
                 // timeout function for clearing the <user> is typing message on other windows - waits 2s
                 typingTimer = window.setInterval(
                     setFalse.bind({isTyping: this.isTypingBools, vm: this, ideaListIndex: ideaListIndex, index: this.index})
-                    , 2000
+                    , 1000
                 )
             }
         },
@@ -1380,11 +1348,11 @@ Vue.component('comment', {
         selfIndex: function(){
             return this.ideaListIndex
         },
-        nameAdmins: function(){
+        adminNames: function(){
             return this.admins
         },
         isAdmin: function(){
-            return (this.nameAdmins.includes(UserLoggedIn .fields.username))
+            return (this.adminNames.includes(loggedInUser .fields.username))
         },
     },
 
@@ -1417,7 +1385,7 @@ Vue.component('comment', {
                 'idea_list_index': this.selfIndex,
                 'idea_pk': this.currentIdea.pk
             }
-            // commentSuccessCallbackAJAX to send data to commentWebsocket for propagation
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
             performAjaxPOST(url, data, function placeholder(){}, addCommentFailureCallback)
         },
 
@@ -1429,7 +1397,7 @@ Vue.component('comment', {
                 'idea_list_index': this.selfIndex,
                 'comment_list_index': commentListIndex
             }
-            // commentSuccessCallbackAJAX to send data to commentWebsocket for propagation
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
             performAjaxPOST(url, data, function placeholder(){}, deleteCommentFailureCallback)
         },
 
@@ -1441,7 +1409,7 @@ Vue.component('comment', {
                 'idea_list_index': this.selfIndex,
                 'comment_list_index': commentListIndex
             }
-            // commentSuccessCallbackAJAX to send data to commentWebsocket for propagation
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
             performAjaxPOST(url, data, function placeholder(){}, resolveIndividualCommentFailureCallback)
         },
 
@@ -1452,7 +1420,7 @@ Vue.component('comment', {
                 'idea_list_index': this.selfIndex,
                 'idea_pk': this.currentIdea.pk
             }
-            // commentSuccessCallbackAJAX to send data to commentWebsocket for propagation
+            // commentSuccessCallbackAJAX to send data to commentSocket for propagation
             performAjaxPOST(url, data, function placeholder(){}, resolveAllCommentsFailureCallback)
         },
 
@@ -1570,10 +1538,10 @@ Vue.component('tag', {
         return {
             show: false,
             showTag: true,
-            canvasList: tagedCanvas,
+            canvasList: taggedCanvases,
             tagList: tags,
             auth: isAuth,
-            ideaList: tagedideas,
+            ideaList: allTaggedIdeas,
         }
     },
 
@@ -1704,24 +1672,24 @@ function initialiseSockets(){
 *********************************************************************
 *********************************************************************/
 
-    ideaWebsocket = new WebSocket(
+    ideaSocket = new WebSocket(
         'ws://' + window.location.host +
         '/ws/canvas/' + canvasPK + '/idea/'
     );
 
-    commentWebsocket = new WebSocket(
+    commentSocket = new WebSocket(
         'ws://' + window.location.host +
         '/ws/canvas/' + canvasPK + '/comment/'
     );
 
 
-    tagWebsocket = new WebSocket(
+    tagSocket = new WebSocket(
         'ws://' + window.location.host +
         '/ws/project/' + projectPK + '/tag/'
     );
 
 
-    collabWebsocket = new WebSocket(
+    collabSocket = new WebSocket(
         'ws://' + window.location.host +
         '/ws/project/' + projectPK + '/collab/'
     );
@@ -1734,7 +1702,7 @@ function initialiseSockets(){
     /***********************************
                 IDEA SOCKET
     ************************************/
-    ideaWebsocket.onmessage = function(e){
+    ideaSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data.data.function;
 
@@ -1771,7 +1739,7 @@ function initialiseSockets(){
     /***********************************
                 COMMENT SOCKET
     ************************************/
-    commentWebsocket.onmessage = function(e){
+    commentSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data.data.function;
 
@@ -1810,7 +1778,7 @@ function initialiseSockets(){
     /***********************************
                 TAG SOCKET
     ************************************/
-    tagWebsocket.onmessage = function(e){
+    tagSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data.data.function;
 
@@ -1836,7 +1804,7 @@ function initialiseSockets(){
     /***********************************
                 COLLAB SOCKET
     ************************************/
-    collabWebsocket.onmessage = function(e){
+    collabSocket.onmessage = function(e){
         var data = JSON.parse(e.data);
         var f = data.data.function;
 
@@ -1887,12 +1855,12 @@ function initialiseSockets(){
     };
 
 
-    collabWebsocket.onopen = function(e){
+    collabSocket.onopen = function(e){
         var data = {
             "function": "newActiveUser",
-            "user": UserLoggedIn ,
+            "user": loggedInUser ,
         }
-        collabWebsocket.send(JSON.stringify({
+        collabSocket.send(JSON.stringify({
             "data": data
         }));
     };
@@ -1913,12 +1881,12 @@ function setFalse(){
     data = {
         'function': 'done_typing',
         'ideaCategory': this.index,
-        'username': UserLoggedIn .fields.username,
+        'username': loggedInUser .fields.username,
         'ideaListIndex': this.ideaListIndex,
         'canvasPK': canvasPK
     }
 
-    ideaWebsocket.send(JSON.stringify({
+    ideaSocket.send(JSON.stringify({
         'data': data
     }))
     window.clearTimeout(typingTimer)
@@ -1975,16 +1943,16 @@ function sortIdeas(inIdea, ideaListIndex, tempCategory, oldText){
 window.onbeforeunload = function(e){
 
     if (isAuth){
-        ideaWebsocket.close();
-        tagWebsocket.close();
-        commentWebsocket.close();
+        ideaSocket.close();
+        tagSocket.close();
+        commentSocket.close();
         var data = {
             "function": "removeActiveUser",
-            "user": UserLoggedIn ,
+            "user": loggedInUser ,
         }
-        collabWebsocket.send(JSON.stringify({
+        collabSocket.send(JSON.stringify({
             "data": data
         }));
-        collabWebsocket.close();
+        collabSocket.close();
     }
 };

@@ -1,4 +1,3 @@
-
 var admins;
 var adminNames = [];
 var users;

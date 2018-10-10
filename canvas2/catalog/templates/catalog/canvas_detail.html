@@ -2,12 +2,26 @@
 {% load static %}
 
 {% block title %}
-
+  <title id="canvas-title"></title>
 {% if user.is_authenticated %}
 
 <nav class="navbar navbar-default">
-  <title id="canvas-title"></title>
+
 <h3 class="navbar-brand">Signed in as {{ user }}</h3>
+
+    <a class="anchor-button" href="{{ project.get_absolute_url }}">
+        <button>
+            Return to Project<i class="material-icons">face</i>
+        </button>
+
+    </a>
+{% else %}
+    <a class="anchor-button" href="{% url 'index' %}">
+        <button>
+            Return to Landing Page
+        </button>
+    </a>
+
 {% endif %}
 
 {% endblock %}
@@ -141,20 +155,7 @@
 
 
 
-{% if user.is_authenticated %}
-    <a class="anchor-button" href="{{ project.get_absolute_url }}">
-        <button>
-            Return to Project<i class="material-icons">face</i>
-        </button>
-        <p color="green"><i class="mate-icons">ok</i>Your canvas is saved automatically</p>
-    </a>
-{% else %}
-    <a class="anchor-button" href="{% url 'index' %}">
-        <button>
-            Return to Landing Page
-        </button>
-    </a>
-{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
