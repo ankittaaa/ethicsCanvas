@@ -938,11 +938,12 @@ Vue.component('idea', {
                                 <i class="material-icons" style="font-size: 18px; color:white;">chat_bubble</i>
                                 </button>
                             </div>
+                              <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons" style="font-size: 18px; color:white;">highlight_off</i></button>
+                               <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  style="color:white;" v-on:click="newTag()"><i class="material-icons" style="font-size: 18px; color:white;">local_offer</i>Tag Selected Term</button>
 
-                                <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons" style="font-size: 18px; color:white;">highlight_off</i><br/></button>
 
-                                   <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  style="color:white;" v-on:click="newTag()"><br/><i class="material-icons" style="font-size: 18px; color:white;">local_offer</i>Tag Selected Term</button>
-                             <br/>
+
+
                            </div>
 
                             </div>

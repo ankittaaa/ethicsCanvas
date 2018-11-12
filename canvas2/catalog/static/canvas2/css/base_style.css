@@ -247,7 +247,7 @@ button.delete-comment{
 #idea-field {
 }
 #delete-idea{
-
+ float:left;
 }
 
 
@@ -276,6 +276,8 @@ button.delete-comment{
 }
 
 #new-tag-button{
+  align:left;
+  margin-left: 1px;
   float:left;
 }
 #yours{
