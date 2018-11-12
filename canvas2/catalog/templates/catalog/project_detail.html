@@ -54,7 +54,7 @@
         <h2 style="text-align:center;">Your canvasses are listed below.</h2>
         <ul>
         {% for canvas in canvases %}
-            <li class ="project-comb" align="center">
+            <li class ="project-comb">
                 <a class="anchor-button" class="select-canvas" id='select-canvas-{{canvas.pk}}' href="{{ canvas.get_absolute_url }}"><h3>{{ canvas.title }}</h3></a>
                 <a class="anchor-button" class="delete-canvas" id='delete-canvas-{{canvas.pk}}' href="{{ canvas.get_delete_url }}"><button>Remove</button></a>
             </li>
