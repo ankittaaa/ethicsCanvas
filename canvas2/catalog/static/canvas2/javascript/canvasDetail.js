@@ -24,8 +24,8 @@ var ethicsCategories = [
     "world-views",
     "group-conflicts",
     "groups-affected",
-    "product-or-service-failure",
-    "problematic-use-of-resources",
+    "product/Service-failure",
+    "problematic-use-of-resource",
     "uncategorised"
 ];
 
@@ -891,8 +891,10 @@ Vue.component('idea', {
         }
     },
 
-    template:`    <div class="grid">
-                 <div v-bind:class="this.flexClass" class="grid" >
+    template:`
+
+               <div class="row">
+                 <div v-bind:class="this.flexClass" class="cell">
 
                     <h3><% title()%>&emsp;&emsp;&emsp;&emsp;<hr>
                     <!--<hr><h3><strong><% popup()%></strong></h3>
@@ -905,6 +907,7 @@ Vue.component('idea', {
                     <div class="idea-container" v-if="escapedIdeas[0]" >
                     <div v-for="(idea, ideaListIndex) in escapedIdeas">
                     <div v-bind:id=textID(ideaListIndex)>
+                    <br>
                     <textarea class="idea-input"
                                     type="text" v-model="idea.fields.text"
                                     :maxlength="max"
@@ -912,7 +915,7 @@ Vue.component('idea', {
                                     @keydown="keydownCallback($event, idea, ideaListIndex)"
                                     @keypress="setTyping($event, idea, ideaListIndex)"
                                     @paste="setTyping($event, idea, ideaListIndex)"
-                                    placeholder="Enter an idea"/>
+                                    placeholder="Write an idea here..."/>
 
                                     <p id="user-typing" v-show="isTypingBools[ideaListIndex] == true">
                                         <%typingUser[ideaListIndex]%> is typing...</p>
@@ -935,21 +938,11 @@ Vue.component('idea', {
                                 <i class="material-icons" style="font-size: 18px; color:white;">chat_bubble</i>
                                 </button>
                             </div>
-                              <div v-if="isAuth">
-                                <button id="move-idea" class="btn btn-link" v-on:click="movingidea()">
-                                <i class="material-icons" style="font-size: 18px; color:white;">format_list_bulleted</i>
-                                </button>
-                                </div>
-                                <div v-else>
-                                <button id="move-idea" class="btn btn-link" title="Sign up to use this feature" disabled>
-                                    <i class="material-icons" style="font-size: 18px; color:white;">format_list_bulleted</i>
-                                    </button>
-                                </div>
 
                                 <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons" style="font-size: 18px; color:white;">highlight_off</i><br/></button>
 
                                    <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  style="color:white;" v-on:click="newTag()"><br/><i class="material-icons" style="font-size: 18px; color:white;">local_offer</i>Tag Selected Term</button>
-
+                             <br/>
                            </div>
 
                             </div>
@@ -958,6 +951,7 @@ Vue.component('idea', {
                          </div>
                          </div>
                          </div>
+
 
     `,
 

@@ -4,7 +4,7 @@
 
 {% block title %}
 
-<nav id="exp" class="navbar navbar-default">
+<nav id="exp" class="navbar navbar-default" class="pull-right">
     <h1 class="navbar-brand"><i class="material-icons orange600" style="font-size: 24px">account_circle</i>&nbsp Welcome, {{ user.username }}.</h1>
 </nav>
 {% endblock %}
@@ -20,24 +20,40 @@
   </button>
 </a>
 
+{% if public_projects %}
+    <h2 style="text-align: center;">Public Canvasses listed below.</h2>
+    <ul>
+    {% for project in public_project_list %}
+        <li>
+            <a class="anchor-button" id = "select-project" href = "{{ project.get_absolute_url }}">
+                <button>
+                    {{ project.title }}
+                </button>
+            </a>
+        </li>
+    {% endfor %}
+    </ul><hr id="lbreak">
+{% endif %}
+
     {% if private_projects %}
 
-        <h2>Your projects are listed below.</h2>
+        <h2 style="text-align: center;">Your projects are listed below.</h2>
         <ul>
         {% for project in private_projects %}
-            <li >
-              <div>
+            <li class ="project-comb" align="center">
+              <div >
                 <a class="project-box" id='select-project-{{project.pk}}' href="{{ project.get_absolute_url }}">
                     <h3>
                         {{ project.title }}
                     </h3>
+
                         <a  class="delete-project" id='delete-project-{{project.pk}}' href="{{ project.get_delete_url }}">
                             <button>
                                 Remove
                             </button>
                         </a>
+                     </a>
 
-                </a>
               </div>
 
             </li>
@@ -51,20 +67,7 @@
         </p>
     {% endif %}
 
-    {% if public_projects %}
-        <h2 style="text-align: center;"><br>Public Canvasses listed below.</h2>
-        <ul>
-        {% for project in public_project_list %}
-            <li>
-                <a class="anchor-button" id = "select-project" href = "{{ project.get_absolute_url }}">
-                    <button>
-                        {{ project.title }}
-                    </button>
-                </a>
-            </li>
-        {% endfor %}
-        </ul>
-    {% endif %}
+
 
 
 

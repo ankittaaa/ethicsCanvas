@@ -2,11 +2,11 @@
 {% load static %}
 
 {% block title %}
-  <title id="canvas-title"></title>
+
 {% if user.is_authenticated %}
 
 <nav class="navbar navbar-default">
-
+  <title id="canvas-title"></title>
 <h3 class="navbar-brand">Signed in as {{ user }}</h3>
 
     <a class="anchor-button" href="{{ project.get_absolute_url }}">
@@ -91,7 +91,7 @@
                 IDEA COMPONENT
 =====================================================-->
 
-<div id="idea-div" >
+<div id="idea-div" class="table">
 
 
         <div class="flex-container">
