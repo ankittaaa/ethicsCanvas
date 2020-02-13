@@ -43,15 +43,13 @@ var businessCategories = [
 ];
 
 var privacyCategories = [
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
-    "TBD",
+    "organizational-governance",
+    "human-rights",
+    "labor-practices",
+    "the-environment",
+    "fair-operating-procedures",
+    "consumer-issues",
+    "community-involvement-and-development",
     "uncategorised"
 ];
 
@@ -70,6 +68,16 @@ var months = [
     "December",
 ];
 
+var AIethicsCategories = [
+    "organizational-governance",
+    "human-rights",
+    "labor-practices",
+    "the-environment",
+    "fair-operating-procedures",
+    "consumer-issues",
+    "community-involvement-and-development",
+    "uncategorised"
+];
 var theCategories;
 
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the
@@ -802,6 +810,7 @@ function initSuccessCallback(data){
         theCategories = privacyCategories;
 
 
+
     ideaListComponent = new Vue({
         el: '#idea-div',
         data: {
@@ -849,7 +858,7 @@ Vue.component('idea-list', {
     data: function(){
         return {
             ideaList: sortedIdeas,
-            categories: theTitles,
+            categories: theCategories,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
