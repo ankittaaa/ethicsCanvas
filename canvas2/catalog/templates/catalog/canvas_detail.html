@@ -6,8 +6,8 @@
 {% if user.is_authenticated %}
 
 <nav class="navbar navbar-default">
-  <title id="canvas-title"></title>
-<h3 class="navbar-brand">Signed in as {{ user }}</h3>
+    <title id="canvas-title"></title>
+    <h3 class="navbar-brand">Signed in as {{ user }}</h3>
 
     <a class="anchor-button" href="{{ project.get_absolute_url }}">
         <button>
@@ -15,18 +15,18 @@
         </button>
 
     </a>
-{% else %}
+    {% else %}
     <a class="anchor-button" href="{% url 'index' %}">
         <button>
             Return to Landing Page
         </button>
     </a>
 
-{% endif %}
+    {% endif %}
 
-{% endblock %}
+    {% endblock %}
 
-{% block content %}
+    {% block content %}
 </nav>
 
 
@@ -41,44 +41,44 @@
 
     <div id="saved_tags_row">
 
-    <label>Saved Tags for this Canvas...<label>
+        <label>Saved Tags for this Canvas...<label>
 
-    <tag
-        v-if="auth"
-        id="tag"
-        v-for="(tag, index) in tagList"
-        v-bind:label = tag.fields.label
-        v-bind:key="index"
-        v-bind:index="index"
-    >
-
-        <li
-            class="tag-elem"
-            v-if="this.label != null"
-        >
-            <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
-                <% label %>
-            </button>
-
-
-            <tag-popup
-                id="tag-popup"
-                v-bind:label="this.label"
-                v-bind:canvases="canvasList[index]"
-                v-bind:tag="tagList[index]"
-                v-bind:index="index"
-                v-bind:ideas="ideaList[index]"
-                v-show="show"
-                @close="show=false"
-                @delete-tag="showTag=false" show="false"
+            <tag
+                    v-if="auth"
+                    id="tag"
+                    v-for="(tag, index) in tagList"
+                    v-bind:label = tag.fields.label
+                    v-bind:key="index"
+                    v-bind:index="index"
             >
-            </tag-popup>
-        </li>
-    </tag>
-    <tag v-else>
-        <p>Disabled for Trial User</p>
-    </tag>
-  </div>
+
+                <li
+                        class="tag-elem"
+                        v-if="this.label != null"
+                >
+                    <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
+                        <% label %>
+                    </button>
+
+
+                    <tag-popup
+                            id="tag-popup"
+                            v-bind:label="this.label"
+                            v-bind:canvases="canvasList[index]"
+                            v-bind:tag="tagList[index]"
+                            v-bind:index="index"
+                            v-bind:ideas="ideaList[index]"
+                            v-show="show"
+                            @close="show=false"
+                            @delete-tag="showTag=false" show="false"
+                    >
+                    </tag-popup>
+                </li>
+            </tag>
+            <tag v-else>
+                <p>Disabled for Trial User</p>
+            </tag>
+    </div>
 
 </div>
 
@@ -94,21 +94,21 @@
 <div id="idea-div" class="table">
 
 
-        <div class="flex-container">
-                <idea
-                    v-for="(ideas, index) in ideaList"
-                    v-bind:key="index"
-                    v-bind:index="index"
-                    v-bind:ideas="ideas"
-                    v-bind:is-typing="isTyping[index]"
-                    v-bind:categories="categories"
-                    v-bind:user="typingUser[index]"
-                    v-bind:is-auth="auth"
-                    v-bind:admin-names="adminNameList"
-                    class="flex-item"
-                >
-                </idea>
-        </div>
+    <div class="flex-container">
+        <idea
+                v-for="(ideas, index) in ideaList"
+                v-bind:key="index"
+                v-bind:index="index"
+                v-bind:ideas="ideas"
+                v-bind:is-typing="isTyping[index]"
+                v-bind:categories="categories"
+                v-bind:user="typingUser[index]"
+                v-bind:is-auth="auth"
+                v-bind:admin-names="adminNameList"
+                class="flex-item"
+        >
+        </idea>
+    </div>
 
 
 </div>
@@ -160,8 +160,8 @@
 
 {% block scripts %}
 
- <script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="{% static 'canvas2/javascript/canvasDetail.js' %}"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>

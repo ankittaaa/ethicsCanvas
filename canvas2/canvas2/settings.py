@@ -25,7 +25,7 @@ SECRET_KEY = 'jb4sx*xt^9#u7e(7ycgkle(7ya*l=cm1^04pw0pg-tqu15+c8)'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 GRAPH_MODELS = {
   'all_applications': True,

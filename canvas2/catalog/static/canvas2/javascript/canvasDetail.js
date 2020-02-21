@@ -24,7 +24,7 @@ var ethicsCategories = [
     "world-views",
     "group-conflicts",
     "groups-affected",
-    "product/Service-failure",
+    "product-service-failure",
     "problematic-use-of-resource",
     "uncategorised"
 ];
@@ -50,7 +50,17 @@ var privacyCategories = [
     "fair-operating-procedures",
     "consumer-issues",
     "community-involvement-and-development",
+    "uncategorised",
+    "TBD",
     "uncategorised"
+    // "organizational-governance",
+    // "human-rights",
+    // "labor-practices",
+    // "the-environment",
+    // "fair-operating-procedures",
+    // "consumer-issues",
+    // "community-involvement-and-development",
+    // "uncategorised"
 ];
 
 var months = [

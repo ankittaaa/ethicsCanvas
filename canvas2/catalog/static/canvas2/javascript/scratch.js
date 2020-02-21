@@ -67,10 +67,10 @@ $j(document).ready(function(data){
 });
 
 /*************************************************************************************************************
-**************************************************************************************************************
-                                            EVENT HANDLERS
-**************************************************************************************************************   
-**************************************************************************************************************/
+ **************************************************************************************************************
+ EVENT HANDLERS
+ **************************************************************************************************************
+ **************************************************************************************************************/
 
 // $j(document).on("click", ".comments", function(e){
 // /*
@@ -83,10 +83,10 @@ $j(document).ready(function(data){
 
 
 $j(document).on("select", ".idea-form", function(e){
-/*
-    Function to maintain the most recently selected piece of text
-    for use by the create-tag button
-*/
+    /*
+        Function to maintain the most recently selected piece of text
+        for use by the create-tag button
+    */
     var start = e.target.selectionStart;
     var end = e.target.selectionEnd;
     var wholeString = e.target.value;
@@ -99,11 +99,11 @@ $j(document).on("select", ".idea-form", function(e){
 
 
 $j(".new-tag").click(function(e){
-/*
-    Handler for addition of a tag
-*/
+    /*
+        Handler for addition of a tag
+    */
     e.preventDefault();
-    // url = "/catalog/canvas/" 
+    // url = "/catalog/canvas/"
     data = {
         "canvas_pk": canvasPK,
         "operation": "add_tag",
@@ -114,14 +114,14 @@ $j(".new-tag").click(function(e){
 });
 
 /*************************************************************************************************************
-**************************************************************************************************************
-                                            CALLBACK FUNCTIONS
-**************************************************************************************************************   
-**************************************************************************************************************/
+ **************************************************************************************************************
+ CALLBACK FUNCTIONS
+ **************************************************************************************************************
+ **************************************************************************************************************/
 
 /*************************************************************************************************************
-                                                IDEA CALLBACKS
-*************************************************************************************************************/
+ IDEA CALLBACKS
+ *************************************************************************************************************/
 
 
 function deleteIdeaSuccessCallback(data){
@@ -150,8 +150,8 @@ function editIdeaFailureCallback(data){
 }
 
 /*************************************************************************************************************
-                                        COMMENT CALLBACKS
-*************************************************************************************************************/
+ COMMENT CALLBACKS
+ *************************************************************************************************************/
 
 
 function addCommentSuccessCallback(data){
@@ -183,13 +183,13 @@ function deleteCommentFailureCallback(data){
 }
 
 /*************************************************************************************************************
-                                            TAG CALLBACKS
-*************************************************************************************************************/
+ TAG CALLBACKS
+ *************************************************************************************************************/
 
 function newTagSuccessCallback(data){
     // re-execute these steps so a new tag will, on being clicked, show it's in the current canvas
-    tags = JSON.parse(data.tags);  
-  
+    tags = JSON.parse(data.tags);
+
     taggedCanvasses = new Array(tags.length);
     publicCanvasses = JSON.parse(data.public);
     privateCanvasses = JSON.parse(data.private);
@@ -217,8 +217,8 @@ function deleteTagFailureCallback(data){
 
 
 /*************************************************************************************************************
-                                        COLLABORATOR CALLBACKS
-*************************************************************************************************************/
+ COLLABORATOR CALLBACKS
+ *************************************************************************************************************/
 
 function addUserSuccessCallback(data){
     populateUsersAdmins(data);
@@ -254,16 +254,16 @@ function demoteAdminFailureCallback(data){
 
 
 /*************************************************************************************************************
-                                            INITIAL CALLBACK
-*************************************************************************************************************/
+ INITIAL CALLBACK
+ *************************************************************************************************************/
 
 
 function initSuccessCallback(data){
-/*
-    This function is to pick apart the data received from the initial AJAX POST request, as there are several django models being sent back.
-    I'll do something with these eventually, for now just having them extracted is enough. Decisions on which may be global or which are useful 
-    at all remain undecided. 
-*/  
+    /*
+        This function is to pick apart the data received from the initial AJAX POST request, as there are several django models being sent back.
+        I'll do something with these eventually, for now just having them extracted is enough. Decisions on which may be global or which are useful
+        at all remain undecided.
+    */
     // initially declare empty arrays for each index of sortedIdeas
     for (var i = 0; i < sortedIdeas.length; i++){
         sortedIdeas[i] = new Array();
@@ -284,7 +284,7 @@ function initSuccessCallback(data){
     admins = JSON.parse(data.admins);
     users = JSON.parse(data.users);
     loggedInUser = JSON.parse(data.loggedInUser);
-    
+
     for (a in admins)
         adminNames.push(admins[a].fields.username);
 
@@ -310,7 +310,7 @@ function initSuccessCallback(data){
 
 
     populateTagList();
-    // populateIdeaList(); 
+    // populateIdeaList();
 
     tagButtons = new Vue({
         el: '#tag-div',
@@ -351,15 +351,15 @@ function initFailureCallback(data){
 }
 
 /*************************************************************************************************************
-**************************************************************************************************************
-                                            MISCELLANEOUS
-**************************************************************************************************************   
-**************************************************************************************************************/
+ **************************************************************************************************************
+ MISCELLANEOUS
+ **************************************************************************************************************
+ **************************************************************************************************************/
 function populateTagList(){
-/*
-    This function's purpose is to populate a 2D array of canvasses. Each 'i' element represents a tag,
-    while the 'j' element represents the list of canvasses attached to that tag. 
-*/
+    /*
+        This function's purpose is to populate a 2D array of canvasses. Each 'i' element represents a tag,
+        while the 'j' element represents the list of canvasses attached to that tag.
+    */
     var taggedPublic = [];
     var taggedPrivate = [];
     var tagged = [];
@@ -378,7 +378,7 @@ function populateTagList(){
             if (privateCanvasses[j].fields.tags.includes(tags[i].pk)){
                 taggedPrivate.push(privateCanvasses[j]);
             }
-        }  
+        }
 
         tagged.push(taggedPublic);
         tagged.push(taggedPrivate);
@@ -393,14 +393,14 @@ function populateTagList(){
 }
 
 function populateUsersAdmins(data){
-/*
-    Function for updating the user/admin list for the 
-    collaborator component upon modification of either list
-*/
+    /*
+        Function for updating the user/admin list for the
+        collaborator component upon modification of either list
+    */
     admins = JSON.parse(data.admins);
 
     collabComponent.adminsList = admins;
-    collabComponent.$children[0].adminsList = admins;    
+    collabComponent.$children[0].adminsList = admins;
 
     users = JSON.parse(data.users);
 
@@ -413,15 +413,15 @@ function populateUsersAdmins(data){
         adminNames.push(admins[a].fields.username);
 
     collabComponent.adminNameList = adminNames;
-    collabComponent.$children[0].adminNameList = adminNames; 
+    collabComponent.$children[0].adminNameList = adminNames;
 
 }
 
 function populateCategoryIdeaList(data){
-/*
-    Function for updating the idea list for the modified category
-    upon addition of new or deletion of current idea
-*/
+    /*
+        Function for updating the idea list for the modified category
+        upon addition of new or deletion of current idea
+    */
     ideas = JSON.parse(data);
     console.log(ideas);
     var tempCategory = ideas[0].fields.category;
@@ -433,21 +433,21 @@ function populateCategoryIdeaList(data){
 
 
 /*************************************************************************************************************
-**************************************************************************************************************
-                                            VUE COMPONENTS
-**************************************************************************************************************   
-**************************************************************************************************************/
+ **************************************************************************************************************
+ VUE COMPONENTS
+ **************************************************************************************************************
+ **************************************************************************************************************/
 
 /*************************************************************************************************************
-                                            IDEA-LIST COMPONENT
-*************************************************************************************************************/
+ IDEA-LIST COMPONENT
+ *************************************************************************************************************/
 
 
 
 Vue.component('idea-list', {
     props: [],
     delimiters: ['<%', '%>'],
-    
+
     data: function(){
         return {
             ideaList: sortedIdeas,
@@ -457,14 +457,14 @@ Vue.component('idea-list', {
     },
 
     template:'#ideas',
-    
+
     computed: {
     },
 
     watch: {
 
     },
-    
+
     methods: {
 
     },
@@ -474,23 +474,23 @@ Vue.component('idea-list', {
 })
 
 /*************************************************************************************************************
-                                            IDEA-ELEM COMPONENT
-*************************************************************************************************************/
- 
+ IDEA-ELEM COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('idea', {
     props: ['ideas', 'index', 'categories', 'comments'],
     delimiters: ['<%', '%>'],
-    
+
     data: function(){
         return {
             ideaList: this.ideas,
             commentList: this.comments,
             showComments: false,
-            // Array of booleans for displaying individual modal components. As a single boolean, all modals will be rendered instead of the one for the comment thread of the clicked idea. 
+            // Array of booleans for displaying individual modal components. As a single boolean, all modals will be rendered instead of the one for the comment thread of the clicked idea.
             showCommentThread: new Array(this.ideas.length)
         }
     },
-    
+
     template:'  <div class="category-detail">\
                     <h3><% title() %></h3>\
                     <div v-for="(idea, i) in escapedIdeas">\
@@ -538,13 +538,13 @@ Vue.component('idea', {
                     </br>\
                 </div>\
     ',
-         
+
     computed: {
-        /* 
-            using computed property to escape the html characters such as &apos as vue throws an 
-            "invalid assignment left-hand side" error when I call the method directly with v-model, 
-            the error not appearing until @change is triggered   
-        */ 
+        /*
+            using computed property to escape the html characters such as &apos as vue throws an
+            "invalid assignment left-hand side" error when I call the method directly with v-model,
+            the error not appearing until @change is triggered
+        */
         escapedIdeas: function(){
             var escaped = this.ideaList
 
@@ -556,30 +556,30 @@ Vue.component('idea', {
         category: function(){
             return this.ideas[0].fields.category
         },
-        // showCommentThread: { 
+        // showCommentThread: {
         //     get: function(){
         //         var shows = []
         //         for (i in this.ideas)
         //             shows.push(false)
 
         //         return this.shows
-        //     }, 
+        //     },
         //     set: function(newVal, i){
         //         this.showCommentThread[i] = newVal
-        //     }          
+        //     }
         // },
     },
-    
+
     watch: {
-    },   
+    },
 
     methods: {
 
         displayMe(i){
-        /*
-            For setting an individual truth value to display a single modal component's comment thread, or to close it.
-            This method is required as Vue doesn't detect array changes normally. 
-        */
+            /*
+                For setting an individual truth value to display a single modal component's comment thread, or to close it.
+                This method is required as Vue doesn't detect array changes normally.
+            */
             Vue.set(this.showCommentThread, i, !this.showCommentThread[i])
         },
 
@@ -588,7 +588,7 @@ Vue.component('idea', {
 
             for (c in comments){
                 if (comments[c].fields.idea === idea.pk)
-                {   
+                {
                     returnComments.push(comments[c])
                 }
             }
@@ -609,7 +609,7 @@ Vue.component('idea', {
 
         ideaString: function(idea){
             var string = escapeChars(idea.fields.text)
-            // the following is to convert elements like &apos back to " ' " 
+            // the following is to convert elements like &apos back to " ' "
             var scratch = document.createElement("textarea")
             scratch.innerHTML = string
 
@@ -641,12 +641,12 @@ Vue.component('idea', {
 
             // if a user entered loads of whitespace, then replace current input field with trimmed text
             event.target.value = text
-            
-            /* 
+
+            /*
                 if the new value is different to the old value after stripping
                 tabs excess spaces, newlines and carriage returns, then the text
-                has meaningfully changed and the database should be updated    
-            */ 
+                has meaningfully changed and the database should be updated
+            */
             if(text !== old){
                 var url = "/catalog/idea_detail/"
                 data = {
@@ -661,8 +661,8 @@ Vue.component('idea', {
             var text = escapeChars(event.target.value)
             text = text.replace(/[\t\s\n\r]+/g, " ")
             text = text.trim()
-            
-             url = "/catalog/new_comment/";
+
+            url = "/catalog/new_comment/";
 
             data = {
                 "input_text": text,
@@ -691,26 +691,26 @@ Vue.component('idea', {
 
 // TODO: Comment list and comment popup necessary?
 /*************************************************************************************************************
-                                            COMMENT-LIST COMPONENT
-*************************************************************************************************************/
- 
+ COMMENT-LIST COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('comment-list', {
     props: ['commentList', 'show-comment-thread'],
     delimiters: ['<%', '%>'],
-    
+
     data: function(){
         return {
         }
     },
-    
+
     template:'#comment-list',
-         
+
     computed: {
     },
-    
+
     watch: {
 
-    },   
+    },
 
     methods: {
 
@@ -718,26 +718,26 @@ Vue.component('comment-list', {
 })
 
 /*************************************************************************************************************
-                                            COMMENT-POPUP COMPONENT
-*************************************************************************************************************/
- 
+ COMMENT-POPUP COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('comment', {
     props: ['index'],
     delimiters: ['<%', '%>'],
-    
+
     data: function(){
-    
+
     },
-    
+
     template:'#comment',
-         
+
     computed: {
 
     },
-    
+
     watch: {
 
-    },   
+    },
 
     methods: {
 
@@ -745,9 +745,9 @@ Vue.component('comment', {
 })
 
 /*************************************************************************************************************
-                                            TAG-LIST COMPONENT
-*************************************************************************************************************/
- 
+ TAG-LIST COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('tag', {
     props: ['index', 'label'],
     delimiters:['<%', '%>'],
@@ -763,7 +763,7 @@ Vue.component('tag', {
 
     template: '#tag',
 
-    // watcher for when the showTag data is changed by the emission of deleteTag by the 
+    // watcher for when the showTag data is changed by the emission of deleteTag by the
     // tag-popup child element
     watch: {
         showTag: function(){
@@ -779,7 +779,7 @@ Vue.component('tag', {
 
     methods: {
         tagInfo: function(event, index){
-        },  
+        },
         exitTagInfo: function(event){
             console.log('')
         }
@@ -787,9 +787,9 @@ Vue.component('tag', {
 })
 
 /*************************************************************************************************************
-                                            TAG-ELEM COMPONENT
-*************************************************************************************************************/
- 
+ TAG-ELEM COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('tag-popup', {
     props:['label', 'canvas'],
     delimiters: ['<%', '%>'],
@@ -840,9 +840,9 @@ Vue.component('tag-popup', {
 })
 
 /*************************************************************************************************************
-                                            COLLAB-LIST COMPONENT
-*************************************************************************************************************/
- 
+ COLLAB-LIST COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('collabs', {
     template:'#collabs',
 
@@ -862,9 +862,9 @@ Vue.component('collabs', {
 })
 
 /*************************************************************************************************************
-                                            COLLAB-POPUP COMPONENT
-*************************************************************************************************************/
- 
+ COLLAB-POPUP COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('collab-popup', {
     props: ['users', 'admins', 'logged-in-user', 'is-admin', 'admin-names'],
     delimiters: ['<%', '%>'],
@@ -983,9 +983,9 @@ Vue.component('collab-popup', {
 })
 
 /*************************************************************************************************************
-                                            MODAL COMPONENT
-*************************************************************************************************************/
- 
+ MODAL COMPONENT
+ *************************************************************************************************************/
+
 Vue.component('modal', {
-  template: '#modal-template'
+    template: '#modal-template'
 })
