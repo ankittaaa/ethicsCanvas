@@ -28,6 +28,43 @@ var ethicsCategories = [
     "problematic-use-of-resource",
     "uncategorised"
 ];
+var texte = [
+    "Who use your product or service? Who are affected by its use? Are they men/women, different age groups etc?",
+    "How might people’s behaviour change because of your product and service? Their habits, time schedules, choice of activities, etc?",
+    "How might relations between people and groups change because of your product or service? Between friends, family members, co-workers, etc?",
+    "What are the most important ethical impacts you found? How can you address these by changing your design, organisation, or by proposing broader changes?",
+    "How might people’s worldview be affected by your product or service? Their ideas about consumption, religion, work, etc?",
+    "How might group conflict arise or be affected by your product or service? Could it discriminate between people, put them out of work, etc? ",
+    "Which groups are involved in the design, production, distribution and use of your product or service? Which groups might be affected by it? Are these work-related organisation, interest groups etc? ",
+    "Who are potential negative impact of your product or service failing to operate or to be used as intended? What happens with technical errors, security failures etc?",
+    " What are potential negative impacts of the consumption of resources relating to your project? What happens with its use of energy, personal data, etc?",
+    "Here you can place ideas that still haven’t been categorised."
+];
+
+var textb = [
+    "Who are your key partners/suppliers? What are the motivations for the partnerships?",
+    "How might people’s behaviour change because of your product and service? Their habits, time schedules, choice of activities, etc?",
+    "What key resources does your value proposition require? What resources are important the most in distribution channels, customer relationships, revenue stream…?",
+    "What core value do you deliver to the customer? Which customer needs are you satisfying?",
+    "What relationship that the target customer expects you to establish? How can you integrate that into your business in terms of cost and format?",
+    "Through which channels that your customers want to be reached? Which channels work best? How much do they cost? How can they be integrated into your and your customers’ routines?",
+    "Which classes are you creating values for? Who is your most important customer? ",
+    "What are the most cost in your business? Which key resources/ activities are most expensive?",
+    "For what value are your customers willing to pay? What and how do they recently pay? How would they prefer to pay? How much does every revenue stream contribute to the overall revenues?",
+    "Here you can place ideas that still haven’t been categorised."
+];
+var texta = [
+    "Does the organisation owning the product take full responsibility of any damage reported to society by its use? Does the organisation have made available structured laws and processes which apply social responsibility?",
+    "How the product will affect basic human rights? Does it violate any political, social, cultural right by discriminating between the employment opportunities? Is there enough guidelines available about the product, how it may be used, where it may be used etc? ",
+    "Could the product discriminate between people, put them out of work etc? Does the product promote human development and training in the workplace? Does it promote health and safety at work?  How your product could affect employment relationships and will it result in dirty competition?",
+    "What are potential negative impacts of the consumption of resources relating to your project? What happens with its use of resources, energy? Is the product consuming resources by sacrificing the needs of future generations? ",
+    "Does the product ensures fair competition amongst people using it? What are the most ethical impacts of the product? Does the product at present/later stage may need political involvement? Does the usage of product amongst people in any way violates anti corruption?",
+    "Does the product in any way violate consumer’s privacy by exposing his data? Is there enough explanability about the product as to why certain data is being asked for? Are essential services made available to consumers regarding the same?",
+    "Does the product in any way discriminate between genders? Is the community present being involved? Is the product availing employment creation? Is it responsible for developing new skills in people? Is the product a source of income creation or not? ",
+    "Here you can place ideas that still haven’t been categorised.",
+    "Here you can place ideas that still haven’t been categorised.",
+    "Here you can place ideas that still haven’t been categorised."
+];
 
 var businessCategories = [
     "key-partners",
@@ -89,6 +126,7 @@ var AIethicsCategories = [
     "uncategorised"
 ];
 var theCategories;
+var textel;
 
 // sortedIdeas will become a 2d array of objects. the 'i' indices will be the categories, while the
 // 'j' indices will be an object encapulating an idea and an array of its comments ( { idea, comments[] } )
@@ -812,13 +850,18 @@ function initSuccessCallback(data){
         // only want to initialise the ideaSocket so that new idea JSON objects can be acquired - NOT ADDED TO A CANVAS
     }
 
-    if (canvasType === 0)
+    if (canvasType === 0) {
         theCategories = ethicsCategories;
-    else if (canvasType === 1)
+        textel = texte;
+    }
+    else if (canvasType === 1) {
         theCategories = businessCategories;
-    else if (canvasType === 2)
+        textel = textb;
+    }
+    else if (canvasType === 2) {
         theCategories = privacyCategories;
-
+        textel = texta;
+    }
 
 
     ideaListComponent = new Vue({
@@ -826,6 +869,7 @@ function initSuccessCallback(data){
         data: {
             ideaList: sortedIdeas,
             categories: theCategories,
+            Textel: textel,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
@@ -869,6 +913,7 @@ Vue.component('idea-list', {
         return {
             ideaList: sortedIdeas,
             categories: theCategories,
+            Textel: textel,
             isTyping: typingBools,
             typingUser: typingUser,
             auth: isAuth,
@@ -893,7 +938,7 @@ Vue.component('idea-list', {
 *************************************************************************************************************/
 
 Vue.component('idea', {
-    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'is-auth', 'admin-names'],
+    props: ['user', 'is-typing', 'ideas', 'index', 'categories', 'Textel', 'is-auth', 'admin-names'],
     delimiters: ['<%', '%>'],
 
     data: function(){
@@ -904,6 +949,7 @@ Vue.component('idea', {
             isTypingBools: this.isTyping,
             typingUser: this.user,
             categoryList: this.categories,
+            textelList : this.Textel,
             max:100,
             char:"characters remaining",
             isActive:false
@@ -911,16 +957,17 @@ Vue.component('idea', {
     },
 
     template:`
-
+ 
                <div class="row">
                  <div v-bind:class="this.flexClass" class="cell">
-
-                    <h3><% title()%>&emsp;&emsp;&emsp;&emsp;<hr>
-                    <!--<hr><h3><strong><% popup()%></strong></h3>
-                    <button id="showDesc" class="btn btn-link" @click="showDescr($event)">
-                    <i class="material-icons" style="font-size: 18px">help</i>  </button>-->
-
-                  </h3>
+                
+                    <h3 class="tool"><% title()%>&emsp;&emsp;&emsp;&emsp;
+                     <button id="showDesc" class="btn btn-link"  @click="showDescr($event)" style=" position: absolute; top:-5px; right:-8px;">
+                    <i class="material-icons" style="font-size: 18px">help</i>  </button><span class="tooltiptext"><% pops()%></span>
+                    </h3>
+                    <hr>
+                     
+                     <br>
 
 
                     <div class="idea-container" v-if="escapedIdeas[0]" >
@@ -969,7 +1016,7 @@ Vue.component('idea', {
                         <div class="main-idea-buttons">
                          <a href="#ideaListIndex" @click="newIdea($event)" style="color:white"> <i class="material-icons" style="font-size: 18px; color:white;">lightbulb_outline</i>Add an idea</a>
                          </div>
-                         </div>
+                         </h3>
                          </div>
 
 
@@ -1106,6 +1153,20 @@ Vue.component('idea', {
 
              return returnCat
          },
+        pops: function(){
+            var cat = this.textelList[this.index]
+            var newCat = []
+            var returnCat = ''
+
+            cat = cat.split('-')
+
+            for (c in cat){
+                var upperCat = cat[c][0].toUpperCase()
+                returnCat += upperCat + cat[c].slice(1, cat[c].length) + ' '
+            }
+
+            return returnCat
+        },
         popup: function(){
             var cate = this.categoryList[this.index]
 

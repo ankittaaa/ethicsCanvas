@@ -129,10 +129,9 @@ def delete_canvas(request, pk):
 
     for tag in tags:
         tag.canvas_set.remove(canvas)
-        tag.idea_set.remove(idea__canvas__pk=canvas)
         tag.save()
 
-    if (not admin_permission(user, canvas.project) or (project.title == 'blank-project')):
+    if (not admin_permission(user, canvas.project)):
         return HttpResponse('Forbidden', status=403)
 
     canvas.delete()
