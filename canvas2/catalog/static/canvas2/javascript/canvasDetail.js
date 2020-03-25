@@ -960,16 +960,12 @@ Vue.component('idea', {
  
                <div class="row">
                  <div v-bind:class="this.flexClass" class="cell">
-                
-                    <h3 class="tool"><% title()%>&emsp;&emsp;&emsp;&emsp;
+                  <h3 class="tool"><% title()%>&emsp;&emsp;&emsp;&emsp;
                      <button id="showDesc" class="btn btn-link"  @click="showDescr($event)" style=" position: absolute; top:-5px; right:-8px;">
                     <i class="material-icons" style="font-size: 18px">help</i>  </button><span class="tooltiptext"><% pops()%></span>
                     </h3>
                     <hr>
-                     
-                     <br>
-
-
+                    <br> 
                     <div class="idea-container" v-if="escapedIdeas[0]" >
                     <div v-for="(idea, ideaListIndex) in escapedIdeas">
                     <div v-bind:id=textID(ideaListIndex)>
@@ -986,11 +982,7 @@ Vue.component('idea', {
                                     <p id="user-typing" v-show="isTypingBools[ideaListIndex] == true">
                                         <%typingUser[ideaListIndex]%> is typing...</p>
                                     <h6 v-text="(max - idea.fields.text.length)"/><h6 v-text="char"/>
-
-                            </div>
-
-
-
+                                 </div>
                             <div v-if="isAuth">
                                 <button id="comment-button" class="btn btn-link" v-on:click="displayMe(ideaListIndex)">
                                     <span> <i class="material-icons" style="font-size: 18px; color:white;">chat_bubble</i>(<% commentList[ideaListIndex].length %>)</span>
@@ -1006,18 +998,15 @@ Vue.component('idea', {
                             </div>
                               <button id="delete-idea" class="btn btn-link" @click="deleteIdea($event, idea, ideaListIndex)" title="delete"><i class="material-icons" style="font-size: 18px; color:white;">highlight_off</i></button>
                                <button v-if="escapedIdeas[0]" id="new-tag-button" class="btn btn-link"  style="color:white;" v-on:click="newTag()"><i class="material-icons" style="font-size: 18px; color:white;">local_offer</i>Tag Selected Term</button>
-
-
-
-
-                           </div>
-
-                            </div>
+                                </div>
+                                  </div>
                         <div class="main-idea-buttons">
                          <a href="#ideaListIndex" @click="newIdea($event)" style="color:white"> <i class="material-icons" style="font-size: 18px; color:white;">lightbulb_outline</i>Add an idea</a>
                          </div>
                          </h3>
                          </div>
+                         </div>
+                         
 
 
     `,

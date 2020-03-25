@@ -39,46 +39,44 @@
 <div id = "tag-div">
     <h3 v-if="auth"></h3>
 
-    <div id="saved_tags_row">
 
-        <label>Saved Tags for this Canvas...<label>
+    <label>Saved Tags for this Canvas...</label>
 
-            <tag
-                    v-if="auth"
-                    id="tag"
-                    v-for="(tag, index) in tagList"
-                    v-bind:label = tag.fields.label
-                    v-bind:key="index"
-                    v-bind:index="index"
+        <tag
+                v-if="auth"
+                id="tag"
+                v-for="(tag, index) in tagList"
+                v-bind:label = tag.fields.label
+                v-bind:key="index"
+                v-bind:index="index"
+        >
+
+            <li
+                    class="tag-elem"
+                    v-if="this.label != null"
             >
+                <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
+                    <% label %>
+                </button>
 
-                <li
-                        class="tag-elem"
-                        v-if="this.label != null"
+
+                <tag-popup
+                        id="tag-popup"
+                        v-bind:label="this.label"
+                        v-bind:canvases="canvasList[index]"
+                        v-bind:tag="tagList[index]"
+                        v-bind:index="index"
+                        v-bind:ideas="ideaList[index]"
+                        v-show="show"
+                        @close="show=false"
+                        @delete-tag="showTag=false" show="false"
                 >
-                    <button v-on:click="tagInfo($event, index), show=true" class="tag-button">
-                        <% label %>
-                    </button>
-
-
-                    <tag-popup
-                            id="tag-popup"
-                            v-bind:label="this.label"
-                            v-bind:canvases="canvasList[index]"
-                            v-bind:tag="tagList[index]"
-                            v-bind:index="index"
-                            v-bind:ideas="ideaList[index]"
-                            v-show="show"
-                            @close="show=false"
-                            @delete-tag="showTag=false" show="false"
-                    >
-                    </tag-popup>
-                </li>
-            </tag>
-            <tag v-else>
-                <p>Disabled for Trial User</p>
-            </tag>
-    </div>
+                </tag-popup>
+            </li>
+        </tag>
+        <tag v-else>
+            <p>Disabled for Trial User</p>
+        </tag>
 
 </div>
 
