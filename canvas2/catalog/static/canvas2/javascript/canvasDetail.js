@@ -1640,7 +1640,8 @@ Vue.component('tag-popup', {
     data: function(){
         return {
             canvas: '',
-            selfTag: this.tag
+            selfTag: this.tag,
+            annotationText: ''
 
         }
     },
@@ -1658,9 +1659,9 @@ Vue.component('tag-popup', {
                         <a v-bind:href="url(canvas)" target="_blank">
                             <% tagLink(canvas) %>
                         </a>
-                        <h3 id="myDialog"></h3>
+                         <h3 id="myDialog"><% annotationText %></h3>
                     </li>
-                    
+                   
                 </ul>
              
 
@@ -1692,6 +1693,7 @@ Vue.component('tag-popup', {
             return "/catalog/canvas/" + canvas.pk
         },
         table_display:function(list, cols){
+
             var table = document.createElement("table");
             var tr = table.insertRow(-1);
             for (var i = 0; i < cols.length; i++) {
@@ -1704,9 +1706,14 @@ Vue.component('tag-popup', {
                 for (var j = 0; j < cols.length; j++) {
                     var cell = trow.insertCell(-1);
                     cell.innerHTML = list[i][cols[j]].value;
-                    console.log(list[i][cols[j]].value);
-                    document.getElementById("myDialog").innerHTML=list[i][cols[j]].value;
+                     this.annotationText = list[i][cols[j]].value;
+                    //document.getElementById("myDialog").value = list[i][cols[j]].value;
                     //document.getElementById("myDialog").showModal();
+                    if(list[i][cols[j]].value == "")
+                    {
+                        this.annotationText = "Add new Lexical Entry to your ontology";
+                    }
+                    console.log(list[i][cols[j]].value);
                 }
             }
         },
@@ -1721,14 +1728,14 @@ Vue.component('tag-popup', {
                 "?subject <http://www.w3.org/ns/lemon/ontolex#LexicalSense> ?g."+
                 "} LIMIT 12"
             let body = "query=" + encodeURIComponent(query1);
-            var a = fetch("http://424eb724.ngrok.io/IRINew/sparql",
+            var a = fetch("http://5b30a0b1.ngrok.io/IRINew/sparql",
                 {"credentials":"omit",
                     "headers":{"accept":"application/sparql-results+json,*/*;q=0.9",
                         "accept-language":"en-US,en;q=0.9",
                         "content-type":"application/x-www-form-urlencoded; charset=UTF-8",
                         "sec-fetch-mode":"cors","sec-fetch-site":"same-origin",
                         "x-requested-with":"XMLHttpRequest"},
-                    "referrer":"http://424eb724.ngrok.io/dataset.html?tab=upload&ds=/IRINew",
+                    "referrer":"http://5b30a0b1.ngrok.io/dataset.html?tab=upload&ds=/IRINew",
                     "referrerPolicy":"no-referrer-when-downgrade",
                     "body": body,
                     "method":"POST",
@@ -1745,7 +1752,7 @@ Vue.component('tag-popup', {
 
                 }
                 this.table_display(list,cols);
-
+                //document.getElementById("myDialog").innerHTML = "";
             });
             },
 
@@ -1805,8 +1812,7 @@ function initialiseSockets(){
 
     commentSocket = new WebSocket(
         'ws://' + window.location.host +
-        '/ws/canvas/' + canvasPK + '/comment/'
-    );
+        '/ws/canvas/' + canvasPK + '/comment/',false);
 
 
     tagSocket = new WebSocket(
