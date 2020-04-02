@@ -1728,14 +1728,14 @@ Vue.component('tag-popup', {
                 "?subject <http://www.w3.org/ns/lemon/ontolex#LexicalSense> ?g."+
                 "} LIMIT 12"
             let body = "query=" + encodeURIComponent(query1);
-            var a = fetch("http://5b30a0b1.ngrok.io/IRINew/sparql",
+            var a = fetch("http://122435c4.ngrok.io/IRINew/sparql",
                 {"credentials":"omit",
                     "headers":{"accept":"application/sparql-results+json,*/*;q=0.9",
                         "accept-language":"en-US,en;q=0.9",
                         "content-type":"application/x-www-form-urlencoded; charset=UTF-8",
                         "sec-fetch-mode":"cors","sec-fetch-site":"same-origin",
                         "x-requested-with":"XMLHttpRequest"},
-                    "referrer":"http://5b30a0b1.ngrok.io/dataset.html?tab=upload&ds=/IRINew",
+                    "referrer":"http://122435c4.ngrok.io/dataset.html?tab=upload&ds=/IRINew",
                     "referrerPolicy":"no-referrer-when-downgrade",
                     "body": body,
                     "method":"POST",
