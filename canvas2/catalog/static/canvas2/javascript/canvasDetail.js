@@ -1812,7 +1812,7 @@ function initialiseSockets(){
 
     commentSocket = new WebSocket(
         'ws://' + window.location.host +
-        '/ws/canvas/' + canvasPK + '/comment/',false);
+        '/ws/canvas/' + canvasPK + '/comment/');
 
 
     tagSocket = new WebSocket(

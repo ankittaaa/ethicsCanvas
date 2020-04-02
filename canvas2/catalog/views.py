@@ -59,7 +59,7 @@ def new_canvas(request, canvas_type):
         # canvas_type integer: 0 for Ethics, 1 for Business, 2 for Privacy
         canvas = Canvas(canvas_type=canvas_type, project=project)
         canvas.save()
-        canvas.title =  f'New Canvas {canvas.pk} (Ethics)' if canvas_type == 0 else f'New Canvas {canvas.pk} (Business)' if canvas_type == 1 else f'New Canvas {canvas.pk} (Privacy)'
+        canvas.title =  f'New Canvas {canvas.pk} (Ethics)' if canvas_type == 0 else f'New Canvas {canvas.pk} (Business)' if canvas_type == 1 else f'New Canvas {canvas.pk} (AI Ethics)'
         canvas.save()
 
         return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
@@ -95,11 +95,11 @@ def new_canvas(request, canvas_type):
                     return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
 
             elif canvas_type == 2:
-                if Canvas.objects.filter(title='blank-privacy').exists():
-                    return redirect(Canvas.objects.get(title='blank-business').get_absolute_url())
+                if Canvas.objects.filter(title='blank-AI Ethics').exists():
+                    return redirect(Canvas.objects.get(title='blank-AI Ethics').get_absolute_url())
                 else :
                 # if there is no blank canvas, create one. set public to false so that it remains blank
-                    canvas = Canvas(title='blank-privacy', canvas_type=canvas_type, project=project)
+                    canvas = Canvas(title='blank-AI Ethics', canvas_type=canvas_type, project=project)
                     canvas.save()
                     return redirect(canvas.get_absolute_url()) # bring user to the canvas page for the newly created canvas
 
